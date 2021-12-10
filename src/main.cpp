@@ -8,14 +8,13 @@
  *          Updated by Tom Deakin, August 2013
 */
 
+#define CL_HPP_TARGET_OPENCL_VERSION 210
 #define CL_HPP_ENABLE_EXCEPTIONS
 
-#include <CL/cl.h>
 #include "CL/cl2.hpp"
 #include <iostream>
 #include <vector>
 
-//#include <err_code.h>
 
 int main(void)
 {
@@ -97,5 +96,4 @@ int main(void)
   }
 
   return 0;
-
 }

@@ -11,7 +11,6 @@ target_include_directories(proj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # OpenCL
 find_package(OpenCL REQUIRED)
-message("HELLO! ${OpenCL_VERSION_STRING}")
 include_directories(${OpenCL_INCLUDE_DIRS})
 link_directories(${OpenCL_LIBRARY})
 target_link_libraries (proj ${OpenCL_LIBRARY})
