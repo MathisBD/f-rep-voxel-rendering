@@ -13,3 +13,12 @@ target_include_directories(proj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 find_package(SDL2 REQUIRED)
 target_include_directories(proj PUBLIC ${SDL2_INCLUDE_DIRS})
 target_link_libraries(proj ${SDL2_LIBRARIES})
+
+# Vulkan
+find_package(Vulkan REQUIRED)
+target_include_directories(proj PUBLIC ${VULKAN_INCLUDE_DIRS})
+target_link_libraries(proj ${VULKAN_LIB_LIST})
+
+# VkBootstrap
+add_subdirectory(submodules/vk-bootstrap)
+target_link_libraries(proj vk-bootstrap::vk-bootstrap ${CMAKE_DL_LIBS})
