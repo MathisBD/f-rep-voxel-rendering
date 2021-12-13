@@ -1,9 +1,9 @@
-#include "engine/vk_engine.h"
+#include "engine/engine.h"
 
 
 int main()
 {
-    VkEngine engine;
+    Engine engine;
     engine.Init();
     engine.Run();
     engine.Cleanup();
