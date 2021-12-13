@@ -10,8 +10,8 @@ add_executable(proj ${CPP_SOURCES})
 target_include_directories(proj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Warnings/Errors : there's no reason to ignore warnings in this project.
-target_compile_options(proj PRIVATE -Wall -Wextra)
-target_compile_options(proj PRIVATE -Werror)
+target_compile_options(proj PUBLIC -Wall -Wextra)
+target_compile_options(proj PUBLIC -Werror)
 
 # SDL2
 find_package(SDL2 REQUIRED)
