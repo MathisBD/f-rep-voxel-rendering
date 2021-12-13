@@ -1,9 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include "engine/swapchain.h"
+#include "engine/renderer.h"
 #include "engine/cleanup_queue.h"
-#include "engine/frame.h"
-
 
 class Engine
 {
@@ -13,8 +11,7 @@ public:
     void Cleanup();
 private:
     bool m_isInitialized { false };
-    bool m_frameNumber { 0 };
-
+   
     VkExtent2D m_windowExtent { 1700, 900 };
     struct SDL_Window* m_window { nullptr };
 
@@ -25,18 +22,11 @@ private:
     VkDevice m_device;
     VkSurfaceKHR m_surface;
 
-    VkQueue m_graphicsQueue;
-    uint32_t m_graphicsQueueFamily;
-
     // Engine components
     CleanupQueue m_cleanupQueue;
-    Swapchain m_swapchain;
-    Frame m_frame;
+    Renderer m_renderer;
 
-    // initialization
-    void InitVulkanCore();
-    void InitSwapchain();
-
-    // Main draw logic
+    void InitSDL();
+    vkb::Device InitVulkanCore();
     void Draw();
 };

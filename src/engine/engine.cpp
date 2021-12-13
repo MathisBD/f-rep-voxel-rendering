@@ -7,6 +7,27 @@
 
 void Engine::Init() 
 {
+    InitSDL();
+    m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
+
+    const vkb::Device& vkbDev = InitVulkanCore();
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyDevice(m_device, nullptr); 
+        vkDestroySurfaceKHR(m_instance, m_surface, nullptr); 
+        vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
+        vkDestroyInstance(m_instance, nullptr);
+    });
+    
+    m_renderer.Init(vkbDev, m_windowExtent);
+    m_cleanupQueue.AddFunction([=] {
+        m_renderer.Cleanup(m_device);
+    });
+
+    m_isInitialized = true;    
+}
+
+void Engine::InitSDL()
+{
     SDL_Init(SDL_INIT_VIDEO);
 
 	SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
@@ -18,18 +39,9 @@ void Engine::Init()
 		m_windowExtent.height,      // window height in pixels
 		window_flags 
 	);
-    m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
-
-    InitVulkanCore();
-    m_swapchain.Init(m_gpu, m_device, m_surface);
-    m_cleanupQueue.AddFunction([=]{ m_swapchain.Cleanup(m_device); });
-    m_frame.Init(m_device, m_graphicsQueueFamily);
-    m_cleanupQueue.AddFunction([=]{ m_frame.Cleanup(m_device); });
-    
-    m_isInitialized = true;    
 }
 
-void Engine::InitVulkanCore() 
+vkb::Device Engine::InitVulkanCore() 
 {
     // Vulkan instance
     vkb::InstanceBuilder builder;
@@ -41,19 +53,10 @@ void Engine::InitVulkanCore()
         .build()
         .value();
     m_instance = vkbInst.instance;
-    m_cleanupQueue.AddFunction([=] {
-        vkDestroyInstance(m_instance, nullptr);
-    });
     m_debugMessenger = vkbInst.debug_messenger;
-    m_cleanupQueue.AddFunction([=] {
-        vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);	
-    });
 
     // SDL Surface
     SDL_Vulkan_CreateSurface(m_window, m_instance, &m_surface);
-    m_cleanupQueue.AddFunction([=] { 
-        vkDestroySurfaceKHR(m_instance, m_surface, nullptr); 
-    });
 
     // Choose a GPU
     vkb::PhysicalDeviceSelector selector(vkbInst);
@@ -67,13 +70,8 @@ void Engine::InitVulkanCore()
     // Vulkan logical device
     vkb::Device vkbDev = vkb::DeviceBuilder(vkbPhysDev).build().value();
     m_device = vkbDev.device;
-    m_cleanupQueue.AddFunction([=]{ 
-        vkDestroyDevice(m_device, nullptr); 
-    });
 
-    // Graphics queue
-    m_graphicsQueue = vkbDev.get_queue(vkb::QueueType::graphics).value();
-	m_graphicsQueueFamily = vkbDev.get_queue_index(vkb::QueueType::graphics).value();
+    return vkbDev;
 }
 
 void Engine::Run() 
@@ -88,15 +86,11 @@ void Engine::Run()
                 quit = true;
             }
         }
-        // main engine logic is here
-        Draw();
+        // Draw a frame
+        m_renderer.Draw(m_device);
     }
 }
 
-void Engine::Draw() 
-{
-    
-}
 
 void Engine::Cleanup() 
 {
