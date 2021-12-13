@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 #include "engine/swapchain.h"
 #include "engine/cleanup_queue.h"
+#include "engine/frame.h"
 
 
 class Engine
@@ -24,9 +25,13 @@ private:
     VkDevice m_device;
     VkSurfaceKHR m_surface;
 
+    VkQueue m_graphicsQueue;
+    uint32_t m_graphicsQueueFamily;
+
     // Engine components
-    Swapchain m_swapchain;
     CleanupQueue m_cleanupQueue;
+    Swapchain m_swapchain;
+    Frame m_frame;
 
     // initialization
     void InitVulkanCore();

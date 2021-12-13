@@ -23,7 +23,9 @@ void Engine::Init()
     InitVulkanCore();
     m_swapchain.Init(m_gpu, m_device, m_surface);
     m_cleanupQueue.AddFunction([=]{ m_swapchain.Cleanup(m_device); });
-
+    m_frame.Init(m_device, m_graphicsQueueFamily);
+    m_cleanupQueue.AddFunction([=]{ m_frame.Cleanup(m_device); });
+    
     m_isInitialized = true;    
 }
 
@@ -68,6 +70,10 @@ void Engine::InitVulkanCore()
     m_cleanupQueue.AddFunction([=]{ 
         vkDestroyDevice(m_device, nullptr); 
     });
+
+    // Graphics queue
+    m_graphicsQueue = vkbDev.get_queue(vkb::QueueType::graphics).value();
+	m_graphicsQueueFamily = vkbDev.get_queue_index(vkb::QueueType::graphics).value();
 }
 
 void Engine::Run() 
