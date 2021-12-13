@@ -9,10 +9,7 @@ FILE(GLOB_RECURSE CPP_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "./src/*.cpp")
 add_executable(proj ${CPP_SOURCES})
 target_include_directories(proj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# OpenCL
-find_package(OpenCL REQUIRED)
-include_directories(${OpenCL_INCLUDE_DIRS})
-link_directories(${OpenCL_LIBRARY})
-target_link_libraries (proj ${OpenCL_LIBRARY})
-target_compile_definitions(proj PUBLIC CL_HPP_ENABLE_EXCEPTIONS)
-target_compile_definitions(proj PUBLIC CL_HPP_TARGET_OPENCL_VERSION=210)
+# SDL2
+find_package(SDL2 REQUIRED)
+target_include_directories(proj PUBLIC ${SDL2_INCLUDE_DIRS})
+target_link_libraries(proj ${SDL2_LIBRARIES})
