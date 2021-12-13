@@ -65,7 +65,7 @@ void Swapchain::Init(
 
     // Framebuffers
 	m_framebuffers = std::vector<VkFramebuffer>(m_images.size());
-	for (int i = 0; i < m_images.size(); i++) {
+	for (size_t i = 0; i < m_images.size(); i++) {
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.pNext = nullptr;
