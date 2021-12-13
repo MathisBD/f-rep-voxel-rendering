@@ -92,16 +92,16 @@ void Swapchain::Cleanup(const VkDevice& device)
 	}    
 }
 
-uint32_t Swapchain::RequestNewImage(
+uint32_t Swapchain::AcquireNewImage(
 	const VkDevice& device,
-	const VkSemaphore& presentSemaphore) 
+	const VkSemaphore& sem) 
 {
 	uint32_t imgIdx;
 	VK_CHECK(vkAcquireNextImageKHR(
 		device, 
 		m_swapchain, 
 		1000000000, // 1 second timeout
-		presentSemaphore, 
+		sem, 
 		nullptr, 
 		&imgIdx));
 	return imgIdx;	

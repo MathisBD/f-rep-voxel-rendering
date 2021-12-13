@@ -14,28 +14,38 @@ void Renderer::Init(
 	m_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
     m_swapchain.Init(vkbDevice, windowExtent);
-    m_frame.Init(vkbDevice.device, m_graphicsQueueFamily);
+    for (size_t i = 0; i < FRAME_OVERLAP; i++) {
+        m_frames[i].Init(vkbDevice.device, m_graphicsQueueFamily);
+    }
 }
 
 void Renderer::Cleanup(const VkDevice& device) 
 {    
-    m_frame.Cleanup(device);
+    for (size_t i = 0; i < FRAME_OVERLAP; i++) {
+        m_frames[i].Cleanup(device);
+    }
     m_swapchain.Cleanup(device);
+}
+
+Frame& Renderer::CurrentFrame() 
+{
+    return m_frames[m_frameNumber % FRAME_OVERLAP];    
 }
 
 void Renderer::Draw(const VkDevice& device) 
 {
     // wait until the GPU has finished rendering the previous frame. Timeout of 1 second.
-	VK_CHECK(vkWaitForFences(device, 1, &m_frame.GetRenderFence(), true, 1000000000));
-	VK_CHECK(vkResetFences(device, 1, &m_frame.GetRenderFence()));
+	const VkFence& fence = CurrentFrame().GetRenderFinishedFence();
+    VK_CHECK(vkWaitForFences(device, 1, &fence, true, 1000000000));
+	VK_CHECK(vkResetFences(device, 1, &fence));
 
     // Request a new image
-    uint32_t swapchainImgIdx = m_swapchain.RequestNewImage(
-        device, m_frame.GetPresentSemaphore());
+    uint32_t swapchainImgIdx = m_swapchain.AcquireNewImage(
+        device, CurrentFrame().GetImageReadySem());
 
     // now that we are sure that the commands finished executing, 
     // we can safely reset the command buffer to begin recording again.
-	const VkCommandBuffer& cmd = m_frame.GetCommandBuffer();
+	const VkCommandBuffer& cmd = CurrentFrame().GetCommandBuffer();
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 	BuildRenderCommand(cmd, swapchainImgIdx);
     SubmitRenderCommand(cmd);
@@ -77,7 +87,7 @@ void Renderer::BuildRenderCommand(const VkCommandBuffer& cmd, uint32_t swapchain
     // TODO : render some geometry
 
     vkCmdEndRenderPass(cmd);
-    VK_CHECK(vkEndCommandBuffer(m_frame.GetCommandBuffer()));
+    VK_CHECK(vkEndCommandBuffer(cmd));
 }
 
 void Renderer::SubmitRenderCommand(const VkCommandBuffer& cmd) 
@@ -90,17 +100,17 @@ void Renderer::SubmitRenderCommand(const VkCommandBuffer& cmd)
 	submit.pWaitDstStageMask = &waitStage;
 
 	submit.waitSemaphoreCount = 1;
-	submit.pWaitSemaphores = &m_frame.GetPresentSemaphore();
+	submit.pWaitSemaphores = &(CurrentFrame().GetImageReadySem());
 
 	submit.signalSemaphoreCount = 1;
-	submit.pSignalSemaphores = &m_frame.GetRenderSemaphore();
+	submit.pSignalSemaphores = &(CurrentFrame().GetRenderFinishedSem());
 
 	submit.commandBufferCount = 1;
 	submit.pCommandBuffers = &cmd;
 
-	//submit command buffer to the queue and execute it.
-	// _renderFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submit, m_frame.GetRenderFence()));
+	//nsubmit command buffer to the queue and execute it.
+	// renderFinishedFence will now block until the graphic commands finish execution
+	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submit, CurrentFrame().GetRenderFinishedFence()));
 }
 
 void Renderer::PresentImage(uint32_t swapchainImgIdx) 
@@ -115,7 +125,7 @@ void Renderer::PresentImage(uint32_t swapchainImgIdx)
 	info.pSwapchains = &m_swapchain.GetSwapchain();
 	info.swapchainCount = 1;
 
-	info.pWaitSemaphores = &m_frame.GetRenderSemaphore();
+	info.pWaitSemaphores = &CurrentFrame().GetRenderFinishedSem();
 	info.waitSemaphoreCount = 1;
 
 	info.pImageIndices = &swapchainImgIdx;

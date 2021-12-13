@@ -19,22 +19,22 @@ void Frame::Init(
 
     // Render fence
     auto fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-    VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr, &m_renderFence));
+    VK_CHECK(vkCreateFence(device, &fenceInfo, nullptr, &m_renderFinishedFence));
 
     // Semaphores
     auto semInfo = vkinit::SemaphoreCreateInfo();
-    VK_CHECK(vkCreateSemaphore(device, &semInfo, nullptr, &m_presentSemaphore));
-    VK_CHECK(vkCreateSemaphore(device, &semInfo, nullptr, &m_renderSemaphore));
+    VK_CHECK(vkCreateSemaphore(device, &semInfo, nullptr, &m_imageReadySem));
+    VK_CHECK(vkCreateSemaphore(device, &semInfo, nullptr, &m_renderFinishedSem));
 }
 
 void Frame::Cleanup(const VkDevice& device) 
 {
     // make sure the GPU has stopped rendering
-	vkWaitForFences(device, 1, &m_renderFence, true, 1000000000);
+	vkWaitForFences(device, 1, &m_renderFinishedFence, true, 1000000000);
     // only now destroy the synchronization variables.
-    vkDestroyFence(device, m_renderFence, nullptr);
-    vkDestroySemaphore(device, m_presentSemaphore, nullptr);
-    vkDestroySemaphore(device, m_renderSemaphore, nullptr);
+    vkDestroyFence(device, m_renderFinishedFence, nullptr);
+    vkDestroySemaphore(device, m_imageReadySem, nullptr);
+    vkDestroySemaphore(device, m_renderFinishedSem, nullptr);
 
     vkDestroyCommandPool(device, m_commandPool, nullptr);    
 }

@@ -10,15 +10,15 @@ public:
         uint32_t graphicsQueueFamily);
     void Cleanup(const VkDevice& device);
 
-    const VkCommandBuffer& GetCommandBuffer() { return m_commandBuffer; };
-    const VkFence& GetRenderFence() { return m_renderFence; };
-    const VkSemaphore& GetPresentSemaphore() { return m_presentSemaphore; };
-    const VkSemaphore& GetRenderSemaphore() { return m_renderSemaphore; };
+    const VkCommandBuffer& GetCommandBuffer() const { return m_commandBuffer; };
+    const VkFence& GetRenderFinishedFence() const { return m_renderFinishedFence; };
+    const VkSemaphore& GetImageReadySem() const { return m_imageReadySem; };
+    const VkSemaphore& GetRenderFinishedSem() const { return m_renderFinishedSem; };
 private:
     VkCommandPool m_commandPool;
     VkCommandBuffer m_commandBuffer;
 
-    VkSemaphore m_renderSemaphore;
-    VkSemaphore m_presentSemaphore;
-    VkFence m_renderFence;
+    VkSemaphore m_renderFinishedSem;
+    VkSemaphore m_imageReadySem;
+    VkFence m_renderFinishedFence;
 };

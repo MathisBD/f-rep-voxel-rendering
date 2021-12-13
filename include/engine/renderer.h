@@ -15,6 +15,8 @@ public:
 
     void Draw(const VkDevice& device);
 private:
+    static const size_t FRAME_OVERLAP = 2;
+
     uint64_t m_frameNumber;
     VkExtent2D m_windowExtent;
     
@@ -22,7 +24,9 @@ private:
     uint32_t m_graphicsQueueFamily;
     
     Swapchain m_swapchain;
-    Frame m_frame;
+    Frame m_frames[FRAME_OVERLAP];
+
+    Frame& CurrentFrame();
 
     void BuildRenderCommand(const VkCommandBuffer& cmd, uint32_t swapchainImgIdx);
     void SubmitRenderCommand(const VkCommandBuffer& cmd);
