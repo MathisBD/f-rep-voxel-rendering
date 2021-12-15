@@ -1,11 +1,11 @@
-#include "engine/engine.h"
+#include "engine/enginebase.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include "VkBootstrap.h"
 #include "engine/vk_check.h"
 
 
-void Engine::Init() 
+void EngineBase::Init() 
 {
     InitSDL();
     m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
@@ -26,7 +26,7 @@ void Engine::Init()
     m_isInitialized = true;    
 }
 
-void Engine::InitSDL()
+void EngineBase::InitSDL()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -41,14 +41,18 @@ void Engine::InitSDL()
 	);
 }
 
-vkb::Device Engine::InitVulkanCore() 
+void EngineBase::InitVulkanCore() 
 {
     // Vulkan instance
     vkb::InstanceBuilder builder;
     vkb::Instance vkbInst = builder
         .set_app_name("Vulkan Project")
-        .request_validation_layers(true)
         .require_api_version(1, 1, 0)
+        .enable_validation_layers(true)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_MAX_ENUM_EXT)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
         .use_default_debug_messenger()
         .build()
         .value();
@@ -65,16 +69,37 @@ vkb::Device Engine::InitVulkanCore()
         .set_surface(m_surface)
         .select()
         .value();
-    m_gpu = vkbPhysDev.physical_device;
+    m_device.physicalDevice = vkbPhysDev.physical_device;
     
     // Vulkan logical device
-    vkb::Device vkbDev = vkb::DeviceBuilder(vkbPhysDev).build().value();
-    m_device = vkbDev.device;
+    vkb::Device vkbDev = vkb::DeviceBuilder(vkbPhysDev)
+        .build()
+        .value();
+    m_device.logicalDevice = vkbDev.device;
 
-    return vkbDev;
+    // Device info
+    m_device.features = vkbPhysDev.features;
+    m_device.properties = vkbPhysDev.properties;
+
+    // Device queues
+    m_device.queueFamilyProperties = vkbDev.queue_families;
+    // Graphics queue : default for everything
+    m_device.queueFamilies.graphics = vkbDev.get_queue_index(vkb::QueueType::graphics);
+    m_device.queueFamilies.compute = m_device.queueFamilies.graphics;
+    m_device.queueFamilies.transfer = m_device.queueFamilies.graphics;
+    // Compute queue
+    auto compRes = vkbDev.get_queue_index(vkb::QueueType::compute);
+    if (compRes.has_value()) {
+        m_device.queueFamilies.compute = compRes.value();
+    }
+    // Transfer queue
+    auto transRes = vkbDev.get_queue_index(vkb::QueueType::transfer);
+    if (transRes.has_value()) {
+        m_device.queueFamilies.transfer = transRes.value();
+    }
 }
 
-void Engine::Run() 
+void EngineBase::Run() 
 {
     SDL_Event e;
     bool quit = false;
@@ -92,7 +117,7 @@ void Engine::Run()
 }
 
 
-void Engine::Cleanup() 
+void EngineBase::Cleanup() 
 {
     if (m_isInitialized) {
         m_cleanupQueue.Flush();

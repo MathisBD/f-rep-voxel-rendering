@@ -3,7 +3,7 @@
 
 int main()
 {
-    Engine engine;
+    EngineBase engine;
     engine.Init();
     engine.Run();
     engine.Cleanup();
