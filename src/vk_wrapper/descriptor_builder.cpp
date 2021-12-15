@@ -1,6 +1,7 @@
 #include "vk_wrapper/descriptor.h"
 #include <assert.h>
 #include "vk_wrapper/vk_check.h"
+#include "vk_wrapper/initializers.h"
 
 
 vkw::DescriptorBuilder::DescriptorBuilder(
@@ -83,14 +84,8 @@ void vkw::DescriptorBuilder::Build(VkDescriptorSet* pSet, VkDescriptorSetLayout*
     }
 
     // Create the layout
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.pNext = nullptr;
-
-    layoutInfo.bindingCount = (uint32_t)m_bindings.size();
-    layoutInfo.pBindings = m_bindings.data();
-    layoutInfo.flags = 0;
-
+    auto layoutInfo = vkw::init::DescriptorSetLayoutCreateInfo(
+        m_bindings.size(), m_bindings.data());
     *pLayout = m_cache->CreateDescriptorLayout(&layoutInfo);
 
     // The caller requested the layout only.

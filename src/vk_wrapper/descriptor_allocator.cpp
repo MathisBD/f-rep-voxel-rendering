@@ -1,5 +1,6 @@
 #include "vk_wrapper/descriptor.h"
 #include "vk_wrapper/vk_check.h"
+#include "vk_wrapper/initializers.h"
 
 
 void vkw::DescriptorAllocator::Init(VkDevice device) 
@@ -70,18 +71,12 @@ VkDescriptorPool vkw::DescriptorAllocator::GetFreePool()
 
 VkDescriptorPool vkw::DescriptorAllocator::CreatePool() 
 {
-    VkDescriptorPoolCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    info.pNext = nullptr;
-
     std::vector<VkDescriptorPoolSize> sizes;
     for (const auto& s : poolSizes) {
         sizes.emplace_back(s.first, (uint32_t)(s.second * setsPerPool));
     }
-    info.poolSizeCount = (uint32_t)sizes.size();
-    info.pPoolSizes = sizes.data(); 
-    info.maxSets = setsPerPool;
-    info.flags = 0;
+    auto info = vkw::init::DescriptorPoolCreateInfo(
+        setsPerPool, sizes.size(), sizes.data());
 
     VkDescriptorPool pool;
     VK_CHECK(vkCreateDescriptorPool(device, &info, nullptr, &pool));
