@@ -35,6 +35,11 @@ VkDescriptorPoolCreateInfo DescriptorPoolCreateInfo(
     VkDescriptorPoolSize* pPoolSizes,
     VkDescriptorPoolCreateFlags flags = 0);
 
+VkShaderModuleCreateInfo ShaderModuleCreateInfo(
+    uint32_t codeSizeBytes,
+    uint32_t* pCode,
+    VkShaderModuleCreateFlags flags = 0);
+
 }   // init
 
 }   // vkw

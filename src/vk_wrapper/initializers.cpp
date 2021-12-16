@@ -96,3 +96,19 @@ VkDescriptorPoolCreateInfo DescriptorPoolCreateInfo(
     info.flags = flags;
     return info;
 }
+
+VkShaderModuleCreateInfo vkw::init::ShaderModuleCreateInfo(
+    uint32_t codeSizeBytes,
+    uint32_t* pCode,
+    VkShaderModuleCreateFlags flags /*= 0*/) 
+{
+    VkShaderModuleCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    info.pNext = nullptr;
+        
+    info.codeSize = codeSizeBytes;
+    info.pCode = pCode;
+    info.flags = flags;
+
+    return info;
+}
