@@ -13,10 +13,17 @@ void EngineBase::Init()
 {
     InitSDL();
     InitVulkanCore();
+    InitVma();
+
+    m_descriptorAllocator.Init(m_device.logicalDevice);
+    m_cleanupQueue.AddFunction([=] { m_descriptorAllocator.Cleanup(); });
+    
+    m_descriptorCache.Init(m_device.logicalDevice);
+    m_cleanupQueue.AddFunction([=] { m_descriptorCache.Cleanup(); });
+
     m_renderer.Init(&m_device, m_surface, m_windowExtent);
-    m_cleanupQueue.AddFunction([=] {
-        m_renderer.Cleanup();
-    });
+    m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
+    
     InitPipelines();
 }
 
@@ -114,6 +121,16 @@ void EngineBase::InitVulkanCore()
     });
 }
 
+void EngineBase::InitVma() 
+{
+    VmaAllocatorCreateInfo info = {};
+    info.instance = m_instance;
+    info.physicalDevice = m_device.physicalDevice;
+    info.device = m_device.logicalDevice;
+
+    VK_CHECK(vmaCreateAllocator(&info, &m_vmaAllocator));
+    m_cleanupQueue.AddFunction([=] { vmaDestroyAllocator(m_vmaAllocator); });
+}
 
 void EngineBase::InitPipelines() 
 {    
@@ -122,6 +139,28 @@ void EngineBase::InitPipelines()
     vertexShader.Init(m_device.logicalDevice, "../shaders/triangle.vert.spv");
     fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag.spv");
 
+    // allocate the camera buffer
+    m_cameraBuffer.Init(m_vmaAllocator);
+    m_cameraBuffer.Allocate(
+        sizeof(GPUCameraData), 
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_cleanupQueue.AddFunction([=] {
+        m_cameraBuffer.Cleanup();
+    });
+
+    // Pipeline layout
+    auto cameraBufferInfo = vkw::init::DescriptorBufferInfo(m_cameraBuffer.buffer, 0, sizeof(GPUCameraData));
+    VkDescriptorSetLayout setLayout;
+    vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
+        .BindBuffer(0, &cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .Build(&m_firstSet, &setLayout);
+
+    auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &setLayout;
+    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
+    
     // Create the pipeline
     vkw::GraphicsPipelineBuilder builder;
     builder.shaderStages.push_back(
@@ -154,11 +193,7 @@ void EngineBase::InitPipelines()
         VK_COLOR_COMPONENT_B_BIT | 
         VK_COLOR_COMPONENT_A_BIT);
 
-    // empty layout (no descriptor sets or push constants)
-    auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
-    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
     builder.layout = m_pipelineLayout;
-
     builder.renderpass = m_renderer.swapchain.renderPass;
 
     VkResult res = builder.Build(m_device.logicalDevice, &m_pipeline);
@@ -189,8 +224,17 @@ void EngineBase::Run()
                 quit = true;
             }
         }
+        // Upload the camera data
+        GPUCameraData* data = (GPUCameraData*)m_cameraBuffer.Map();
+        data->color = { 0.0f, 1.0f, 1.0f, 0.0f };
+        m_cameraBuffer.Unmap();
+
         // Draw a frame
-        m_renderer.Draw(m_pipeline);
+        Renderer::DrawInfo drawInfo = {};
+        drawInfo.pipeline = m_pipeline;
+        drawInfo.pipelineLayout = m_pipelineLayout;
+        drawInfo.descriptorSets = { m_firstSet };
+        m_renderer.Draw(&drawInfo);
     }
 }
 

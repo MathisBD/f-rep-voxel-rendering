@@ -64,6 +64,9 @@ VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(
 
 VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 
+VkDescriptorBufferInfo DescriptorBufferInfo(
+    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+
 }   // init
 
 }   // vkw

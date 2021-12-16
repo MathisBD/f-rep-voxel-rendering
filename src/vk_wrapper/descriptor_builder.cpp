@@ -24,7 +24,7 @@ vkw::DescriptorBuilder& vkw::DescriptorBuilder::BindBuffer(
     VkShaderStageFlags stageFlags)
 {
     // add the binding
-    VkDescriptorSetLayoutBinding binding;
+    VkDescriptorSetLayoutBinding binding = {};
     binding.descriptorCount = 1;
     binding.descriptorType = type;
     binding.binding = b;
@@ -33,7 +33,7 @@ vkw::DescriptorBuilder& vkw::DescriptorBuilder::BindBuffer(
     m_bindings.push_back(binding);
 
     // add the binding write
-    VkWriteDescriptorSet write;
+    VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.pNext = nullptr;
 
@@ -53,7 +53,7 @@ vkw::DescriptorBuilder& vkw::DescriptorBuilder::BindImage(
     VkShaderStageFlags stageFlags)
 {
     // add the binding
-    VkDescriptorSetLayoutBinding binding;
+    VkDescriptorSetLayoutBinding binding = {};
     binding.descriptorCount = 1;
     binding.descriptorType = type;
     binding.binding = b;
@@ -62,7 +62,7 @@ vkw::DescriptorBuilder& vkw::DescriptorBuilder::BindImage(
     m_bindings.push_back(binding);
 
     // add the binding write
-    VkWriteDescriptorSet write;
+    VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.pNext = nullptr;
 
@@ -97,9 +97,10 @@ void vkw::DescriptorBuilder::Build(VkDescriptorSet* pSet, VkDescriptorSetLayout*
     VK_CHECK(m_allocator->Allocate(pSet, *pLayout));
 
     // Make it point to the right buffers/images.
-    for (auto& w : m_writes) {
-        w.dstSet = *pSet;
+    for (size_t i = 0; i < m_writes.size(); i++) {
+        m_writes[i].dstSet = *pSet;
     }
     vkUpdateDescriptorSets(m_allocator->device, (uint32_t)(m_writes.size()), m_writes.data(), 0, nullptr);
 }
+
     

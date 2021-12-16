@@ -32,7 +32,7 @@ Frame& Renderer::CurrentFrame()
     return m_frames[m_frameNumber % FRAME_OVERLAP];    
 }
 
-void Renderer::Draw(VkPipeline pipeline) 
+void Renderer::Draw(const DrawInfo* info)
 {
     // wait until the GPU has finished rendering the previous frame. Timeout of 1 second.
 	const VkFence& fence = CurrentFrame().renderFinishedFence;
@@ -46,7 +46,7 @@ void Renderer::Draw(VkPipeline pipeline)
     // we can safely reset the command buffer to begin recording again.
 	const VkCommandBuffer& cmd = CurrentFrame().commandBuffer;
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
-	BuildRenderCommand(cmd, swapchainImgIdx, pipeline);
+	BuildRenderCommand(cmd, info, swapchainImgIdx);
     SubmitRenderCommand(cmd);
     PresentImage(swapchainImgIdx);
 
@@ -55,8 +55,8 @@ void Renderer::Draw(VkPipeline pipeline)
 
 void Renderer::BuildRenderCommand(
     VkCommandBuffer cmd, 
-    uint32_t swapchainImgIdx,
-    VkPipeline pipeline) 
+    const DrawInfo* info,
+    uint32_t swapchainImgIdx) 
 {
     // Begin command buffer
     VkCommandBufferBeginInfo cmdInfo = { };
@@ -86,7 +86,13 @@ void Renderer::BuildRenderCommand(
 
     vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, info->pipeline);
+    for (size_t i = 0; i < info->descriptorSets.size(); i++) {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            info->pipelineLayout, 
+            0, info->descriptorSets.size(), info->descriptorSets.data(), 
+            0, nullptr);
+    }
     vkCmdDraw(cmd, 3, 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);

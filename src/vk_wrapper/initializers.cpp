@@ -217,6 +217,15 @@ VkPipelineLayoutCreateInfo vkw::init::PipelineLayoutCreateInfo()
     VkPipelineLayoutCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     info.pNext = nullptr;
+    return info;
+}
 
+VkDescriptorBufferInfo vkw::init::DescriptorBufferInfo(
+    VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range) 
+{
+    VkDescriptorBufferInfo info = {};
+    info.buffer = buffer;
+    info.offset = offset;
+    info.range = range;
     return info;
 }

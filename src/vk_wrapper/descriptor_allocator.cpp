@@ -28,7 +28,7 @@ void vkw::DescriptorAllocator::ResetPools()
     m_currentPool = VK_NULL_HANDLE;
 }
 
-VkResult vkw::DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout) 
+VkResult vkw::DescriptorAllocator::Allocate(VkDescriptorSet* pSet, VkDescriptorSetLayout layout) 
 {
     if (m_currentPool == VK_NULL_HANDLE) {
         m_currentPool = GetFreePool();
@@ -43,7 +43,7 @@ VkResult vkw::DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSe
     info.descriptorSetCount = 1;
     info.pSetLayouts = &layout;
 
-    VkResult res = vkAllocateDescriptorSets(device, &info, set);
+    VkResult res = vkAllocateDescriptorSets(device, &info, pSet);
     switch (res) {
     case VK_ERROR_OUT_OF_POOL_MEMORY:
     case VK_ERROR_FRAGMENTED_POOL:
@@ -51,7 +51,7 @@ VkResult vkw::DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSe
         m_currentPool = GetFreePool();
         m_usedPools.push_back(m_currentPool);
         info.descriptorPool = m_currentPool;
-        return vkAllocateDescriptorSets(device, &info, set);
+        return vkAllocateDescriptorSets(device, &info, pSet);
     default: 
         return res;
     }

@@ -23,7 +23,6 @@ void vkw::Shader::Init(VkDevice dev_, const std::string& path)
     // create the shader
     auto info = vkw::init::ShaderModuleCreateInfo(
         (uint32_t)(bufSize * sizeof(uint32_t)), buf);
-    printf("word count = %u\n", (uint32_t)(bufSize * sizeof(uint32_t)));
 
     VkResult res = vkCreateShaderModule(device, &info, nullptr, &shader);
     if (res != VK_SUCCESS) {
