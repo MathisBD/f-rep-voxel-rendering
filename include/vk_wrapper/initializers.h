@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <string>
 
 
 namespace vkw
@@ -39,6 +40,26 @@ VkShaderModuleCreateInfo ShaderModuleCreateInfo(
     uint32_t codeSizeBytes,
     uint32_t* pCode,
     VkShaderModuleCreateFlags flags = 0);
+
+VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(
+    VkShaderStageFlagBits stage, 
+    VkShaderModule shaderModule,
+    VkPipelineShaderStageCreateFlags flags = 0);
+
+VkPipelineVertexInputStateCreateInfo PipelineVertexInputStateCreateInfo(
+    VkPipelineVertexInputStateCreateFlags flags = 0); 
+
+VkPipelineInputAssemblyStateCreateInfo PipelineInputAssemblyStateCreateInfo(
+    VkPrimitiveTopology topology,
+    VkPipelineInputAssemblyStateCreateFlags flags = 0);
+
+VkPipelineRasterizationStateCreateInfo PipelineRasterizationStateCreateInfo(
+    VkPolygonMode polygonMode,
+    VkPipelineRasterizationStateCreateFlags flags = 0);
+
+VkPipelineMultisampleStateCreateInfo PipelineMultisampleStateCreateInfo();
+
+VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState();
 
 }   // init
 

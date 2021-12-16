@@ -18,10 +18,8 @@ namespace vkw
         VkPipelineColorBlendAttachmentState colorAttachment;
         VkPipelineMultisampleStateCreateInfo multisampling;
         VkPipelineLayout layout;
+        VkRenderPass renderpass;
 
-        VkResult Build()
-
-
-        void Build();
+        VkResult Build(VkDevice device, VkPipeline* pPipeline);
     };
 }
