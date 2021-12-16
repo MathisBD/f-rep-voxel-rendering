@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 
 
-void Renderer::Init(const vkw::Device* dev, VkExtent2D windowExtent) 
+void Renderer::Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent) 
 {
     device = dev->logicalDevice;
 
@@ -14,7 +14,7 @@ void Renderer::Init(const vkw::Device* dev, VkExtent2D windowExtent)
 	m_graphicsQueueFamily = dev->queueFamilies.graphics;
     vkGetDeviceQueue(device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
 
-    m_swapchain.Init(dev, windowExtent);
+    swapchain.Init(dev, surface, windowExtent);
     for (size_t i = 0; i < FRAME_OVERLAP; i++) {
         m_frames[i].Init(dev);
     }
@@ -25,7 +25,7 @@ void Renderer::Cleanup()
     for (size_t i = 0; i < FRAME_OVERLAP; i++) {
         m_frames[i].Cleanup();
     }
-    m_swapchain.Cleanup();
+    swapchain.Cleanup();
 }
 
 Frame& Renderer::CurrentFrame() 
@@ -41,7 +41,7 @@ void Renderer::Draw(VkPipeline pipeline)
 	VK_CHECK(vkResetFences(device, 1, &fence));
 
     // Request a new image
-    uint32_t swapchainImgIdx = m_swapchain.AcquireNewImage(CurrentFrame().imageReadySem);
+    uint32_t swapchainImgIdx = swapchain.AcquireNewImage(CurrentFrame().imageReadySem);
 
     // now that we are sure that the commands finished executing, 
     // we can safely reset the command buffer to begin recording again.
@@ -70,11 +70,11 @@ void Renderer::BuildRenderCommand(VkCommandBuffer cmd, uint32_t swapchainImgIdx)
     rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rpInfo.pNext = nullptr;
     
-    rpInfo.renderPass = m_swapchain.renderPass;
+    rpInfo.renderPass = swapchain.renderPass;
     rpInfo.renderArea.offset.x = 0;
     rpInfo.renderArea.offset.y = 0;
     rpInfo.renderArea.extent = m_windowExtent;
-    rpInfo.framebuffer = m_swapchain.framebuffers[swapchainImgIdx];
+    rpInfo.framebuffer = swapchain.framebuffers[swapchainImgIdx];
 
     VkClearValue clearColor;
     float flash = glm::abs(glm::sin(m_frameNumber / 60.0f));
@@ -122,7 +122,7 @@ void Renderer::PresentImage(uint32_t swapchainImgIdx)
 	info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	info.pNext = nullptr;
 
-	info.pSwapchains = &m_swapchain.swapchain;
+	info.pSwapchains = &swapchain.swapchain;
 	info.swapchainCount = 1;
 
 	info.pWaitSemaphores = &CurrentFrame().renderFinishedSem;

@@ -2,6 +2,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include "VkBootstrap.h"
+#include "vk_wrapper/shader.h"
+#include "vk_wrapper/pipeline_builder.h"
+#include "vk_wrapper/initializers.h"
+#include "vk_wrapper/vk_check.h"
+
 
 
 void EngineBase::Init() 
@@ -9,9 +14,9 @@ void EngineBase::Init()
     InitSDL();
     m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
 
-    const vkb::Device& vkbDev = InitVulkanCore();
+    InitVulkanCore();
     m_cleanupQueue.AddFunction([=] {
-        vkDestroyDevice(m_device, nullptr); 
+        vkDestroyDevice(m_device.logicalDevice, nullptr); 
         vkDestroySurfaceKHR(m_instance, m_surface, nullptr); 
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         vkDestroyInstance(m_instance, nullptr);
@@ -22,7 +27,10 @@ void EngineBase::Init()
         m_renderer.Cleanup(m_device);
     });
 
-    m_isInitialized = true;    
+    InitPipelines();
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyPipeline(m_device.logicalDevice, m_pipeline, nullptr);
+    });
 }
 
 void EngineBase::InitSDL()
@@ -98,6 +106,59 @@ void EngineBase::InitVulkanCore()
     }
 }
 
+void EngineBase::InitPipelines() 
+{
+    // Load the shaders
+    vkw::Shader vertexShader;
+    vkw::Shader fragmentShader;
+    vertexShader.Init(m_device.logicalDevice, "../shaders/triangle.vert");
+    fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag");
+
+    // Create the pipeline
+    vkw::GraphicsPipelineBuilder builder;
+    builder.shaderStages.push_back(
+        vkw::init::PipelineShaderStageCreateInfo(
+            VK_SHADER_STAGE_VERTEX_BIT, vertexShader.shader));
+    builder.shaderStages.push_back(
+        vkw::init::PipelineShaderStageCreateInfo(
+            VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader.shader));
+    
+    builder.vertexInputInfo = vkw::init::PipelineVertexInputStateCreateInfo();
+    builder.inputAssembly = vkw::init::PipelineInputAssemblyStateCreateInfo(
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    
+    builder.viewport.x = 0.0f;
+    builder.viewport.y = 0.0f;
+    builder.viewport.width = (float)m_windowExtent.width;
+    builder.viewport.height = (float)m_windowExtent.height;
+    builder.viewport.minDepth = 0.0f;
+    builder.viewport.maxDepth = 1.0f;
+
+    builder.scissors.offset = { 0, 0 };
+    builder.scissors.extent = m_windowExtent;
+
+    builder.rasterizer = vkw::init::PipelineRasterizationStateCreateInfo(
+        VK_POLYGON_MODE_FILL);
+    builder.multisampling = vkw::init::PipelineMultisampleStateCreateInfo();
+    builder.colorAttachment = vkw::init::PipelineColorBlendAttachmentState(
+        VK_COLOR_COMPONENT_R_BIT | 
+        VK_COLOR_COMPONENT_G_BIT | 
+        VK_COLOR_COMPONENT_B_BIT | 
+        VK_COLOR_COMPONENT_A_BIT);
+
+    // empty layout (no descriptor sets or push constants)
+    auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
+    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &builder.layout));
+
+    builder.renderpass = m_renderer.swapchain.renderPass;
+
+    VkResult res = builder.Build(m_device.logicalDevice, &m_pipeline);
+    if (res != VK_SUCCESS) {
+        printf("Error building graphics pipeline\n");
+        assert(false);
+    }
+}
+
 void EngineBase::Run() 
 {
     SDL_Event e;
@@ -118,7 +179,5 @@ void EngineBase::Run()
 
 void EngineBase::Cleanup() 
 {
-    if (m_isInitialized) {
-        m_cleanupQueue.Flush();
-    }    
+    m_cleanupQueue.Flush();
 }

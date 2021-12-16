@@ -10,8 +10,9 @@ class Renderer
 {
 public:
     VkDevice device;
+    Swapchain swapchain;
 
-    void Init(const vkw::Device* dev, VkExtent2D windowExtent);
+    void Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent);
     void Cleanup();
     void Draw(VkPipeline pipeline);
 private:
@@ -23,7 +24,6 @@ private:
     VkQueue m_graphicsQueue;
     uint32_t m_graphicsQueueFamily;
     
-    Swapchain m_swapchain;
     Frame m_frames[FRAME_OVERLAP];
 
     Frame& CurrentFrame();

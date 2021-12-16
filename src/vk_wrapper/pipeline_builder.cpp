@@ -2,7 +2,7 @@
 
 
 
-VkResult vkw::GraphicsPipBuilder::Build(VkDevice device, VkPipeline* pPipeline) 
+VkResult vkw::GraphicsPipelineBuilder::Build(VkDevice device, VkPipeline* pPipeline) 
 {
     // Viewport state
     VkPipelineViewportStateCreateInfo viewportState = {};

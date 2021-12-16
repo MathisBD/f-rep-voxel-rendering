@@ -59,7 +59,10 @@ VkPipelineRasterizationStateCreateInfo PipelineRasterizationStateCreateInfo(
 
 VkPipelineMultisampleStateCreateInfo PipelineMultisampleStateCreateInfo();
 
-VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState();
+VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(
+    VkColorComponentFlags colorWriteMask);
+
+VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 
 }   // init
 

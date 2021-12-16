@@ -6,7 +6,7 @@
 
 namespace vkw
 {
-    class GraphicsPipBuilder
+    class GraphicsPipelineBuilder
     {
     public:
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;

@@ -118,7 +118,7 @@ VkPipelineShaderStageCreateInfo vkw::init::PipelineShaderStageCreateInfo(
     VkShaderModule shaderModule,
     VkPipelineShaderStageCreateFlags flags /*= 0*/) 
 {
-    VkPipelineShaderStageCreateInfo info{};
+    VkPipelineShaderStageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     info.pNext = nullptr;
 
@@ -208,4 +208,13 @@ VkPipelineColorBlendAttachmentState vkw::init::PipelineColorBlendAttachmentState
     attachment.blendEnable = VK_FALSE;
     
     return attachment;
+}
+
+VkPipelineLayoutCreateInfo vkw::init::PipelineLayoutCreateInfo() 
+{
+    VkPipelineLayoutCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    info.pNext = nullptr;
+
+    return info;
 }
