@@ -3,7 +3,7 @@
 
 VkDeviceQueueCreateInfo vkw::init::DeviceQueueCreateInfo(
     uint32_t queueFamily,
-    float queuePriority = 0.0f) 
+    float queuePriority /*= 0.0f*/) 
 {
     VkDeviceQueueCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -80,7 +80,7 @@ VkDescriptorSetLayoutCreateInfo vkw::init::DescriptorSetLayoutCreateInfo(
     return info;
 }
 
-VkDescriptorPoolCreateInfo DescriptorPoolCreateInfo(
+VkDescriptorPoolCreateInfo vkw::init::DescriptorPoolCreateInfo(
     uint32_t maxSets,
     uint32_t poolSizeCount,
     VkDescriptorPoolSize* pPoolSizes,
@@ -139,6 +139,7 @@ VkPipelineVertexInputStateCreateInfo vkw::init::PipelineVertexInputStateCreateIn
 
     info.vertexAttributeDescriptionCount = 0;
     info.vertexBindingDescriptionCount = 0;
+    info.flags = flags;
 
     return info;
 }
@@ -176,6 +177,7 @@ VkPipelineRasterizationStateCreateInfo vkw::init::PipelineRasterizationStateCrea
     info.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
     info.polygonMode = polygonMode;
+	info.lineWidth = 1.0f;
     info.flags = flags;
 
     return info;

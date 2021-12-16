@@ -2,8 +2,8 @@
 #include <vulkan/vulkan.h>
 #include "engine/renderer.h"
 #include "engine/cleanup_queue.h"
-#include <vk_wrapper/device.h>
-
+#include "vk_wrapper/device.h"
+#include "vk_wrapper/shader.h"
 
 class EngineBase
 {
@@ -25,6 +25,7 @@ private:
     // Engine components
     CleanupQueue m_cleanupQueue;
     Renderer m_renderer;
+    VkPipelineLayout m_pipelineLayout;
     VkPipeline m_pipeline; 
 
     void InitSDL();

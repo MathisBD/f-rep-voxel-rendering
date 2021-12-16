@@ -1,4 +1,4 @@
-#include "engine/enginebase.h"
+#include "engine/engine_base.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include "VkBootstrap.h"
@@ -12,25 +12,12 @@
 void EngineBase::Init() 
 {
     InitSDL();
-    m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
-
     InitVulkanCore();
+    m_renderer.Init(&m_device, m_surface, m_windowExtent);
     m_cleanupQueue.AddFunction([=] {
-        vkDestroyDevice(m_device.logicalDevice, nullptr); 
-        vkDestroySurfaceKHR(m_instance, m_surface, nullptr); 
-        vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
-        vkDestroyInstance(m_instance, nullptr);
+        m_renderer.Cleanup();
     });
-    
-    m_renderer.Init(vkbDev, m_windowExtent);
-    m_cleanupQueue.AddFunction([=] {
-        m_renderer.Cleanup(m_device);
-    });
-
     InitPipelines();
-    m_cleanupQueue.AddFunction([=] {
-        vkDestroyPipeline(m_device.logicalDevice, m_pipeline, nullptr);
-    });
 }
 
 void EngineBase::InitSDL()
@@ -46,6 +33,9 @@ void EngineBase::InitSDL()
 		m_windowExtent.height,      // window height in pixels
 		window_flags 
 	);
+
+    // Cleanup
+    m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
 }
 
 void EngineBase::InitVulkanCore() 
@@ -56,10 +46,6 @@ void EngineBase::InitVulkanCore()
         .set_app_name("Vulkan Project")
         .require_api_version(1, 1, 0)
         .enable_validation_layers(true)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_MAX_ENUM_EXT)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
         .use_default_debug_messenger()
         .build()
         .value();
@@ -77,7 +63,7 @@ void EngineBase::InitVulkanCore()
         .select()
         .value();
     m_device.physicalDevice = vkbPhysDev.physical_device;
-    
+
     // Vulkan logical device
     vkb::Device vkbDev = vkb::DeviceBuilder(vkbPhysDev)
         .build()
@@ -87,32 +73,54 @@ void EngineBase::InitVulkanCore()
     // Device info
     m_device.features = vkbPhysDev.features;
     m_device.properties = vkbPhysDev.properties;
+    printf("Using device %s\n", m_device.properties.deviceName);
 
     // Device queues
     m_device.queueFamilyProperties = vkbDev.queue_families;
-    // Graphics queue : default for everything
-    m_device.queueFamilies.graphics = vkbDev.get_queue_index(vkb::QueueType::graphics);
-    m_device.queueFamilies.compute = m_device.queueFamilies.graphics;
-    m_device.queueFamilies.transfer = m_device.queueFamilies.graphics;
+    // Graphics queue
+    auto graphRes = vkbDev.get_queue_index(vkb::QueueType::graphics);
+    assert(graphRes.has_value());
+    m_device.queueFamilies.graphics = graphRes.value();
     // Compute queue
     auto compRes = vkbDev.get_queue_index(vkb::QueueType::compute);
     if (compRes.has_value()) {
         m_device.queueFamilies.compute = compRes.value();
+    }
+    else {
+        m_device.queueFamilies.compute = m_device.queueFamilies.graphics;   
     }
     // Transfer queue
     auto transRes = vkbDev.get_queue_index(vkb::QueueType::transfer);
     if (transRes.has_value()) {
         m_device.queueFamilies.transfer = transRes.value();
     }
+    else {
+        m_device.queueFamilies.transfer = m_device.queueFamilies.graphics;
+    }
+    // Check we chose the right queues
+    assert(m_device.queueFamilyProperties[m_device.queueFamilies.graphics].queueFlags &
+        VK_QUEUE_GRAPHICS_BIT);
+    assert(m_device.queueFamilyProperties[m_device.queueFamilies.compute].queueFlags &
+        VK_QUEUE_COMPUTE_BIT);
+    assert(m_device.queueFamilyProperties[m_device.queueFamilies.transfer].queueFlags &
+        VK_QUEUE_TRANSFER_BIT);
+
+    // Cleanup
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyDevice(m_device.logicalDevice, nullptr); 
+        vkDestroySurfaceKHR(m_instance, m_surface, nullptr); 
+        vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
+        vkDestroyInstance(m_instance, nullptr);
+    });
 }
 
+
 void EngineBase::InitPipelines() 
-{
+{    
     // Load the shaders
-    vkw::Shader vertexShader;
-    vkw::Shader fragmentShader;
-    vertexShader.Init(m_device.logicalDevice, "../shaders/triangle.vert");
-    fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag");
+    vkw::Shader vertexShader, fragmentShader;
+    vertexShader.Init(m_device.logicalDevice, "../shaders/triangle.vert.spv");
+    fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag.spv");
 
     // Create the pipeline
     vkw::GraphicsPipelineBuilder builder;
@@ -148,7 +156,8 @@ void EngineBase::InitPipelines()
 
     // empty layout (no descriptor sets or push constants)
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
-    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &builder.layout));
+    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
+    builder.layout = m_pipelineLayout;
 
     builder.renderpass = m_renderer.swapchain.renderPass;
 
@@ -157,6 +166,15 @@ void EngineBase::InitPipelines()
         printf("Error building graphics pipeline\n");
         assert(false);
     }
+
+    // We can destroy the shaders right after creating the pipeline.
+    vertexShader.Cleanup();
+    fragmentShader.Cleanup();
+
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyPipeline(m_device.logicalDevice, m_pipeline, nullptr);
+        vkDestroyPipelineLayout(m_device.logicalDevice, m_pipelineLayout, nullptr);
+    });
 }
 
 void EngineBase::Run() 
@@ -172,12 +190,16 @@ void EngineBase::Run()
             }
         }
         // Draw a frame
-        m_renderer.Draw(m_device);
+        m_renderer.Draw(m_pipeline);
     }
 }
 
 
 void EngineBase::Cleanup() 
 {
+    // wait for all GPU operations to be over.
+    VK_CHECK(vkDeviceWaitIdle(m_device.logicalDevice));
+
+    // Destroy all vulkan objects/release memory.
     m_cleanupQueue.Flush();
 }

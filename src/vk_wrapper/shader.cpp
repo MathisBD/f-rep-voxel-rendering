@@ -4,16 +4,16 @@
 #include "vk_wrapper/initializers.h"
 
 
-void vkw::Shader::Init(VkDevice dev, const std::string& path) 
+void vkw::Shader::Init(VkDevice dev_, const std::string& path) 
 {
-    this->device = dev;    
+    device = dev_;    
 
     // load the SPIRV source code
     std::ifstream file(path, std::ios::ate | std::ios::binary);
     assert(file.good() && file.is_open());
 
     size_t fileByteSize = file.tellg();
-    size_t bufSize = 1 + (fileByteSize / sizeof(uint32_t));
+    size_t bufSize = fileByteSize / sizeof(uint32_t);
     uint32_t* buf = new uint32_t[bufSize];
 
     file.seekg(0);
@@ -22,10 +22,12 @@ void vkw::Shader::Init(VkDevice dev, const std::string& path)
 
     // create the shader
     auto info = vkw::init::ShaderModuleCreateInfo(
-        bufSize * sizeof(uint32_t), buf);
+        (uint32_t)(bufSize * sizeof(uint32_t)), buf);
+    printf("word count = %u\n", (uint32_t)(bufSize * sizeof(uint32_t)));
+
     VkResult res = vkCreateShaderModule(device, &info, nullptr, &shader);
     if (res != VK_SUCCESS) {
-        printf("Error creating shader in file %s\n", path);
+        printf("Error creating shader in file %s\n", path.c_str());
         assert(false);
     }
 }

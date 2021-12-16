@@ -10,7 +10,6 @@ void Renderer::Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D win
     m_frameNumber = 0;
     m_windowExtent = windowExtent;
 
-
 	m_graphicsQueueFamily = dev->queueFamilies.graphics;
     vkGetDeviceQueue(device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
 
@@ -47,14 +46,17 @@ void Renderer::Draw(VkPipeline pipeline)
     // we can safely reset the command buffer to begin recording again.
 	const VkCommandBuffer& cmd = CurrentFrame().commandBuffer;
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
-	BuildRenderCommand(cmd, swapchainImgIdx);
+	BuildRenderCommand(cmd, swapchainImgIdx, pipeline);
     SubmitRenderCommand(cmd);
     PresentImage(swapchainImgIdx);
 
     m_frameNumber++;
 }
 
-void Renderer::BuildRenderCommand(VkCommandBuffer cmd, uint32_t swapchainImgIdx) 
+void Renderer::BuildRenderCommand(
+    VkCommandBuffer cmd, 
+    uint32_t swapchainImgIdx,
+    VkPipeline pipeline) 
 {
     // Begin command buffer
     VkCommandBufferBeginInfo cmdInfo = { };
@@ -84,7 +86,8 @@ void Renderer::BuildRenderCommand(VkCommandBuffer cmd, uint32_t swapchainImgIdx)
 
     vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    // TODO : render some geometry
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdDraw(cmd, 3, 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     VK_CHECK(vkEndCommandBuffer(cmd));

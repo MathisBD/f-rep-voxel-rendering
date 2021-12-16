@@ -28,7 +28,10 @@ private:
 
     Frame& CurrentFrame();
 
-    void BuildRenderCommand(VkCommandBuffer cmd, uint32_t swapchainImgIdx);
+    void BuildRenderCommand(
+        VkCommandBuffer cmd, 
+        uint32_t swapchainImgIdx,
+        VkPipeline pipeline);
     void SubmitRenderCommand(VkCommandBuffer cmd);
     void PresentImage(uint32_t swapchainImgIdx);
 };

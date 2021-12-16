@@ -1,6 +1,8 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <vector>
+#include "vk_wrapper/device.h"
+
 
 
 class Swapchain

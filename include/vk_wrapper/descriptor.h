@@ -6,33 +6,6 @@
 
 namespace vkw
 {
-    class DescriptorBuilder
-    {
-    public:
-        DescriptorBuilder(
-            DescriptorLayoutCache* cache, 
-            DescriptorAllocator* allocator);
-
-        DescriptorBuilder& BindBuffer(
-            uint32_t binding,
-            VkDescriptorBufferInfo* bufferInfo,
-            VkDescriptorType type,
-            VkShaderStageFlags stageFlags);
-        DescriptorBuilder& BindImage(
-            uint32_t binding,
-            VkDescriptorImageInfo* imageInfo,
-            VkDescriptorType type,
-            VkShaderStageFlags stageFlags);
-        // The set and/or the layout can be set to nullptr.
-        void Build(VkDescriptorSet* set, VkDescriptorSetLayout* layout);
-    private:
-        DescriptorLayoutCache* m_cache;
-        DescriptorAllocator* m_allocator;
-
-        std::vector<VkDescriptorSetLayoutBinding> m_bindings;
-        std::vector<VkWriteDescriptorSet> m_writes;
-    };
-
     class DescriptorAllocator
     {
     public:
@@ -88,5 +61,32 @@ namespace vkw
             };
 
             std::unordered_map<HashableDSLI, VkDescriptorSetLayout, Hash> m_cache;
+    };
+
+    class DescriptorBuilder
+    {
+    public:
+        DescriptorBuilder(
+            DescriptorLayoutCache* cache, 
+            DescriptorAllocator* allocator);
+
+        DescriptorBuilder& BindBuffer(
+            uint32_t binding,
+            VkDescriptorBufferInfo* bufferInfo,
+            VkDescriptorType type,
+            VkShaderStageFlags stageFlags);
+        DescriptorBuilder& BindImage(
+            uint32_t binding,
+            VkDescriptorImageInfo* imageInfo,
+            VkDescriptorType type,
+            VkShaderStageFlags stageFlags);
+        // The set and/or the layout can be set to nullptr.
+        void Build(VkDescriptorSet* set, VkDescriptorSetLayout* layout);
+    private:
+        DescriptorLayoutCache* m_cache;
+        DescriptorAllocator* m_allocator;
+
+        std::vector<VkDescriptorSetLayoutBinding> m_bindings;
+        std::vector<VkWriteDescriptorSet> m_writes;
     };
 }

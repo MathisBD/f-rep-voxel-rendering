@@ -73,7 +73,7 @@ VkDescriptorPool vkw::DescriptorAllocator::CreatePool()
 {
     std::vector<VkDescriptorPoolSize> sizes;
     for (const auto& s : poolSizes) {
-        sizes.emplace_back(s.first, (uint32_t)(s.second * setsPerPool));
+        sizes.push_back({ s.first, (uint32_t)(s.second * setsPerPool) });
     }
     auto info = vkw::init::DescriptorPoolCreateInfo(
         setsPerPool, sizes.size(), sizes.data());
