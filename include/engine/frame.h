@@ -1,24 +1,20 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include "vk_wrapper/device.h"
 
 
 class Frame
 {
 public:
-    void Init(
-        const VkDevice& device,
-        uint32_t graphicsQueueFamily);
-    void Cleanup(const VkDevice& device);
+    VkDevice device;
+    
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
 
-    const VkCommandBuffer& GetCommandBuffer() const { return m_commandBuffer; };
-    const VkFence& GetRenderFinishedFence() const { return m_renderFinishedFence; };
-    const VkSemaphore& GetImageReadySem() const { return m_imageReadySem; };
-    const VkSemaphore& GetRenderFinishedSem() const { return m_renderFinishedSem; };
-private:
-    VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
+    VkSemaphore renderFinishedSem;
+    VkSemaphore imageReadySem;
+    VkFence renderFinishedFence;
 
-    VkSemaphore m_renderFinishedSem;
-    VkSemaphore m_imageReadySem;
-    VkFence m_renderFinishedFence;
+    void Init(const vkw::Device* dev);
+    void Cleanup();
 };

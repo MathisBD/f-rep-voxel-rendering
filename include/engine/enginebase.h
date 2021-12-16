@@ -17,7 +17,6 @@ private:
     struct SDL_Window* m_window { nullptr };
     VkSurfaceKHR m_surface;
 
-
     // Vulkan core
     VkInstance m_instance;
     VkDebugUtilsMessengerEXT m_debugMessenger;
@@ -26,8 +25,10 @@ private:
     // Engine components
     CleanupQueue m_cleanupQueue;
     Renderer m_renderer;
+    VkPipeline m_pipeline; 
 
     void InitSDL();
     void InitVulkanCore();
+    void InitPipelines();
     void Draw();
 };

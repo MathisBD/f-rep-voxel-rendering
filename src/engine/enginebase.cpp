@@ -2,7 +2,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include "VkBootstrap.h"
-#include "engine/vk_check.h"
 
 
 void EngineBase::Init() 
@@ -76,7 +75,7 @@ void EngineBase::InitVulkanCore()
         .build()
         .value();
     m_device.logicalDevice = vkbDev.device;
-
+    
     // Device info
     m_device.features = vkbPhysDev.features;
     m_device.properties = vkbPhysDev.properties;

@@ -1,17 +1,21 @@
 #include "engine/swapchain.h"
+#include "vk_wrapper/vk_check.h"
+#include "vk_wrapper/device.h"
 #include "VkBootstrap.h"
-#include "engine/vk_check.h"
 
 
 void Swapchain::Init(
-	const vkb::Device& vkbDevice,
-    const VkExtent2D& windowExtent) 
+	const vkw::Device* dev, 
+	VkSurfaceKHR surface, 
+	VkExtent2D windowExtent) 
 {
+	device = dev->logicalDevice;
+
     // Swapchain and images
     vkb::SwapchainBuilder builder(
-		vkbDevice.physical_device, 
-		vkbDevice.device, 
-		vkbDevice.surface);  
+		dev->physicalDevice, 
+		dev->logicalDevice, 
+		surface);  
     vkb::Swapchain vkbSwapchain = builder
         .use_default_format_selection()
         .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
@@ -19,14 +23,14 @@ void Swapchain::Init(
         .build()
         .value();
 
-    m_swapchain = vkbSwapchain.swapchain;
-    m_imageFormat = vkbSwapchain.image_format;
-    m_images = vkbSwapchain.get_images().value();
-    m_imageViews = vkbSwapchain.get_image_views().value();
+    swapchain = vkbSwapchain.swapchain;
+    imageFormat = vkbSwapchain.image_format;
+    images = vkbSwapchain.get_images().value();
+    imageViews = vkbSwapchain.get_image_views().value();
 
     // Renderpass
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = m_imageFormat;
+	colorAttachment.format = imageFormat;
 	// 1 sample, we won't be doing MSAA
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	// we clear when this attachment is loaded
@@ -61,48 +65,42 @@ void Swapchain::Init(
 	// connect the subpass to the info
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
-	VK_CHECK(vkCreateRenderPass(vkbDevice.device, &renderPassInfo, nullptr, &m_renderPass));
+	VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 
     // Framebuffers
-	m_framebuffers = std::vector<VkFramebuffer>(m_images.size());
-	for (size_t i = 0; i < m_images.size(); i++) {
+	framebuffers = std::vector<VkFramebuffer>(images.size());
+	for (size_t i = 0; i < images.size(); i++) {
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.pNext = nullptr;
 
-        fbInfo.renderPass = m_renderPass;
+        fbInfo.renderPass = renderPass;
         fbInfo.attachmentCount = 1;
         fbInfo.width = windowExtent.width;
         fbInfo.height = windowExtent.height;
         fbInfo.layers = 1;
 
-		fbInfo.pAttachments = &m_imageViews[i];
-		VK_CHECK(vkCreateFramebuffer(vkbDevice.device, &fbInfo, nullptr, &m_framebuffers[i]));
+		fbInfo.pAttachments = &imageViews[i];
+		VK_CHECK(vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]));
 	}
 }
 
-void Swapchain::Cleanup(const VkDevice& device) 
+void Swapchain::Cleanup() 
 {
-	vkDestroyRenderPass(device, m_renderPass, nullptr);
-    vkDestroySwapchainKHR(device, m_swapchain, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
 
-    for (size_t i = 0; i < m_images.size(); i++) {
-		vkDestroyFramebuffer(device, m_framebuffers[i], nullptr);
-        vkDestroyImageView(device, m_imageViews[i], nullptr);
+    for (size_t i = 0; i < images.size(); i++) {
+		vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+        vkDestroyImageView(device, imageViews[i], nullptr);
 	}    
 }
 
-uint32_t Swapchain::AcquireNewImage(
-	const VkDevice& device,
-	const VkSemaphore& sem) 
+uint32_t Swapchain::AcquireNewImage(VkSemaphore sem) 
 {
 	uint32_t imgIdx;
+	// 1 second timeout
 	VK_CHECK(vkAcquireNextImageKHR(
-		device, 
-		m_swapchain, 
-		1000000000, // 1 second timeout
-		sem, 
-		nullptr, 
-		&imgIdx));
+		device, swapchain, 1000000000, sem, nullptr, &imgIdx));
 	return imgIdx;	
 }

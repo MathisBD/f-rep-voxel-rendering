@@ -2,18 +2,18 @@
 #include <vulkan/vulkan.h>
 #include "engine/swapchain.h"
 #include "engine/frame.h"
-#include "VkBootstrap.h"
+#include "vk_wrapper/device.h"
+
 
 
 class Renderer
 {
 public:
-    void Init(
-        const vkb::Device& vkbDevice,
-        const VkExtent2D& windowExtent);
-    void Cleanup(const VkDevice& device);
+    VkDevice device;
 
-    void Draw(const VkDevice& device);
+    void Init(const vkw::Device* dev, VkExtent2D windowExtent);
+    void Cleanup();
+    void Draw(VkPipeline pipeline);
 private:
     static const size_t FRAME_OVERLAP = 2;
 
@@ -28,7 +28,7 @@ private:
 
     Frame& CurrentFrame();
 
-    void BuildRenderCommand(const VkCommandBuffer& cmd, uint32_t swapchainImgIdx);
-    void SubmitRenderCommand(const VkCommandBuffer& cmd);
+    void BuildRenderCommand(VkCommandBuffer cmd, uint32_t swapchainImgIdx);
+    void SubmitRenderCommand(VkCommandBuffer cmd);
     void PresentImage(uint32_t swapchainImgIdx);
 };
