@@ -13,14 +13,10 @@
 class EngineBase
 {
 public:
-    void Init();
+    virtual void Init();
     void Run();
-    void Cleanup();
-private:
-    typedef struct {
-        glm::vec4 color;
-    } GPUCameraData;
-
+    virtual void Cleanup();
+protected:
     // Window
     VkExtent2D m_windowExtent { 1700, 900 };
     struct SDL_Window* m_window { nullptr };
@@ -34,18 +30,17 @@ private:
     // Engine components
     CleanupQueue m_cleanupQueue;
     Renderer m_renderer;
-    VkPipelineLayout m_pipelineLayout;
-    VkPipeline m_pipeline; 
     vkw::DescriptorLayoutCache m_descriptorCache;
     vkw::DescriptorAllocator m_descriptorAllocator;
     VmaAllocator m_vmaAllocator;
-
-    VkDescriptorSet m_firstSet;
-    vkw::Buffer m_cameraBuffer;
+    VkFence m_immFence;
+    VkCommandPool m_immCmdPool;
 
     void InitSDL();
     void InitVulkanCore();
     void InitVma();
-    void InitPipelines();
-    void Draw();
+    void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& f);
+
+    // The derived classes should implement this.
+    virtual void Draw() = 0;
 };

@@ -2,8 +2,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include "VkBootstrap.h"
-#include "vk_wrapper/shader.h"
-#include "vk_wrapper/pipeline_builder.h"
 #include "vk_wrapper/initializers.h"
 #include "vk_wrapper/vk_check.h"
 
@@ -23,8 +21,6 @@ void EngineBase::Init()
 
     m_renderer.Init(&m_device, m_surface, m_windowExtent);
     m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
-    
-    InitPipelines();
 }
 
 void EngineBase::InitSDL()
@@ -80,7 +76,7 @@ void EngineBase::InitVulkanCore()
     // Device info
     m_device.features = vkbPhysDev.features;
     m_device.properties = vkbPhysDev.properties;
-    printf("Using device %s\n", m_device.properties.deviceName);
+    printf("[+] Using device %s\n", m_device.properties.deviceName);
 
     // Device queues
     m_device.queueFamilyProperties = vkbDev.queue_families;
@@ -119,6 +115,16 @@ void EngineBase::InitVulkanCore()
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         vkDestroyInstance(m_instance, nullptr);
     });
+
+    // Immediate submit
+    auto immFenceInfo = vkw::init::FenceCreateInfo();
+    VK_CHECK(vkCreateFence(m_device.logicalDevice, &immFenceInfo, nullptr, &m_immFence));
+    auto immPoolInfo = vkw::init::CommandPoolCreateInfo(m_device.queueFamilies.graphics);
+    VK_CHECK(vkCreateCommandPool(m_device.logicalDevice, &immPoolInfo, nullptr, &m_immCmdPool));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyFence(m_device.logicalDevice, m_immFence, nullptr);
+        vkDestroyCommandPool(m_device.logicalDevice, m_immCmdPool, nullptr);
+    });
 }
 
 void EngineBase::InitVma() 
@@ -130,86 +136,6 @@ void EngineBase::InitVma()
 
     VK_CHECK(vmaCreateAllocator(&info, &m_vmaAllocator));
     m_cleanupQueue.AddFunction([=] { vmaDestroyAllocator(m_vmaAllocator); });
-}
-
-void EngineBase::InitPipelines() 
-{    
-    // Load the shaders
-    vkw::Shader vertexShader, fragmentShader;
-    vertexShader.Init(m_device.logicalDevice, "../shaders/triangle.vert.spv");
-    fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag.spv");
-
-    // allocate the camera buffer
-    m_cameraBuffer.Init(m_vmaAllocator);
-    m_cameraBuffer.Allocate(
-        sizeof(GPUCameraData), 
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] {
-        m_cameraBuffer.Cleanup();
-    });
-
-    // Pipeline layout
-    auto cameraBufferInfo = vkw::init::DescriptorBufferInfo(m_cameraBuffer.buffer, 0, sizeof(GPUCameraData));
-    VkDescriptorSetLayout setLayout;
-    vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
-        .BindBuffer(0, &cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .Build(&m_firstSet, &setLayout);
-
-    auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
-    layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &setLayout;
-    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
-    
-    // Create the pipeline
-    vkw::GraphicsPipelineBuilder builder;
-    builder.shaderStages.push_back(
-        vkw::init::PipelineShaderStageCreateInfo(
-            VK_SHADER_STAGE_VERTEX_BIT, vertexShader.shader));
-    builder.shaderStages.push_back(
-        vkw::init::PipelineShaderStageCreateInfo(
-            VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader.shader));
-    
-    builder.vertexInputInfo = vkw::init::PipelineVertexInputStateCreateInfo();
-    builder.inputAssembly = vkw::init::PipelineInputAssemblyStateCreateInfo(
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    
-    builder.viewport.x = 0.0f;
-    builder.viewport.y = 0.0f;
-    builder.viewport.width = (float)m_windowExtent.width;
-    builder.viewport.height = (float)m_windowExtent.height;
-    builder.viewport.minDepth = 0.0f;
-    builder.viewport.maxDepth = 1.0f;
-
-    builder.scissors.offset = { 0, 0 };
-    builder.scissors.extent = m_windowExtent;
-
-    builder.rasterizer = vkw::init::PipelineRasterizationStateCreateInfo(
-        VK_POLYGON_MODE_FILL);
-    builder.multisampling = vkw::init::PipelineMultisampleStateCreateInfo();
-    builder.colorAttachment = vkw::init::PipelineColorBlendAttachmentState(
-        VK_COLOR_COMPONENT_R_BIT | 
-        VK_COLOR_COMPONENT_G_BIT | 
-        VK_COLOR_COMPONENT_B_BIT | 
-        VK_COLOR_COMPONENT_A_BIT);
-
-    builder.layout = m_pipelineLayout;
-    builder.renderpass = m_renderer.swapchain.renderPass;
-
-    VkResult res = builder.Build(m_device.logicalDevice, &m_pipeline);
-    if (res != VK_SUCCESS) {
-        printf("Error building graphics pipeline\n");
-        assert(false);
-    }
-
-    // We can destroy the shaders right after creating the pipeline.
-    vertexShader.Cleanup();
-    fragmentShader.Cleanup();
-
-    m_cleanupQueue.AddFunction([=] {
-        vkDestroyPipeline(m_device.logicalDevice, m_pipeline, nullptr);
-        vkDestroyPipelineLayout(m_device.logicalDevice, m_pipelineLayout, nullptr);
-    });
 }
 
 void EngineBase::Run() 
@@ -224,17 +150,7 @@ void EngineBase::Run()
                 quit = true;
             }
         }
-        // Upload the camera data
-        GPUCameraData* data = (GPUCameraData*)m_cameraBuffer.Map();
-        data->color = { 0.0f, 1.0f, 1.0f, 0.0f };
-        m_cameraBuffer.Unmap();
-
-        // Draw a frame
-        Renderer::DrawInfo drawInfo = {};
-        drawInfo.pipeline = m_pipeline;
-        drawInfo.pipelineLayout = m_pipelineLayout;
-        drawInfo.descriptorSets = { m_firstSet };
-        m_renderer.Draw(&drawInfo);
+        Draw();
     }
 }
 
@@ -246,4 +162,30 @@ void EngineBase::Cleanup()
 
     // Destroy all vulkan objects/release memory.
     m_cleanupQueue.Flush();
+}
+
+void EngineBase::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& f) 
+{
+    VkCommandBuffer cmd;
+
+    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_immCmdPool);
+    VK_CHECK(vkAllocateCommandBuffers(
+        m_device.logicalDevice, &allocInfo, &cmd));
+
+    auto beginInfo = vkw::init::CommandBufferBeginInfo(
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+    f(cmd);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    auto submitInfo = vkw::init::SubmitInfo(&cmd);
+    VK_CHECK(vkQueueSubmit(m_renderer.graphicsQueue, 1, &submitInfo, m_immFence));
+
+    // Wait for the command to finish
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_immFence, VK_TRUE, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_immFence));
+
+    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_immCmdPool, 0));
 }

@@ -229,3 +229,74 @@ VkDescriptorBufferInfo vkw::init::DescriptorBufferInfo(
     info.range = range;
     return info;
 }
+
+VkCommandBufferBeginInfo vkw::init::CommandBufferBeginInfo(
+    VkCommandBufferUsageFlags flags /*= 0*/) 
+{
+    VkCommandBufferBeginInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    info.pNext = nullptr;
+
+    info.pInheritanceInfo = nullptr;
+    info.flags = flags;
+    return info;
+}
+
+VkSubmitInfo vkw::init::SubmitInfo(
+    VkCommandBuffer* pCmds,
+    uint32_t cmdCount /*= 1*/) 
+{
+    VkSubmitInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	info.pNext = nullptr;
+
+	info.commandBufferCount = cmdCount;
+	info.pCommandBuffers = pCmds;
+
+    return info;
+}
+
+VkImageViewCreateInfo vkw::init::ImageViewCreateInfo(
+    VkFormat format, VkImage image, VkImageAspectFlags aspectFlags) 
+{
+    VkImageViewCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    info.pNext = nullptr;
+
+    info.format = format;
+    info.image = image;
+    info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+    info.subresourceRange.baseArrayLayer = 0;
+    info.subresourceRange.layerCount = 1;
+    info.subresourceRange.baseMipLevel = 0;
+    info.subresourceRange.levelCount = 1;
+    info.subresourceRange.aspectMask = aspectFlags;
+
+    return info;
+}
+
+VkDescriptorImageInfo vkw::init::DescriptorImageInfo(
+    VkSampler sampler, VkImageView view, VkImageLayout layout) 
+{
+    VkDescriptorImageInfo info = {};
+    info.sampler = sampler;
+    info.imageView = view;
+    info.imageLayout = layout;
+    return info;
+}
+
+VkSamplerCreateInfo vkw::init::SamplerCreateInfo(
+    VkFilter filters, VkSamplerAddressMode addressMode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/) 
+{
+    VkSamplerCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    info.pNext = nullptr;
+
+    info.magFilter = filters;
+    info.minFilter = filters;
+    info.addressModeU = addressMode;
+    info.addressModeV = addressMode;
+    info.addressModeW = addressMode;
+    return info;
+}

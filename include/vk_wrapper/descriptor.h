@@ -15,8 +15,10 @@ namespace vkw
         // Theses sizes are multiplied by setsPerPool.
         std::vector<std::pair<VkDescriptorType, float>> poolSizes =
         {
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,            2.0f },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,            2.0f },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,            1.0f },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,    1.0f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,            1.0f },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,    1.0f },
         };
 		
         VkDevice device = VK_NULL_HANDLE;

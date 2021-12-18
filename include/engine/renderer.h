@@ -17,6 +17,8 @@ public:
 
     VkDevice device;
     Swapchain swapchain;
+    VkQueue graphicsQueue;
+    uint32_t graphicsQueueFamily;
 
     void Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent);
     void Cleanup();
@@ -26,9 +28,6 @@ private:
 
     uint64_t m_frameNumber;
     VkExtent2D m_windowExtent;
-    
-    VkQueue m_graphicsQueue;
-    uint32_t m_graphicsQueueFamily;
     
     Frame m_frames[FRAME_OVERLAP];
 

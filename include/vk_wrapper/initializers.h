@@ -67,6 +67,21 @@ VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo();
 VkDescriptorBufferInfo DescriptorBufferInfo(
     VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
 
+VkCommandBufferBeginInfo CommandBufferBeginInfo(
+    VkCommandBufferUsageFlags flags = 0);
+
+VkSubmitInfo SubmitInfo(
+    VkCommandBuffer* pCmds, uint32_t cmdCount = 1);
+
+VkImageViewCreateInfo ImageViewCreateInfo(
+    VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
+
+VkDescriptorImageInfo DescriptorImageInfo(
+    VkSampler sampler, VkImageView view, VkImageLayout layout);
+
+VkSamplerCreateInfo SamplerCreateInfo(
+    VkFilter filters, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
 }   // init
 
 }   // vkw

@@ -1,6 +1,7 @@
 #include "engine/renderer.h"
 #include "vk_wrapper/vk_check.h"
 #include <glm/glm.hpp>
+#include "vk_wrapper/initializers.h"
 
 
 void Renderer::Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent) 
@@ -10,8 +11,8 @@ void Renderer::Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D win
     m_frameNumber = 0;
     m_windowExtent = windowExtent;
 
-	m_graphicsQueueFamily = dev->queueFamilies.graphics;
-    vkGetDeviceQueue(device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
+	graphicsQueueFamily = dev->queueFamilies.graphics;
+    vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
 
     swapchain.Init(dev, surface, windowExtent);
     for (size_t i = 0; i < FRAME_OVERLAP; i++) {
@@ -59,13 +60,8 @@ void Renderer::BuildRenderCommand(
     uint32_t swapchainImgIdx) 
 {
     // Begin command buffer
-    VkCommandBufferBeginInfo cmdInfo = { };
-    cmdInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmdInfo.pNext = nullptr;
-    
-    cmdInfo.pInheritanceInfo = nullptr;
-    cmdInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdInfo));
+    auto beginInfo = vkw::init::CommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
     
     // Begin renderpass
     VkRenderPassBeginInfo rpInfo = { };
@@ -93,7 +89,7 @@ void Renderer::BuildRenderCommand(
             0, info->descriptorSets.size(), info->descriptorSets.data(), 
             0, nullptr);
     }
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    vkCmdDraw(cmd, 6, 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     VK_CHECK(vkEndCommandBuffer(cmd));
@@ -101,10 +97,8 @@ void Renderer::BuildRenderCommand(
 
 void Renderer::SubmitRenderCommand(VkCommandBuffer cmd) 
 {
-    VkSubmitInfo submit = {};
-	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit.pNext = nullptr;
-
+    auto submit = vkw::init::SubmitInfo(&cmd);
+	
 	VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	submit.pWaitDstStageMask = &waitStage;
 
@@ -114,12 +108,9 @@ void Renderer::SubmitRenderCommand(VkCommandBuffer cmd)
 	submit.signalSemaphoreCount = 1;
 	submit.pSignalSemaphores = &(CurrentFrame().renderFinishedSem);
 
-	submit.commandBufferCount = 1;
-	submit.pCommandBuffers = &cmd;
-
-	//nsubmit command buffer to the queue and execute it.
+	// submit command buffer to the queue and execute it.
 	// renderFinishedFence will now block until the graphic commands finish execution
-	VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submit, CurrentFrame().renderFinishedFence));
+	VK_CHECK(vkQueueSubmit(graphicsQueue, 1, &submit, CurrentFrame().renderFinishedFence));
 }
 
 void Renderer::PresentImage(uint32_t swapchainImgIdx) 
@@ -139,5 +130,5 @@ void Renderer::PresentImage(uint32_t swapchainImgIdx)
 
 	info.pImageIndices = &swapchainImgIdx;
 
-	VK_CHECK(vkQueuePresentKHR(m_graphicsQueue, &info));    
+	VK_CHECK(vkQueuePresentKHR(graphicsQueue, &info));    
 }

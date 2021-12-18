@@ -1,11 +1,11 @@
-#include "engine/engine_base.h"
+#include "application.h"
 
 
 int main()
 {
-    EngineBase engine;
-    engine.Init();
-    engine.Run();
-    engine.Cleanup();
+    Application app;
+    app.Init();
+    app.Run();
+    app.Cleanup();
     return 0;
 }

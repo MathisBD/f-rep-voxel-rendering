@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(proj VERSION 1.0)
 FILE(GLOB_RECURSE CPP_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "./src/*.cpp")
 add_executable(proj ${CPP_SOURCES})
-target_include_directories(proj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(proj PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Warnings/Errors : there's no reason to ignore warnings in this project.
 target_compile_options(proj PUBLIC -Wall -Wextra)
@@ -31,3 +31,26 @@ target_link_libraries(proj vk-bootstrap::vk-bootstrap)
 find_package(glm REQUIRED)
 target_include_directories(proj PUBLIC ${GLM_INCLUDE_DIRS})
 target_link_libraries(proj ${GLM_LIBRARIES})
+
+# Compile shaders
+set(GLSL_VALIDATOR "glslangValidator")
+
+file(GLOB_RECURSE SHADER_SOURCES
+    "${CMAKE_SOURCE_DIR}/shaders/*.frag"
+    "${CMAKE_SOURCE_DIR}/shaders/*.vert"
+    "${CMAKE_SOURCE_DIR}/shaders/*.comp")
+
+foreach(SHADER ${SHADER_SOURCES})
+    message("Compiling shader: ${SHADER}")
+    set(SPIRV "${SHADER}.spv")
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${GLSL_VALIDATOR} -V ${SHADER} -o ${SPIRV}
+        DEPENDS ${SHADER})
+    list(APPEND SPIRV_FILES ${SPIRV})
+endforeach(SHADER)
+
+add_custom_target(
+    shaders 
+    ALL # the shaders will be built by default
+    DEPENDS ${SPIRV_FILES})
