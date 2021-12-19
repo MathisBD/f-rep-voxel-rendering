@@ -300,3 +300,38 @@ VkSamplerCreateInfo vkw::init::SamplerCreateInfo(
     info.addressModeW = addressMode;
     return info;
 }
+
+VkRenderPassBeginInfo vkw::init::RenderPassBeginInfo(
+    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent) 
+{
+    VkRenderPassBeginInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.pNext = nullptr;
+    
+    info.renderPass = renderpass;
+    info.renderArea.offset.x = 0;
+    info.renderArea.offset.y = 0;
+    info.renderArea.extent = extent;
+    info.framebuffer = framebuffer;
+
+    VkClearValue clearColor;
+    clearColor.color = { { 0.0f, 0.0f, 0.0f , 1.0f } };
+    info.clearValueCount = 1;
+    info.pClearValues = &clearColor;
+
+    return info;
+}
+
+VkPresentInfoKHR vkw::init::PresentInfoKHR(
+    VkSwapchainKHR swapchain, uint32_t swapchainImgIdx) 
+{
+    VkPresentInfoKHR info = {};
+	info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	info.pNext = nullptr;
+
+	info.swapchainCount = 1;
+	info.pSwapchains = &swapchain;
+	info.pImageIndices = &swapchainImgIdx;
+    
+    return info;
+}

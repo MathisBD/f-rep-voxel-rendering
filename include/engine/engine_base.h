@@ -29,18 +29,14 @@ protected:
     
     // Engine components
     CleanupQueue m_cleanupQueue;
-    Renderer m_renderer;
     vkw::DescriptorLayoutCache m_descriptorCache;
     vkw::DescriptorAllocator m_descriptorAllocator;
     VmaAllocator m_vmaAllocator;
-    VkFence m_immFence;
-    VkCommandPool m_immCmdPool;
 
     void InitSDL();
     void InitVulkanCore();
     void InitVma();
-    void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& f);
-
+    
     // The derived classes should implement this.
     virtual void Draw() = 0;
 };

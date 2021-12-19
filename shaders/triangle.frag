@@ -15,7 +15,6 @@ layout (set = 1, binding = 0) uniform sampler2D tex1;
 
 void main()
 {
-	//outFragColor = vec4(texCoords.y, 0.0f, 0.0f, 0.0f);
 	outFragColor = vec4(texture(tex1, texCoords).xyz, 1.0f);
 	//outFragColor = vec4(camera.color.xyz, 1.0f);
 }

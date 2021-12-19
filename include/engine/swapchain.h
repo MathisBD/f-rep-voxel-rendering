@@ -9,6 +9,7 @@ class Swapchain
 {
 public:
     VkDevice device;
+    VkExtent2D windowExtent;
 
     VkSwapchainKHR swapchain;
     VkFormat imageFormat;

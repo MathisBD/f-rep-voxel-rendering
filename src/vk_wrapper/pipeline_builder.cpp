@@ -45,7 +45,7 @@ VkResult vkw::GraphicsPipelineBuilder::Build(VkDevice device, VkPipeline* pPipel
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
     VkResult res = vkCreateGraphicsPipelines(
-        device, nullptr, 1, &pipelineInfo, nullptr, pPipeline);
+        device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pPipeline);
     if (res != VK_SUCCESS) {
         *pPipeline = VK_NULL_HANDLE;
     }

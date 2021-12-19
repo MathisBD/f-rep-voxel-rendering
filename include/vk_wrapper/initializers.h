@@ -82,6 +82,12 @@ VkDescriptorImageInfo DescriptorImageInfo(
 VkSamplerCreateInfo SamplerCreateInfo(
     VkFilter filters, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
+VkRenderPassBeginInfo RenderPassBeginInfo(
+    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent);
+
+VkPresentInfoKHR PresentInfoKHR(
+    VkSwapchainKHR swapchain, uint32_t swapchainImgIdx);
+
 }   // init
 
 }   // vkw

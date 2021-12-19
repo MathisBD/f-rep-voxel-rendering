@@ -9,73 +9,99 @@ void Application::Init()
 {
     EngineBase::Init();
 
-    InitBuffer();
     InitImage();
-    InitPipelines();
-}
-
-void Application::InitBuffer() 
-{
-    // allocate the camera buffer
-    m_cameraBuffer.Init(m_vmaAllocator);
-    m_cameraBuffer.Allocate(
-        sizeof(GPUCameraData), 
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] { m_cameraBuffer.Cleanup(); });    
+    InitGraphics();
+    InitGraphicsPipeline();
+    InitCompute();
+    InitComputePipeline();
 }
 
 void Application::InitImage() 
 {
     // Allocate the image
     m_image.Init(m_vmaAllocator);
-    m_image.Allocate(
-        { .width = 256, .height = 256 },
-        VK_FORMAT_R32G32B32A32_SFLOAT,
-        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_cleanupQueue.AddFunction([=] { m_image.Cleanup(); });
-    
-    // Create the image contents in a CPU staging buffer.
-    vkw::Buffer stagingBuffer;
-    stagingBuffer.Init(m_vmaAllocator);
-    stagingBuffer.Allocate(
-        m_image.extent.width * m_image.extent.height * sizeof(float) * 4,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VMA_MEMORY_USAGE_CPU_ONLY);
-    float* buf = (float*)stagingBuffer.Map();
-    for (size_t y = 0; y < m_image.extent.height; y++) {
-        for (size_t x = 0; x < m_image.extent.width; x++) {
-            size_t idx = 4 * (x + y * m_image.extent.width);
-            if (x + y < 256) {
-                buf[idx] = buf[idx+1] = buf[idx+2] = 0.0f;
-            }
-            else {
-                buf[idx] = buf[idx+1] = buf[idx+2] = 1.0f;
-            }
-            buf[idx+3] = 1.0f;
-}
+    if (m_device.queueFamilies.graphics != m_device.queueFamilies.compute) {
+        m_image.Allocate(
+            { .width = 256, .height = 256 },
+            VK_FORMAT_R8G8B8A8_UINT,
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY);
     }
-    stagingBuffer.Unmap();
+    else {
+        std::vector<uint32_t> queueFamilies = { 
+            m_device.queueFamilies.graphics,
+            m_device.queueFamilies.compute };
+        m_image.Allocate(
+            { .width = 256, .height = 256 },
+            VK_FORMAT_R8G8B8A8_UINT,
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VK_SHARING_MODE_CONCURRENT,
+            &queueFamilies);    
+    }
+    m_cleanupQueue.AddFunction([=] { m_image.Cleanup(); });
 
-    // Copy the image contents.
-    ImmediateSubmit([=] (VkCommandBuffer cmd) {
-        m_image.ChangeLayout(cmd, 
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0, VK_ACCESS_TRANSFER_WRITE_BIT);
-        m_image.CopyFromBuffer(cmd, &stagingBuffer);
-        m_image.ChangeLayout(cmd,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+    // Set the image layout (GENERAL).
+    ImmediateSubmit(
+        m_device.queueFamilies.graphics,
+        [=] (VkCommandBuffer cmd) { 
+            m_image.ChangeLayout(cmd, 
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0, VK_ACCESS_SHADER_WRITE_BIT);
+        });
+
+    // Image view
+    auto viewInfo = vkw::init::ImageViewCreateInfo(
+        m_image.format, m_image.image, VK_IMAGE_ASPECT_COLOR_BIT);
+    VK_CHECK(vkCreateImageView(m_device.logicalDevice, &viewInfo, nullptr, &m_imageView));
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyImageView(m_device.logicalDevice, m_imageView, nullptr);
     });
 
-    // Free the staging buffer
-    stagingBuffer.Cleanup();
+    // Sampler
+    auto samplerInfo = vkw::init::SamplerCreateInfo(VK_FILTER_NEAREST);
+    VK_CHECK(vkCreateSampler(
+        m_device.logicalDevice, &samplerInfo, nullptr, &m_sampler));
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroySampler(m_device.logicalDevice, m_sampler, nullptr);
+    });
 }
 
-void Application::InitPipelines() 
+void Application::InitGraphics() 
+{
+    // Swapchain 
+    m_graphics.swapchain.Init(&m_device, m_surface, m_windowExtent);
+    m_cleanupQueue.AddFunction([=] { m_graphics.swapchain.Cleanup(); });
+
+    // Queue
+    vkGetDeviceQueue(m_device.logicalDevice, 
+        m_device.queueFamilies.graphics, 0, &m_graphics.queue);
+    
+    // Command pool
+    auto poolInfo = vkw::init::CommandPoolCreateInfo(
+        m_device.queueFamilies.graphics);
+    VK_CHECK(vkCreateCommandPool(m_device.logicalDevice, &poolInfo, nullptr, &m_graphics.cmdPool));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyCommandPool(m_device.logicalDevice, m_graphics.cmdPool, nullptr); 
+    });
+
+    // Synchronization
+    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_graphics.fence));
+    
+    auto semInfo = vkw::init::SemaphoreCreateInfo();
+    VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_graphics.imageReadySem));
+    VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_graphics.semaphore));
+    
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyFence(m_device.logicalDevice, m_graphics.fence, nullptr);
+        vkDestroySemaphore(m_device.logicalDevice, m_graphics.semaphore, nullptr);
+        vkDestroySemaphore(m_device.logicalDevice, m_graphics.imageReadySem, nullptr);
+    });
+}
+
+void Application::InitGraphicsPipeline() 
 {    
     // Load the shaders
     vkw::Shader vertexShader, fragmentShader;
@@ -83,43 +109,21 @@ void Application::InitPipelines()
     fragmentShader.Init(m_device.logicalDevice, "../shaders/triangle.frag.spv");
 
     // Descriptor Sets
-    m_dSets = std::vector<VkDescriptorSet>(2);
-    auto dSetLayouts = std::vector<VkDescriptorSetLayout>(2);
+    m_graphics.dSets = std::vector<VkDescriptorSet>(1);
+    auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
 
-    // Descriptor Set 0
-    auto cameraBufferInfo = vkw::init::DescriptorBufferInfo(
-        m_cameraBuffer.buffer, 0, sizeof(GPUCameraData));
-    vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
-        .BindBuffer(0, &cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .Build(&m_dSets[0], &dSetLayouts[0]);
-
-    // Descriptor Set 1
-    auto samplerInfo = vkw::init::SamplerCreateInfo(VK_FILTER_NEAREST);
-    VkSampler sampler;
-    VK_CHECK(vkCreateSampler(
-        m_device.logicalDevice, &samplerInfo, nullptr, &sampler));
-    m_cleanupQueue.AddFunction([=] {
-        vkDestroySampler(m_device.logicalDevice, sampler, nullptr);
-    });
-
-    auto viewInfo = vkw::init::ImageViewCreateInfo(
-        m_image.format, m_image.image, VK_IMAGE_ASPECT_COLOR_BIT);
-    VkImageView imageView;
-    VK_CHECK(vkCreateImageView(m_device.logicalDevice, &viewInfo, nullptr, &imageView));
-    m_cleanupQueue.AddFunction([=] {
-        vkDestroyImageView(m_device.logicalDevice, imageView, nullptr);
-    });
-
+    // Descriptor Set 0    
     auto imageInfo = vkw::init::DescriptorImageInfo(
-        sampler, imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        m_sampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
         .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .Build(&m_dSets[1], &dSetLayouts[1]);
+        .Build(&m_graphics.dSets[0], &dSetLayouts[0]);
+    
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
     layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
     layoutInfo.pSetLayouts = dSetLayouts.data();
-    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
+    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_graphics.pipelineLayout));
 
     // Create the pipeline
     vkw::GraphicsPipelineBuilder builder;
@@ -153,10 +157,10 @@ void Application::InitPipelines()
         VK_COLOR_COMPONENT_B_BIT | 
         VK_COLOR_COMPONENT_A_BIT);
 
-    builder.layout = m_pipelineLayout;
-    builder.renderpass = m_renderer.swapchain.renderPass;
+    builder.layout = m_graphics.pipelineLayout;
+    builder.renderpass = m_graphics.swapchain.renderPass;
 
-    VkResult res = builder.Build(m_device.logicalDevice, &m_pipeline);
+    VkResult res = builder.Build(m_device.logicalDevice, &m_graphics.pipeline);
     if (res != VK_SUCCESS) {
         printf("[-] Error building graphics pipeline\n");
         assert(false);
@@ -166,22 +170,189 @@ void Application::InitPipelines()
     vertexShader.Cleanup();
     fragmentShader.Cleanup();
     m_cleanupQueue.AddFunction([=] { 
-        vkDestroyPipelineLayout(m_device.logicalDevice, m_pipelineLayout, nullptr);
-        vkDestroyPipeline(m_device.logicalDevice, m_pipeline, nullptr); 
+        vkDestroyPipelineLayout(m_device.logicalDevice, m_graphics.pipelineLayout, nullptr);
+        vkDestroyPipeline(m_device.logicalDevice, m_graphics.pipeline, nullptr); 
     });
+}
+
+void Application::InitCompute() 
+{
+    // Queue
+    vkGetDeviceQueue(m_device.logicalDevice, 
+        m_device.queueFamilies.compute, 0, &m_compute.queue);
+    
+    // Command pool
+    auto poolInfo = vkw::init::CommandPoolCreateInfo(
+        m_device.queueFamilies.compute);
+    VK_CHECK(vkCreateCommandPool(m_device.logicalDevice, &poolInfo, nullptr, &m_compute.cmdPool));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyCommandPool(m_device.logicalDevice, m_compute.cmdPool, nullptr); 
+    });
+
+    // Synchronization
+    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_compute.fence));
+    
+    auto semInfo = vkw::init::SemaphoreCreateInfo();
+    VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_compute.semaphore));
+    
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyFence(m_device.logicalDevice, m_compute.fence, nullptr);
+        vkDestroySemaphore(m_device.logicalDevice, m_compute.semaphore, nullptr);
+    });
+}
+
+void Application::InitComputePipeline() 
+{
+    // Load the shader
+    vkw::Shader shader;
+    shader.Init(m_device.logicalDevice, "../shaders/dda.comp.spv");
+    
+    // Descriptor Sets
+    m_compute.dSets = std::vector<VkDescriptorSet>(1);
+    auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
+
+    // Descriptor Set 0    
+    auto imageInfo = vkw::init::DescriptorImageInfo(m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
+    vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
+        .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .Build(&m_graphics.dSets[0], &dSetLayouts[0]);
+
+    // Pipeline layout
+    auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
+    layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
+    layoutInfo.pSetLayouts = dSetLayouts.data();
+    VK_CHECK(vkCreatePipelineLayout(m_device.logicalDevice, &layoutInfo, nullptr, &m_compute.pipelineLayout));
+ 
+    // Pipeline
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.pNext = nullptr;
+    pipelineInfo.layout = m_compute.pipelineLayout;
+    pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
+        VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
+    VK_CHECK(vkCreateComputePipelines(m_device.logicalDevice, VK_NULL_HANDLE, 
+        1, &pipelineInfo, nullptr, &m_compute.pipeline));
+}
+
+void Application::RecordComputeCmd(VkCommandBuffer cmd) 
+{
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute.pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_compute.pipelineLayout, 
+        0, m_compute.dSets.size(), m_compute.dSets.data(), 
+        0, nullptr);
+    vkCmdDispatch(cmd, m_image.extent.width / 16, m_image.extent.height / 16, 1);   
+}
+
+void Application::RecordGraphicsCmd(VkCommandBuffer cmd, uint32_t swapchainImgIdx) 
+{
+    // Begin renderpass
+    auto rpInfo = vkw::init::RenderPassBeginInfo(
+        m_graphics.swapchain.renderPass, 
+        m_graphics.swapchain.framebuffers[swapchainImgIdx], 
+        m_graphics.swapchain.windowExtent);
+    vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_graphics.pipelineLayout, 
+        0, m_graphics.dSets.size(), m_graphics.dSets.data(), 
+        0, nullptr);
+    // Draw the 6 vertices of the quad.
+    vkCmdDraw(cmd, 6, 1, 0, 0);
+
+    vkCmdEndRenderPass(cmd);
+}
+
+void Application::SubmitGraphicsCmd(VkCommandBuffer cmd) 
+{
+    auto info = vkw::init::SubmitInfo(&cmd);
+
+    VkSemaphore waitSemaphores[] = { 
+        m_compute.semaphore, 
+        m_graphics.imageReadySem };
+    VkPipelineStageFlags waitMasks[] = { 
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    info.waitSemaphoreCount = 2;
+    info.pWaitSemaphores = &waitSemaphores[0];
+    info.pWaitDstStageMask = &waitMasks[0];
+
+    info.signalSemaphoreCount = 1;
+    info.pSignalSemaphores = &m_graphics.semaphore;
+    
+    VK_CHECK(vkQueueSubmit(m_graphics.queue, 1, &info, m_graphics.fence));
+}
+
+void Application::SubmitComputeCmd(VkCommandBuffer cmd) 
+{
+    auto info = vkw::init::SubmitInfo(&cmd);
+
+    VkPipelineStageFlags waitMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    info.waitSemaphoreCount = 1;
+    info.pWaitSemaphores = &m_graphics.semaphore;
+    info.pWaitDstStageMask = &waitMask;
+
+    info.signalSemaphoreCount = 1;
+    info.pSignalSemaphores = &m_compute.semaphore;
+
+    VK_CHECK(vkQueueSubmit(m_compute.queue, 1, &info, m_compute.fence));
+}
+
+VkCommandBuffer Application::BuildCommand(
+    VkCommandPool pool, 
+    std::function<void(VkCommandBuffer)>&& record,
+    VkFence fence)
+{
+    // Wait for the previous command to finish.
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &fence, VK_TRUE, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &fence));
+    
+    // Reset the command pool (and its buffers).
+    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_compute.cmdPool, 0));
+
+    // Allocate the command buffer.
+    VkCommandBuffer cmd;
+    auto allocInfo = vkw::init::CommandBufferAllocateInfo(pool);
+    VK_CHECK(vkAllocateCommandBuffers(
+        m_device.logicalDevice, &allocInfo, &cmd));
+
+    // Begin the command.
+    auto beginInfo = vkw::init::CommandBufferBeginInfo(
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+    // Record the command
+    record(cmd);
+
+    // End the command
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    return cmd;
 }
 
 void Application::Draw() 
 {
-    // Upload the camera data
-    GPUCameraData* data = (GPUCameraData*)m_cameraBuffer.Map();
-    data->color = { 0.0f, 1.0f, 1.0f, 0.0f };
-    m_cameraBuffer.Unmap();
-
-    // Draw the frame
-    Renderer::DrawInfo drawInfo = {};
-    drawInfo.pipeline = m_pipeline;
-    drawInfo.pipelineLayout = m_pipelineLayout;
-    drawInfo.descriptorSets = m_dSets;
-    m_renderer.Draw(&drawInfo);    
+    // Compute command.
+    auto computeCmd = BuildCommand(
+        m_compute.cmdPool, 
+        [=] (VkCommandBuffer cmd) { RecordComputeCmd(cmd); },
+        m_compute.fence);
+    SubmitComputeCmd(computeCmd);
+    // Acquire image.
+    uint32_t swapchainImgIdx = m_graphics.swapchain.AcquireNewImage(
+        m_graphics.imageReadySem);
+    // Render command.
+    auto graphicsCmd = BuildCommand(
+        m_graphics.cmdPool,
+        [=] (VkCommandBuffer cmd) { RecordGraphicsCmd(cmd, swapchainImgIdx); },
+        m_graphics.fence);
+    SubmitGraphicsCmd(graphicsCmd);
+    // Present image.
+    auto presentInfo = vkw::init::PresentInfoKHR(
+        m_graphics.swapchain.swapchain, swapchainImgIdx);
+	presentInfo.pWaitSemaphores = &m_graphics.semaphore;
+	presentInfo.waitSemaphoreCount = 1;
+	VK_CHECK(vkQueuePresentKHR(m_graphics.queue, &presentInfo));    
 }

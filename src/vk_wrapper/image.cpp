@@ -17,7 +17,9 @@ void vkw::Image::Allocate(
     VkExtent2D extent, 
     VkFormat format, 
     VkImageUsageFlags imgUsage, 
-    VmaMemoryUsage memUsage) 
+    VmaMemoryUsage memUsage,
+    VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    const std::vector<uint32_t>* pQueueFamilies = nullptr) 
 {
     this->extent = extent;
     this->format = format;
@@ -35,9 +37,23 @@ void vkw::Image::Allocate(
     info.mipLevels = 1;
     info.arrayLayers = 1;
     info.samples = VK_SAMPLE_COUNT_1_BIT; // no multisampling
-    
+
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = imgUsage;
+
+    switch (sharingMode) {
+    case VK_SHARING_MODE_EXCLUSIVE:
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        break;
+    case VK_SHARING_MODE_CONCURRENT:
+        info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+        assert(pQueueFamilies);
+        info.queueFamilyIndexCount = pQueueFamilies->size();
+        info.pQueueFamilyIndices = pQueueFamilies->data();
+        break;
+    default:
+        assert(false);
+    }
 
     VmaAllocationCreateInfo vmaInfo = {};
     vmaInfo.usage = memUsage;
@@ -70,7 +86,6 @@ void vkw::Image::ChangeLayout(
     barrier.srcAccessMask = srcAccess;
     barrier.dstAccessMask = dstAccess;
 
-    // The pipeline stage could be controlled better.
     vkCmdPipelineBarrier(cmd,
         srcStages, dstStages,
         0,

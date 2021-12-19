@@ -9,22 +9,11 @@
 class Renderer
 {
 public:
-    typedef struct {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
-        std::vector<VkDescriptorSet> descriptorSets;
-    } DrawInfo;
-
-    VkDevice device;
-    Swapchain swapchain;
-    VkQueue graphicsQueue;
-    uint32_t graphicsQueueFamily;
 
     void Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent);
     void Cleanup();
     void Draw(const DrawInfo* info);
 private:
-    static const size_t FRAME_OVERLAP = 1;
 
     uint64_t m_frameNumber;
     VkExtent2D m_windowExtent;

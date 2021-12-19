@@ -115,16 +115,6 @@ void EngineBase::InitVulkanCore()
         vkb::destroy_debug_utils_messenger(m_instance, m_debugMessenger);
         vkDestroyInstance(m_instance, nullptr);
     });
-
-    // Immediate submit
-    auto immFenceInfo = vkw::init::FenceCreateInfo();
-    VK_CHECK(vkCreateFence(m_device.logicalDevice, &immFenceInfo, nullptr, &m_immFence));
-    auto immPoolInfo = vkw::init::CommandPoolCreateInfo(m_device.queueFamilies.graphics);
-    VK_CHECK(vkCreateCommandPool(m_device.logicalDevice, &immPoolInfo, nullptr, &m_immCmdPool));
-    m_cleanupQueue.AddFunction([=] { 
-        vkDestroyFence(m_device.logicalDevice, m_immFence, nullptr);
-        vkDestroyCommandPool(m_device.logicalDevice, m_immCmdPool, nullptr);
-    });
 }
 
 void EngineBase::InitVma() 
@@ -164,7 +154,7 @@ void EngineBase::Cleanup()
     m_cleanupQueue.Flush();
 }
 
-void EngineBase::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& f) 
+void EngineBase::RecordCommand(std::function<void(VkCommandBuffer)>&& f) 
 {
     VkCommandBuffer cmd;
 

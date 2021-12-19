@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 #include "third_party/vk_mem_alloc.h"
 #include "vk_wrapper/buffer.h"
+#include <vector>
 
 
 namespace vkw
@@ -21,7 +22,9 @@ namespace vkw
             VkExtent2D extent, 
             VkFormat foramt,
             VkImageUsageFlags imgUsage, 
-            VmaMemoryUsage memUsage);
+            VmaMemoryUsage memUsage,
+            VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            const std::vector<uint32_t>* pQueueFamilies = nullptr);
         void Cleanup();
 
         void ChangeLayout(

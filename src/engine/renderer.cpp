@@ -6,13 +6,9 @@
 
 void Renderer::Init(const vkw::Device* dev, VkSurfaceKHR surface, VkExtent2D windowExtent) 
 {
-    device = dev->logicalDevice;
 
     m_frameNumber = 0;
     m_windowExtent = windowExtent;
-
-	graphicsQueueFamily = dev->queueFamilies.graphics;
-    vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
 
     swapchain.Init(dev, surface, windowExtent);
     for (size_t i = 0; i < FRAME_OVERLAP; i++) {
@@ -75,8 +71,7 @@ void Renderer::BuildRenderCommand(
     rpInfo.framebuffer = swapchain.framebuffers[swapchainImgIdx];
 
     VkClearValue clearColor;
-    float flash = glm::abs(glm::sin(m_frameNumber / 60.0f));
-    clearColor.color = { { 0.0f, flash, 0.0f , 1.0f } };
+    clearColor.color = { { 0.0f, 0.0f, 0.0f , 1.0f } };
     rpInfo.clearValueCount = 1;
     rpInfo.pClearValues = &clearColor;
 

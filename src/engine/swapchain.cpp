@@ -10,6 +10,7 @@ void Swapchain::Init(
 	VkExtent2D windowExtent) 
 {
 	device = dev->logicalDevice;
+	this->windowExtent = windowExtent;
 
     // Swapchain and images
     vkb::SwapchainBuilder builder(
