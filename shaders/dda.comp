@@ -2,15 +2,35 @@
 
 layout (local_size_x = 16, local_size_y = 16) in;
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
+layout (set = 0, binding = 1) uniform DDAUniforms {
+    uvec4 screenResolution;
+    vec4 screenWorldSize; 
+    vec4 cameraPosition;
+    
+    vec4 cameraForward;
+    vec4 cameraUp;
+    vec4 cameraRight;
+} ddaUniforms;
 
+vec4 raytrace(vec3 origin, vec3 direction)
+{
+    return vec4(direction, 1.0f);
+}
 
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
-    if (gid.x + gid.y < 200) {
-        imageStore(outImg, ivec2(gid), vec4(1, 1, 1, 1));
-    }
-    else {
-        imageStore(outImg, ivec2(gid), vec4(0, 0, 0, 1));
+    if (gid.x < ddaUniforms.screenResolution.x && 
+        gid.y < ddaUniforms.screenResolution.y) {
+    
+        float dx = 2.0f * (gid.x / float(ddaUniforms.screenResolution.x)) - 1.0f;
+        float dy = 2.0f * (gid.y / float(ddaUniforms.screenResolution.y)) - 1.0f;
+        vec3 direction =
+            ddaUniforms.cameraForward.xyz +
+            dx * ddaUniforms.cameraRight.xyz +
+            dy * ddaUniforms.cameraUp.xyz;
+
+        vec4 color = raytrace(ddaUniforms.cameraPosition.xyz, normalize(direction));        
+        imageStore(outImg, ivec2(gid), color);
     }
 }

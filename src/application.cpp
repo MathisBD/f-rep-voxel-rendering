@@ -91,7 +91,7 @@ void Application::InitGraphics()
     });
 
     // Synchronization
-    auto fenceInfo = vkw::init::FenceCreateInfo();
+    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_graphics.fence));
     
     auto semInfo = vkw::init::SemaphoreCreateInfo();
@@ -204,7 +204,7 @@ void Application::InitCompute()
     });
 
     // Synchronization
-    auto fenceInfo = vkw::init::FenceCreateInfo();
+    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_compute.fence));
     
     auto semInfo = vkw::init::SemaphoreCreateInfo();
@@ -214,6 +214,14 @@ void Application::InitCompute()
         vkDestroyFence(m_device.logicalDevice, m_compute.fence, nullptr);
         vkDestroySemaphore(m_device.logicalDevice, m_compute.semaphore, nullptr);
     });
+
+    // Uniform buffer
+    m_compute.ddaUniforms.Init(m_vmaAllocator);
+    m_compute.ddaUniforms.Allocate(
+        sizeof(DDAUniforms), 
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_cleanupQueue.AddFunction([=] { m_compute.ddaUniforms.Cleanup(); });
 }
 
 void Application::InitComputePipeline() 
@@ -227,9 +235,13 @@ void Application::InitComputePipeline()
     auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
 
     // Descriptor Set 0    
-    auto imageInfo = vkw::init::DescriptorImageInfo(m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
+    auto outImageInfo = vkw::init::DescriptorImageInfo(
+        m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
+    auto ddaUniformsInfo = vkw::init::DescriptorBufferInfo(
+        m_compute.ddaUniforms.buffer, 0, sizeof(DDAUniforms));
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
-        .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(1, &ddaUniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_compute.dSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -312,13 +324,6 @@ void Application::SubmitGraphicsCmd(VkCommandBuffer cmd)
     info.pSignalSemaphores = &signalSemaphores[0];
     
     VK_CHECK(vkQueueSubmit(m_graphics.queue, 1, &info, m_graphics.fence));
-
-    // Wait for the command to finish.
-    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_graphics.fence, true, 1000000000));
-    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_graphics.fence));
-    
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_graphics.cmdPool, 0));
 }
 
 void Application::SubmitComputeCmd(VkCommandBuffer cmd) 
@@ -334,19 +339,38 @@ void Application::SubmitComputeCmd(VkCommandBuffer cmd)
     info.pSignalSemaphores = &m_compute.semaphore;
 
     VK_CHECK(vkQueueSubmit(m_compute.queue, 1, &info, m_compute.fence));
+}
 
-    // Wait for the command to finish.
-    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_compute.fence, true, 1000000000));
-    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_compute.fence));
+void Application::UpdateDDAUniforms() 
+{
+    DDAUniforms* contents = (DDAUniforms*)m_compute.ddaUniforms.Map();
     
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_compute.cmdPool, 0));
+    contents->screenResolution.x = m_image.extent.width;
+    contents->screenResolution.y = m_image.extent.height;
+
+    // Horizontal field of view in degrees.
+    float FOVdeg = 45.0f;
+    float FOVrad = FOVdeg * (2.0f * glm::pi<float>()) / 360.0f;
+    contents->screenWorldSize.x = 2.0f * glm::tan(FOVrad / 2.0f);
+    contents->screenWorldSize.y = contents->screenWorldSize.x * 
+        (contents->screenResolution.y / (float)contents->screenResolution.x);
+
+    // A dummy camera looking down the Z axis, with the Y axis facing up.
+    contents->cameraPosition = { 0.0f, 0.0f, 10.0f, 0.0f };
+    contents->cameraForward = { 0.0f, 0.0f, -1.0f, 0.0f };
+    contents->cameraUp = { 0.0f, 1.0f, 0.0f, 0.0f };
+    contents->cameraRight = { 1.0f, 0.0f, 0.0f, 0.0f };
+
+    m_compute.ddaUniforms.Unmap(); 
 }
 
 VkCommandBuffer Application::BuildCommand(
     VkCommandPool pool, 
     std::function<void(VkCommandBuffer)>&& record)
 {
+    // Reset the command pool (and its buffers).
+    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, pool, 0));
+
     // Allocate the command buffer.
     VkCommandBuffer cmd;
     auto allocInfo = vkw::init::CommandBufferAllocateInfo(pool);
@@ -370,27 +394,29 @@ VkCommandBuffer Application::BuildCommand(
 void Application::Draw() 
 {
     // Compute command.
-    printf("COMPUTE\n");
-    auto computeCmd = BuildCommand(
-        m_compute.cmdPool, 
+    // Wait for the previous command to finish.
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_compute.fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_compute.fence));
+    // Update the uniform buffer
+    UpdateDDAUniforms();
+    // Submit a new command
+    auto computeCmd = BuildCommand(m_compute.cmdPool, 
         [=] (VkCommandBuffer cmd) { RecordComputeCmd(cmd); });
     SubmitComputeCmd(computeCmd);
     
     // Acquire image.
-    printf("ACQUIRE");
     uint32_t swapchainImgIdx = m_graphics.swapchain.AcquireNewImage(
         m_graphics.imageReadySem);
-    printf("\timg_idx=%u\n", swapchainImgIdx);
 
     // Render command.
-    printf("GRAPHICS\n");
-    auto graphicsCmd = BuildCommand(
-        m_graphics.cmdPool,
+    // Wait for the previous command to finish.
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_graphics.fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_graphics.fence));
+    auto graphicsCmd = BuildCommand(m_graphics.cmdPool,
         [=] (VkCommandBuffer cmd) { RecordGraphicsCmd(cmd, swapchainImgIdx); });
     SubmitGraphicsCmd(graphicsCmd);
 
     // Present image.
-    printf("PRESENT\n");
     auto presentInfo = vkw::init::PresentInfoKHR(
         &m_graphics.swapchain.swapchain, &swapchainImgIdx);
 	presentInfo.waitSemaphoreCount = 1;
