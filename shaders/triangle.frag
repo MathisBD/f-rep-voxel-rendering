@@ -7,10 +7,7 @@ layout (location = 0) in vec2 texCoords;
 layout (location = 0) out vec4 outFragColor;
 
 // buffers/images
-layout (set = 0, binding = 0) uniform CameraBuffer {
-	vec4 color;
-} camera;
-layout (set = 1, binding = 0) uniform sampler2D tex1;
+layout (set = 0, binding = 0) uniform sampler2D tex1;
 
 
 void main()

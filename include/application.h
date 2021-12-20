@@ -2,6 +2,7 @@
 #include "engine/engine_base.h"
 #include "vk_wrapper/image.h"
 #include <vector>
+#include "engine/swapchain.h"
 
 
 class Application : public EngineBase
@@ -20,8 +21,12 @@ private:
     
         VkQueue queue;
         VkCommandPool cmdPool;
-        // signaled when the graphics command is finished
+        // signaled when the graphics command is finished,
+        // waited on by the compute command.
         VkSemaphore semaphore;
+        // signaled when the graphics command is finished,
+        // waited on by the present command;
+        VkSemaphore presentSem;
         // signaled when the swapchain image is acquired
         VkSemaphore imageReadySem;
         
@@ -57,7 +62,6 @@ private:
 
     VkCommandBuffer BuildCommand(
         VkCommandPool pool, 
-        std::function<void(VkCommandBuffer)>&& record,
-        VkFence fence);
+        std::function<void(VkCommandBuffer)>&& record);
     void Draw() override;
 };

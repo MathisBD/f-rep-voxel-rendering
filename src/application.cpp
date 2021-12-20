@@ -9,6 +9,11 @@ void Application::Init()
 {
     EngineBase::Init();
 
+    printf("[+] Queue families :\n\tgraphics=%u\n\tcompute=%u\n\ttransfer=%u\n",
+        m_device.queueFamilies.graphics, 
+        m_device.queueFamilies.compute,
+        m_device.queueFamilies.transfer);
+
     InitImage();
     InitGraphics();
     InitGraphicsPipeline();
@@ -20,10 +25,10 @@ void Application::InitImage()
 {
     // Allocate the image
     m_image.Init(m_vmaAllocator);
-    if (m_device.queueFamilies.graphics != m_device.queueFamilies.compute) {
+    if (m_device.queueFamilies.graphics == m_device.queueFamilies.compute) {
         m_image.Allocate(
             { .width = 256, .height = 256 },
-            VK_FORMAT_R8G8B8A8_UINT,
+            VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY);
     }
@@ -33,7 +38,7 @@ void Application::InitImage()
             m_device.queueFamilies.compute };
         m_image.Allocate(
             { .width = 256, .height = 256 },
-            VK_FORMAT_R8G8B8A8_UINT,
+            VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY,
             VK_SHARING_MODE_CONCURRENT,
@@ -43,7 +48,6 @@ void Application::InitImage()
 
     // Set the image layout (GENERAL).
     ImmediateSubmit(
-        m_device.queueFamilies.graphics,
         [=] (VkCommandBuffer cmd) { 
             m_image.ChangeLayout(cmd, 
                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
@@ -87,18 +91,27 @@ void Application::InitGraphics()
     });
 
     // Synchronization
-    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    auto fenceInfo = vkw::init::FenceCreateInfo();
     VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_graphics.fence));
     
     auto semInfo = vkw::init::SemaphoreCreateInfo();
     VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_graphics.imageReadySem));
     VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_graphics.semaphore));
+    VK_CHECK(vkCreateSemaphore(m_device.logicalDevice, &semInfo, nullptr, &m_graphics.presentSem));
     
     m_cleanupQueue.AddFunction([=] { 
         vkDestroyFence(m_device.logicalDevice, m_graphics.fence, nullptr);
         vkDestroySemaphore(m_device.logicalDevice, m_graphics.semaphore, nullptr);
         vkDestroySemaphore(m_device.logicalDevice, m_graphics.imageReadySem, nullptr);
+        vkDestroySemaphore(m_device.logicalDevice, m_graphics.presentSem, nullptr);
     });
+
+    // Signal the graphics to compute semaphore
+    auto submitInfo = vkw::init::SubmitInfo(nullptr, 0);
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &m_graphics.semaphore;
+    VK_CHECK(vkQueueSubmit(m_graphics.queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK(vkQueueWaitIdle(m_graphics.queue));
 }
 
 void Application::InitGraphicsPipeline() 
@@ -114,7 +127,8 @@ void Application::InitGraphicsPipeline()
 
     // Descriptor Set 0    
     auto imageInfo = vkw::init::DescriptorImageInfo(
-        m_sampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        //m_sampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
         .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .Build(&m_graphics.dSets[0], &dSetLayouts[0]);
@@ -190,7 +204,7 @@ void Application::InitCompute()
     });
 
     // Synchronization
-    auto fenceInfo = vkw::init::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    auto fenceInfo = vkw::init::FenceCreateInfo();
     VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_compute.fence));
     
     auto semInfo = vkw::init::SemaphoreCreateInfo();
@@ -216,7 +230,7 @@ void Application::InitComputePipeline()
     auto imageInfo = vkw::init::DescriptorImageInfo(m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
         .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .Build(&m_graphics.dSets[0], &dSetLayouts[0]);
+        .Build(&m_compute.dSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
@@ -233,6 +247,13 @@ void Application::InitComputePipeline()
         VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
     VK_CHECK(vkCreateComputePipelines(m_device.logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_compute.pipeline));
+
+    // We can destroy the shader right away.
+    shader.Cleanup();
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyPipelineLayout(m_device.logicalDevice, m_compute.pipelineLayout, nullptr);
+        vkDestroyPipeline(m_device.logicalDevice, m_compute.pipeline, nullptr);
+    });
 }
 
 void Application::RecordComputeCmd(VkCommandBuffer cmd) 
@@ -247,6 +268,11 @@ void Application::RecordComputeCmd(VkCommandBuffer cmd)
 
 void Application::RecordGraphicsCmd(VkCommandBuffer cmd, uint32_t swapchainImgIdx) 
 {
+    /*m_image.ChangeLayout(cmd,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0, VK_ACCESS_SHADER_READ_BIT);*/
+
     // Begin renderpass
     auto rpInfo = vkw::init::RenderPassBeginInfo(
         m_graphics.swapchain.renderPass, 
@@ -279,10 +305,20 @@ void Application::SubmitGraphicsCmd(VkCommandBuffer cmd)
     info.pWaitSemaphores = &waitSemaphores[0];
     info.pWaitDstStageMask = &waitMasks[0];
 
-    info.signalSemaphoreCount = 1;
-    info.pSignalSemaphores = &m_graphics.semaphore;
+    VkSemaphore signalSemaphores[] = {
+        m_graphics.semaphore,
+        m_graphics.presentSem };
+    info.signalSemaphoreCount = 2;
+    info.pSignalSemaphores = &signalSemaphores[0];
     
     VK_CHECK(vkQueueSubmit(m_graphics.queue, 1, &info, m_graphics.fence));
+
+    // Wait for the command to finish.
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_graphics.fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_graphics.fence));
+    
+    // Reset the command pool (and its buffers).
+    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_graphics.cmdPool, 0));
 }
 
 void Application::SubmitComputeCmd(VkCommandBuffer cmd) 
@@ -298,20 +334,19 @@ void Application::SubmitComputeCmd(VkCommandBuffer cmd)
     info.pSignalSemaphores = &m_compute.semaphore;
 
     VK_CHECK(vkQueueSubmit(m_compute.queue, 1, &info, m_compute.fence));
+
+    // Wait for the command to finish.
+    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_compute.fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_compute.fence));
+    
+    // Reset the command pool (and its buffers).
+    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_compute.cmdPool, 0));
 }
 
 VkCommandBuffer Application::BuildCommand(
     VkCommandPool pool, 
-    std::function<void(VkCommandBuffer)>&& record,
-    VkFence fence)
+    std::function<void(VkCommandBuffer)>&& record)
 {
-    // Wait for the previous command to finish.
-    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &fence, VK_TRUE, 1000000000));
-    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &fence));
-    
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_compute.cmdPool, 0));
-
     // Allocate the command buffer.
     VkCommandBuffer cmd;
     auto allocInfo = vkw::init::CommandBufferAllocateInfo(pool);
@@ -335,24 +370,31 @@ VkCommandBuffer Application::BuildCommand(
 void Application::Draw() 
 {
     // Compute command.
+    printf("COMPUTE\n");
     auto computeCmd = BuildCommand(
         m_compute.cmdPool, 
-        [=] (VkCommandBuffer cmd) { RecordComputeCmd(cmd); },
-        m_compute.fence);
+        [=] (VkCommandBuffer cmd) { RecordComputeCmd(cmd); });
     SubmitComputeCmd(computeCmd);
+    
     // Acquire image.
+    printf("ACQUIRE");
     uint32_t swapchainImgIdx = m_graphics.swapchain.AcquireNewImage(
         m_graphics.imageReadySem);
+    printf("\timg_idx=%u\n", swapchainImgIdx);
+
     // Render command.
+    printf("GRAPHICS\n");
     auto graphicsCmd = BuildCommand(
         m_graphics.cmdPool,
-        [=] (VkCommandBuffer cmd) { RecordGraphicsCmd(cmd, swapchainImgIdx); },
-        m_graphics.fence);
+        [=] (VkCommandBuffer cmd) { RecordGraphicsCmd(cmd, swapchainImgIdx); });
     SubmitGraphicsCmd(graphicsCmd);
+
     // Present image.
+    printf("PRESENT\n");
     auto presentInfo = vkw::init::PresentInfoKHR(
-        m_graphics.swapchain.swapchain, swapchainImgIdx);
-	presentInfo.pWaitSemaphores = &m_graphics.semaphore;
+        &m_graphics.swapchain.swapchain, &swapchainImgIdx);
 	presentInfo.waitSemaphoreCount = 1;
-	VK_CHECK(vkQueuePresentKHR(m_graphics.queue, &presentInfo));    
+	presentInfo.pWaitSemaphores = &m_graphics.presentSem;
+    VK_CHECK(vkQueuePresentKHR(m_graphics.queue, &presentInfo));  
 }
+

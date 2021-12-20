@@ -323,15 +323,15 @@ VkRenderPassBeginInfo vkw::init::RenderPassBeginInfo(
 }
 
 VkPresentInfoKHR vkw::init::PresentInfoKHR(
-    VkSwapchainKHR swapchain, uint32_t swapchainImgIdx) 
+    const VkSwapchainKHR* pSwapchain, const uint32_t* pSwapchainImgIdx) 
 {
     VkPresentInfoKHR info = {};
 	info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	info.pNext = nullptr;
 
 	info.swapchainCount = 1;
-	info.pSwapchains = &swapchain;
-	info.pImageIndices = &swapchainImgIdx;
+	info.pSwapchains = pSwapchain;
+	info.pImageIndices = pSwapchainImgIdx;
     
     return info;
 }

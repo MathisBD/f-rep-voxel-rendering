@@ -1,4 +1,4 @@
-#include "engine/renderer.h"
+/*#include "engine/renderer.h"
 #include "vk_wrapper/vk_check.h"
 #include <glm/glm.hpp>
 #include "vk_wrapper/initializers.h"
@@ -126,4 +126,4 @@ void Renderer::PresentImage(uint32_t swapchainImgIdx)
 	info.pImageIndices = &swapchainImgIdx;
 
 	VK_CHECK(vkQueuePresentKHR(graphicsQueue, &info));    
-}
+}*/

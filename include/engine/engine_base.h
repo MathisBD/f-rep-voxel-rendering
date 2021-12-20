@@ -32,11 +32,19 @@ protected:
     vkw::DescriptorLayoutCache m_descriptorCache;
     vkw::DescriptorAllocator m_descriptorAllocator;
     VmaAllocator m_vmaAllocator;
+    struct {
+        VkQueue queue;
+        VkCommandPool pool;
+        VkFence fence;
+    } m_immUploadCtxt;
 
     void InitSDL();
     void InitVulkanCore();
     void InitVma();
+    void InitImmUploadCtxt();
     
     // The derived classes should implement this.
     virtual void Draw() = 0;
+    
+    void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record);
 };

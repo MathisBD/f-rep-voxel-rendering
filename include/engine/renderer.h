@@ -1,7 +1,6 @@
-#pragma once
+/*#pragma once
 #include <vulkan/vulkan.h>
 #include "engine/swapchain.h"
-#include "engine/frame.h"
 #include "vk_wrapper/device.h"
 #include <vector>
 
@@ -28,4 +27,4 @@ private:
         uint32_t swapchainImgIdx);
     void SubmitRenderCommand(VkCommandBuffer cmd);
     void PresentImage(uint32_t swapchainImgIdx);
-};
+};*/

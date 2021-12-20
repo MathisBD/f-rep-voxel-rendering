@@ -10,7 +10,7 @@
 		if (err)                                                    \
 		{                                                           \
 			std::cout <<"Detected Vulkan error: " << err << std::endl; \
-			abort();                                                \
+			exit(-1);                                                \
 		}                                                           \
 	} while (0)
 	

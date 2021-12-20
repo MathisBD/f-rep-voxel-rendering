@@ -86,7 +86,7 @@ VkRenderPassBeginInfo RenderPassBeginInfo(
     VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent);
 
 VkPresentInfoKHR PresentInfoKHR(
-    VkSwapchainKHR swapchain, uint32_t swapchainImgIdx);
+    const VkSwapchainKHR* swapchain, const uint32_t* pSwapchainImgIdx);
 
 }   // init
 

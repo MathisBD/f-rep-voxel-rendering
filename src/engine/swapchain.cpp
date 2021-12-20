@@ -43,7 +43,7 @@ void Swapchain::Init(
 	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     // we don't know or care about the starting layout of the attachment
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    //after the renderpass ends, the image has to be on a layout ready for display
+    // after the renderpass ends, the image has to be on a layout ready for display
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachmentRef = {};

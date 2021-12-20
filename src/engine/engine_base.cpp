@@ -12,15 +12,13 @@ void EngineBase::Init()
     InitSDL();
     InitVulkanCore();
     InitVma();
+    InitImmUploadCtxt();
 
     m_descriptorAllocator.Init(m_device.logicalDevice);
     m_cleanupQueue.AddFunction([=] { m_descriptorAllocator.Cleanup(); });
     
     m_descriptorCache.Init(m_device.logicalDevice);
     m_cleanupQueue.AddFunction([=] { m_descriptorCache.Cleanup(); });
-
-    m_renderer.Init(&m_device, m_surface, m_windowExtent);
-    m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
 }
 
 void EngineBase::InitSDL()
@@ -48,6 +46,10 @@ void EngineBase::InitVulkanCore()
     vkb::Instance vkbInst = builder
         .set_app_name("Vulkan Project")
         .require_api_version(1, 1, 0)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
+        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT)
+        //.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
         .enable_validation_layers(true)
         .use_default_debug_messenger()
         .build()
@@ -128,6 +130,28 @@ void EngineBase::InitVma()
     m_cleanupQueue.AddFunction([=] { vmaDestroyAllocator(m_vmaAllocator); });
 }
 
+void EngineBase::InitImmUploadCtxt() 
+{
+    uint32_t queueFamily = m_device.queueFamilies.graphics;
+
+    // Queue
+    vkGetDeviceQueue(m_device.logicalDevice, queueFamily, 0, &m_immUploadCtxt.queue);
+    
+    // Command pool
+    auto poolInfo = vkw::init::CommandPoolCreateInfo(queueFamily);
+    VK_CHECK(vkCreateCommandPool(m_device.logicalDevice, &poolInfo, nullptr, &m_immUploadCtxt.pool));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyCommandPool(m_device.logicalDevice, m_immUploadCtxt.pool, nullptr); 
+    });
+
+    // Fence
+    auto fenceInfo = vkw::init::FenceCreateInfo();
+    VK_CHECK(vkCreateFence(m_device.logicalDevice, &fenceInfo, nullptr, &m_immUploadCtxt.fence));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyFence(m_device.logicalDevice, m_immUploadCtxt.fence, nullptr);
+    });
+}
+
 void EngineBase::Run() 
 {
     SDL_Event e;
@@ -154,11 +178,12 @@ void EngineBase::Cleanup()
     m_cleanupQueue.Flush();
 }
 
-void EngineBase::RecordCommand(std::function<void(VkCommandBuffer)>&& f) 
+void EngineBase::ImmediateSubmit(
+    std::function<void(VkCommandBuffer)>&& record) 
 {
     VkCommandBuffer cmd;
 
-    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_immCmdPool);
+    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_immUploadCtxt.pool);
     VK_CHECK(vkAllocateCommandBuffers(
         m_device.logicalDevice, &allocInfo, &cmd));
 
@@ -166,16 +191,20 @@ void EngineBase::RecordCommand(std::function<void(VkCommandBuffer)>&& f)
         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
 
-    f(cmd);
+    record(cmd);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     auto submitInfo = vkw::init::SubmitInfo(&cmd);
-    VK_CHECK(vkQueueSubmit(m_renderer.graphicsQueue, 1, &submitInfo, m_immFence));
+    VK_CHECK(vkQueueSubmit(
+        m_immUploadCtxt.queue, 1, &submitInfo, m_immUploadCtxt.fence));
 
     // Wait for the command to finish
-    VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_immFence, VK_TRUE, 1000000000));
-    VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_immFence));
+    VK_CHECK(vkWaitForFences(
+        m_device.logicalDevice, 1, &m_immUploadCtxt.fence, VK_TRUE, 1000000000));
+    VK_CHECK(vkResetFences(
+        m_device.logicalDevice, 1, &m_immUploadCtxt.fence));
 
-    VK_CHECK(vkResetCommandPool(m_device.logicalDevice, m_immCmdPool, 0));
+    VK_CHECK(vkResetCommandPool(
+        m_device.logicalDevice, m_immUploadCtxt.pool, 0));
 }

@@ -1,5 +1,6 @@
 #include "vk_wrapper/image.h"
 #include "vk_wrapper/vk_check.h"
+#include <assert.h>
 
 
 
@@ -18,8 +19,8 @@ void vkw::Image::Allocate(
     VkFormat format, 
     VkImageUsageFlags imgUsage, 
     VmaMemoryUsage memUsage,
-    VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-    const std::vector<uint32_t>* pQueueFamilies = nullptr) 
+    VkSharingMode sharingMode /*= VK_SHARING_MODE_EXCLUSIVE*/,
+    const std::vector<uint32_t>* pQueueFamilies /*= nullptr*/) 
 {
     this->extent = extent;
     this->format = format;
@@ -85,6 +86,8 @@ void vkw::Image::ChangeLayout(
     barrier.newLayout = newLayout;
     barrier.srcAccessMask = srcAccess;
     barrier.dstAccessMask = dstAccess;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
     vkCmdPipelineBarrier(cmd,
         srcStages, dstStages,
