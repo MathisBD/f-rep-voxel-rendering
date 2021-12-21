@@ -4,6 +4,7 @@
 #include "VkBootstrap.h"
 #include "vk_wrapper/initializers.h"
 #include "vk_wrapper/vk_check.h"
+#include "engine/timer.h"
 
 
 
@@ -160,6 +161,8 @@ void EngineBase::Run()
     bool quit = false;
 
     while (!quit) {
+        Timer::UpdateTime();
+        
         // poll SDL events
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {

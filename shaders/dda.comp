@@ -154,8 +154,8 @@ void main()
         float dy = 2.0f * (gid.y / float(ddaUniforms.screenResolution.y)) - 1.0f;
         vec3 dir = normalize(
             ddaUniforms.cameraForward.xyz +
-            dx * ddaUniforms.cameraRight.xyz +
-            dy * ddaUniforms.cameraUp.xyz);
+            dx * ddaUniforms.screenWorldSize.x * ddaUniforms.cameraRight.xyz +
+            dy * ddaUniforms.screenWorldSize.y * ddaUniforms.cameraUp.xyz);
 
         float start_t = raygrid_intersect(ddaUniforms.cameraPosition.xyz, dir);
         vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -163,7 +163,6 @@ void main()
             // Project the origin onto the grid, along the ray direction.
             vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir + 0.001f * dir;
             color = raytrace(projected_orig, dir);           
-            //color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
         }
         imageStore(outImg, ivec2(gid), color);
     }

@@ -25,25 +25,21 @@ void Application::InitImage()
 {
     // Allocate the image
     m_image.Init(m_vmaAllocator);
-    if (m_device.queueFamilies.graphics == m_device.queueFamilies.compute) {
-        m_image.Allocate(
-            m_windowExtent,
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY);
-    }
-    else {
-        std::vector<uint32_t> queueFamilies = { 
+    std::vector<uint32_t> queueFamilies;
+    VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (m_device.queueFamilies.graphics != m_device.queueFamilies.compute) {
+        queueFamilies = { 
             m_device.queueFamilies.graphics,
             m_device.queueFamilies.compute };
-        m_image.Allocate(
-            { .width = 256, .height = 256 },
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            VK_SHARING_MODE_CONCURRENT,
-            &queueFamilies);    
+        sharingMode = VK_SHARING_MODE_CONCURRENT;
     }
+    m_image.Allocate(
+        m_windowExtent,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        sharingMode,
+        &queueFamilies);
     m_cleanupQueue.AddFunction([=] { m_image.Cleanup(); });
 
     // Set the image layout (GENERAL).
@@ -234,6 +230,14 @@ void Application::InitCompute()
 
     // We only upload the voxels once.
     UpdateDDAVoxels();
+
+    // Camera
+    m_compute.camera.position = { 0, 0, 40.0f };
+    m_compute.camera.forward = { 0, 0, -1 };
+    m_compute.camera.initialUp = { 0, 1, 0 };
+    m_compute.camera.fovDeg = 45;
+    m_compute.camera.aspectRatio = m_windowExtent.width / (float)m_windowExtent.height;
+    m_compute.camera.Init();
 }
 
 void Application::InitComputePipeline() 
@@ -290,7 +294,7 @@ void Application::RecordComputeCmd(VkCommandBuffer cmd)
         m_compute.pipelineLayout, 
         0, m_compute.dSets.size(), m_compute.dSets.data(), 
         0, nullptr);
-    vkCmdDispatch(cmd, m_image.extent.width / 16, m_image.extent.height / 16, 1);   
+    vkCmdDispatch(cmd, (m_image.extent.width / 16) + 1, (m_image.extent.height / 16) + 1, 1);   
 }
 
 void Application::RecordGraphicsCmd(VkCommandBuffer cmd, uint32_t swapchainImgIdx) 
@@ -372,17 +376,16 @@ void Application::UpdateDDAUniforms()
     contents->screenResolution.y = m_image.extent.height;
 
     // Horizontal field of view in degrees.
-    float FOVdeg = 45.0f;
-    float FOVrad = FOVdeg * (2.0f * glm::pi<float>()) / 360.0f;
+    float FOVrad = glm::radians(m_compute.camera.fovDeg);
     contents->screenWorldSize.x = 2.0f * glm::tan(FOVrad / 2.0f);
     contents->screenWorldSize.y = contents->screenWorldSize.x * 
         (contents->screenResolution.y / (float)contents->screenResolution.x);
-
+    
     // A dummy camera looking down the Z axis, with the Y axis facing up.
-    contents->cameraPosition = { 0.0f, 0.0f, 40.0f, 0.0f };
-    contents->cameraForward = { 0.0f, 0.0f, -1.0f, 0.0f };
-    contents->cameraUp = { 0.0f, 1.0f, 0.0f, 0.0f };
-    contents->cameraRight = { 1.0f, 0.0f, 0.0f, 0.0f };
+    contents->cameraPosition = glm::vec4(m_compute.camera.position, 0.0f);
+    contents->cameraForward  = glm::vec4(m_compute.camera.forward, 0.0f);
+    contents->cameraUp       = glm::vec4(m_compute.camera.Up(), 0.0f);
+    contents->cameraRight    = glm::vec4(m_compute.camera.Right(), 0.0f);
 
     // Grid positions
     contents->gridWorldCoords = { -10.0f, -10.0f, -10.0f, 20.0f };
@@ -400,7 +403,7 @@ void Application::UpdateDDAVoxels()
         for (size_t y = 0; y < res; y++) {
             for (size_t z = 0; z < res; z++) {
                 size_t index = z + y * res + x * res * res;
-                if (glm::distance(glm::vec3({ 10, 10, 10 }), glm::vec3({ x, y, z })) <= 16) {
+                if (glm::distance(glm::vec3({ 64, 64, 64 }), glm::vec3({ x, y, z })) <= 32) {
                     contents[index] = { 1.0f, 1.0f, 0.0f, 1.0f };
                 } 
                 else {
@@ -441,6 +444,8 @@ VkCommandBuffer Application::BuildCommand(
 
 void Application::Draw() 
 {
+    m_compute.camera.Update(m_inputManager);
+
     // Compute command.
     // Wait for the previous command to finish.
     VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_compute.fence, true, 1000000000));

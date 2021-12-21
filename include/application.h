@@ -6,6 +6,7 @@
 #include "engine/swapchain.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
+#include "engine/camera.h"
 
 
 class Application : public EngineBase
@@ -75,7 +76,8 @@ private:
 
         vkw::Buffer ddaUniforms;
         vkw::Buffer ddaVoxels;
-        const size_t gridResolution = 64;
+        const size_t gridResolution = 128;
+        Camera camera;
     } m_compute;
 
     void InitImage();
