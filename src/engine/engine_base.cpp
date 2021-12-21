@@ -14,6 +14,8 @@ void EngineBase::Init()
     InitVma();
     InitImmUploadCtxt();
 
+    m_inputManager.Init({ m_windowExtent.width, m_windowExtent.height });
+
     m_descriptorAllocator.Init(m_device.logicalDevice);
     m_cleanupQueue.AddFunction([=] { m_descriptorAllocator.Cleanup(); });
     
@@ -163,7 +165,11 @@ void EngineBase::Run()
             if (e.type == SDL_QUIT) {
                 quit = true;
             }
+            else if (e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) {
+                m_inputManager.UpdateKey(e);
+            }
         }
+        m_inputManager.UpdateMouse();
         Draw();
     }
 }

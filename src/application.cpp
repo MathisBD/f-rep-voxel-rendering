@@ -27,7 +27,7 @@ void Application::InitImage()
     m_image.Init(m_vmaAllocator);
     if (m_device.queueFamilies.graphics == m_device.queueFamilies.compute) {
         m_image.Allocate(
-            { .width = 256, .height = 256 },
+            m_windowExtent,
             VK_FORMAT_R8G8B8A8_UNORM,
             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY);
@@ -379,7 +379,7 @@ void Application::UpdateDDAUniforms()
         (contents->screenResolution.y / (float)contents->screenResolution.x);
 
     // A dummy camera looking down the Z axis, with the Y axis facing up.
-    contents->cameraPosition = { 0.0f, 0.0f, 10.1f, 0.0f };
+    contents->cameraPosition = { 0.0f, 0.0f, 40.0f, 0.0f };
     contents->cameraForward = { 0.0f, 0.0f, -1.0f, 0.0f };
     contents->cameraUp = { 0.0f, 1.0f, 0.0f, 0.0f };
     contents->cameraRight = { 1.0f, 0.0f, 0.0f, 0.0f };

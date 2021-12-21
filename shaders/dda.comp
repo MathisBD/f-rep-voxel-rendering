@@ -158,14 +158,13 @@ void main()
             dy * ddaUniforms.cameraUp.xyz);
 
         float start_t = raygrid_intersect(ddaUniforms.cameraPosition.xyz, dir);
-        //vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        //if (start_t > 0.0f) {
+        vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        if (start_t > 0.0f) {
             // Project the origin onto the grid, along the ray direction.
-            //vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir;
-            //color = raytrace(projected_orig, dir);           
+            vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir + 0.001f * dir;
+            color = raytrace(projected_orig, dir);           
             //color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-        //}
-        vec4 color = vec4(start_t, start_t, start_t, 1.0f);
+        }
         imageStore(outImg, ivec2(gid), color);
     }
 }

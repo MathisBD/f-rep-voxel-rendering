@@ -8,6 +8,7 @@
 #include "vk_wrapper/buffer.h"
 #include "third_party/vk_mem_alloc.h"
 #include <glm/glm.hpp>
+#include "engine/input_manager.h"
 
 
 class EngineBase
@@ -29,6 +30,7 @@ protected:
     
     // Engine components
     CleanupQueue m_cleanupQueue;
+    InputManager m_inputManager;
     vkw::DescriptorLayoutCache m_descriptorCache;
     vkw::DescriptorAllocator m_descriptorAllocator;
     VmaAllocator m_vmaAllocator;
@@ -37,6 +39,7 @@ protected:
         VkCommandPool pool;
         VkFence fence;
     } m_immUploadCtxt;
+    
 
     void InitSDL();
     void InitVulkanCore();

@@ -24,6 +24,6 @@ void main()
 	);
 
 	// output the position of each vertex
-	gl_Position = vec4(0.9f * positions[gl_VertexIndex], 1.0f);
+	gl_Position = vec4(positions[gl_VertexIndex], 1.0f);
 	texCoords = uvCoords[gl_VertexIndex];
 }
