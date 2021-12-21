@@ -14,6 +14,8 @@ void vkw::Buffer::Cleanup()
 
 void vkw::Buffer::Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memUsage) 
 {
+    this->size = size;
+
     VkBufferCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     info.pNext = nullptr;

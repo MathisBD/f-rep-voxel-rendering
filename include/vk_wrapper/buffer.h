@@ -11,6 +11,7 @@ namespace vkw
 
         VkBuffer buffer;
         VmaAllocation allocation;
+        size_t size;
 
         void Init(VmaAllocator allocator);
         void Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memUsage);

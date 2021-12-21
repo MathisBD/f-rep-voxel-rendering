@@ -1,22 +1,6 @@
 #include "vk_wrapper/initializers.h"
 
 
-VkDeviceQueueCreateInfo vkw::init::DeviceQueueCreateInfo(
-    uint32_t queueFamily,
-    float queuePriority /*= 0.0f*/) 
-{
-    VkDeviceQueueCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    info.pNext = nullptr;
-
-    info.queueFamilyIndex = queueFamily;
-    info.queueCount = 1;
-    info.pQueuePriorities = &queuePriority;
-
-    return info;    
-}
-
-
 VkCommandPoolCreateInfo vkw::init::CommandPoolCreateInfo(
     uint32_t queueFamilyIndex, 
     VkCommandPoolCreateFlags flags /*= 0*/) 
@@ -302,7 +286,7 @@ VkSamplerCreateInfo vkw::init::SamplerCreateInfo(
 }
 
 VkRenderPassBeginInfo vkw::init::RenderPassBeginInfo(
-    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent) 
+    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent, const VkClearValue* pClear) 
 {
     VkRenderPassBeginInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -314,10 +298,8 @@ VkRenderPassBeginInfo vkw::init::RenderPassBeginInfo(
     info.renderArea.extent = extent;
     info.framebuffer = framebuffer;
 
-    VkClearValue clearColor;
-    clearColor.color = { { 0.0f, 0.0f, 0.0f , 1.0f } };
     info.clearValueCount = 1;
-    info.pClearValues = &clearColor;
+    info.pClearValues = pClear;
 
     return info;
 }

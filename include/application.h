@@ -19,6 +19,7 @@ private:
         // The world size of the screen boundaries
         // at one unit away from the camera position (zw unused).
         glm::vec4 screenWorldSize;
+
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
         // The direction the camera is looking in (w unused).
@@ -27,6 +28,12 @@ private:
         glm::vec4 cameraForward;
         glm::vec4 cameraUp;
         glm::vec4 cameraRight;
+
+        // The world positions of the grid bottom left corner (xyz)
+        // and the world size of the grid (w).
+        glm::vec4 gridWorldCoords;
+        // The number of subdivisions along each grid axis (w unused).
+        glm::uvec4 gridResolution;
     } DDAUniforms;
 
     vkw::Image m_image;
@@ -67,6 +74,8 @@ private:
         VkFence fence; 
 
         vkw::Buffer ddaUniforms;
+        vkw::Buffer ddaVoxels;
+        const size_t gridResolution = 64;
     } m_compute;
 
     void InitImage();
@@ -81,6 +90,7 @@ private:
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd);
 
+    void UpdateDDAVoxels();
     void UpdateDDAUniforms();
     VkCommandBuffer BuildCommand(
         VkCommandPool pool, 

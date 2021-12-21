@@ -19,6 +19,7 @@ namespace vkw
             { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,    1.0f },
             { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,            1.0f },
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,    1.0f },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,             1.0f }
         };
 		
         VkDevice device = VK_NULL_HANDLE;

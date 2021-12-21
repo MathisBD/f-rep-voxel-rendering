@@ -7,11 +7,6 @@ namespace vkw
 {
 namespace init
 {
-
-VkDeviceQueueCreateInfo DeviceQueueCreateInfo(
-    uint32_t queueFamily,
-    float queuePriority = 0.0f);
-
 VkCommandPoolCreateInfo CommandPoolCreateInfo(
     uint32_t queueFamilyIndex, 
     VkCommandPoolCreateFlags flags = 0);
@@ -83,7 +78,7 @@ VkSamplerCreateInfo SamplerCreateInfo(
     VkFilter filters, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 VkRenderPassBeginInfo RenderPassBeginInfo(
-    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent);
+    VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent, const VkClearValue* pClear);
 
 VkPresentInfoKHR PresentInfoKHR(
     const VkSwapchainKHR* swapchain, const uint32_t* pSwapchainImgIdx);

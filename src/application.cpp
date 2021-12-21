@@ -222,6 +222,18 @@ void Application::InitCompute()
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_compute.ddaUniforms.Cleanup(); });
+
+    // Voxels buffer
+    size_t res = m_compute.gridResolution;
+    m_compute.ddaVoxels.Init(m_vmaAllocator);
+    m_compute.ddaVoxels.Allocate(
+        res * res * res * sizeof(glm::vec4),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_cleanupQueue.AddFunction([=] { m_compute.ddaVoxels.Cleanup(); });
+
+    // We only upload the voxels once.
+    UpdateDDAVoxels();
 }
 
 void Application::InitComputePipeline() 
@@ -238,10 +250,13 @@ void Application::InitComputePipeline()
     auto outImageInfo = vkw::init::DescriptorImageInfo(
         m_sampler, m_imageView, VK_IMAGE_LAYOUT_GENERAL);
     auto ddaUniformsInfo = vkw::init::DescriptorBufferInfo(
-        m_compute.ddaUniforms.buffer, 0, sizeof(DDAUniforms));
+        m_compute.ddaUniforms.buffer, 0, m_compute.ddaUniforms.size);
+    auto ddaVoxelsInfo = vkw::init::DescriptorBufferInfo(
+        m_compute.ddaVoxels.buffer, 0, m_compute.ddaVoxels.size);
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
         .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &ddaUniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &ddaVoxelsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_compute.dSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -286,10 +301,18 @@ void Application::RecordGraphicsCmd(VkCommandBuffer cmd, uint32_t swapchainImgId
         0, VK_ACCESS_SHADER_READ_BIT);*/
 
     // Begin renderpass
+    
+    VkClearValue clear;
+    clear.color.float32[0] = 0.0f;
+    clear.color.float32[1] = 0.0f;
+    clear.color.float32[2] = 0.0f;
+    clear.color.float32[3] = 1.0f;
+
     auto rpInfo = vkw::init::RenderPassBeginInfo(
         m_graphics.swapchain.renderPass, 
         m_graphics.swapchain.framebuffers[swapchainImgIdx], 
-        m_graphics.swapchain.windowExtent);
+        m_graphics.swapchain.windowExtent,
+        &clear);
     vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipeline);
@@ -356,12 +379,37 @@ void Application::UpdateDDAUniforms()
         (contents->screenResolution.y / (float)contents->screenResolution.x);
 
     // A dummy camera looking down the Z axis, with the Y axis facing up.
-    contents->cameraPosition = { 0.0f, 0.0f, 10.0f, 0.0f };
+    contents->cameraPosition = { 0.0f, 0.0f, 10.1f, 0.0f };
     contents->cameraForward = { 0.0f, 0.0f, -1.0f, 0.0f };
     contents->cameraUp = { 0.0f, 1.0f, 0.0f, 0.0f };
     contents->cameraRight = { 1.0f, 0.0f, 0.0f, 0.0f };
 
+    // Grid positions
+    contents->gridWorldCoords = { -10.0f, -10.0f, -10.0f, 20.0f };
+    contents->gridResolution = { m_compute.gridResolution, m_compute.gridResolution, m_compute.gridResolution, 0 };
+
     m_compute.ddaUniforms.Unmap(); 
+}
+
+void Application::UpdateDDAVoxels() 
+{
+    glm::vec4* contents = (glm::vec4*)m_compute.ddaVoxels.Map();
+
+    size_t res = m_compute.gridResolution;
+    for (size_t x = 0; x < res; x++) {
+        for (size_t y = 0; y < res; y++) {
+            for (size_t z = 0; z < res; z++) {
+                size_t index = z + y * res + x * res * res;
+                if (glm::distance(glm::vec3({ 10, 10, 10 }), glm::vec3({ x, y, z })) <= 16) {
+                    contents[index] = { 1.0f, 1.0f, 0.0f, 1.0f };
+                } 
+                else {
+                    contents[index] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                }
+            }
+        }
+    }
+    m_compute.ddaVoxels.Unmap();    
 }
 
 VkCommandBuffer Application::BuildCommand(

@@ -4,17 +4,143 @@ layout (local_size_x = 16, local_size_y = 16) in;
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
 layout (set = 0, binding = 1) uniform DDAUniforms {
     uvec4 screenResolution;
-    vec4 screenWorldSize; 
+    vec4 screenWorldSize;
+
     vec4 cameraPosition;
-    
     vec4 cameraForward;
     vec4 cameraUp;
     vec4 cameraRight;
+
+    vec4 gridWorldCoords;
+    uvec4 gridResolution;
 } ddaUniforms;
 
-vec4 raytrace(vec3 origin, vec3 direction)
+struct VoxelData {
+    vec4 color;
+};
+
+layout (std140, set = 0, binding = 2) readonly buffer Voxels {
+    VoxelData data[];
+} voxels;
+
+
+// returns 0 if x < 0
+//         1 if x > 0
+//        (0.5 if x == 0)
+float sign01(float x)
 {
-    return vec4(direction, 1.0f);
+    return 2.0f * sign(x) - 1.0f;
+}
+
+float max3_(float a, float b, float c)
+{
+    return max(a, max(b, c));
+}
+
+float min3_(float a, float b, float c)
+{
+    return min(a, min(b, c));
+}
+
+// A negative value means no intersection.
+// A positive value t means the intersection point is at orig + t * dir.
+float raygrid_intersect(vec3 orig, vec3 dir)
+{
+    vec3 t_0 = vec3(
+        (ddaUniforms.gridWorldCoords.x - orig.x) / dir.x,
+        (ddaUniforms.gridWorldCoords.y - orig.y) / dir.y,
+        (ddaUniforms.gridWorldCoords.z - orig.z) / dir.z); 
+    vec3 t_1 = vec3(
+        (ddaUniforms.gridWorldCoords.x + ddaUniforms.gridWorldCoords.w - orig.x) / dir.x,
+        (ddaUniforms.gridWorldCoords.y + ddaUniforms.gridWorldCoords.w - orig.y) / dir.y,
+        (ddaUniforms.gridWorldCoords.z + ddaUniforms.gridWorldCoords.w - orig.z) / dir.z); 
+    
+#define SWAP(a, b) { float tmp = a; a = b; b = tmp; }
+    if (t_0.x > t_1.x) SWAP(t_0.x, t_1.x)
+    if (t_0.y > t_1.y) SWAP(t_0.y, t_1.y)
+    if (t_0.z > t_1.z) SWAP(t_0.z, t_1.z)
+#undef SWAP
+
+    float t_enter = max3_(t_0.x, t_0.y, t_0.z);
+    float t_leave = min3_(t_1.x, t_1.y, t_1.z);
+
+    // no intersection
+    if (t_enter > t_leave || t_leave < 0.0f) {
+        return -1.0f;
+    }
+    // the origin is out of the grid.
+    if (t_enter > 0.0f) {
+        return t_enter;
+    }
+    // the origin is in the grid.
+    else {
+        return 0.0f;
+    }
+
+}
+
+
+vec4 raytrace(vec3 orig, vec3 dir)
+{
+    vec3 cellSize = vec3(
+        ddaUniforms.gridWorldCoords.w / ddaUniforms.gridResolution.x,
+        ddaUniforms.gridWorldCoords.w / ddaUniforms.gridResolution.y,
+        ddaUniforms.gridWorldCoords.w / ddaUniforms.gridResolution.z);
+    vec3 normOrig = vec3(
+        (orig.x - ddaUniforms.gridWorldCoords.x) / cellSize.x,
+        (orig.y - ddaUniforms.gridWorldCoords.y) / cellSize.y,
+        (orig.z - ddaUniforms.gridWorldCoords.z) / cellSize.z);
+    
+    // Differential cell/time values.
+    ivec3 d_cell = ivec3(sign(dir.x), sign(dir.y), sign(dir.z));
+    vec3 d_t = vec3(cellSize.x / abs(dir.x), cellSize.y / abs(dir.y),  cellSize.z / abs(dir.z));
+    
+    // Current cell/time values.
+    float curr_t = 0;
+    ivec3 curr_cell = ivec3(floor(normOrig.x), floor(normOrig.y), floor(normOrig.z));
+    
+    // Next crossing times.
+    vec3 nextCross_t = curr_cell - normOrig;
+    nextCross_t.x = (curr_cell.x + sign01(dir.x) - normOrig.x) * cellSize.x / dir.x;
+    nextCross_t.y = (curr_cell.y + sign01(dir.y) - normOrig.y) * cellSize.y / dir.y;
+    nextCross_t.z = (curr_cell.z + sign01(dir.z) - normOrig.z) * cellSize.z / dir.z;
+
+    while (true) {
+        // Out of grid
+        if (curr_cell.x < 0 || curr_cell.x >= ddaUniforms.gridResolution.x || 
+            curr_cell.y < 0 || curr_cell.y >= ddaUniforms.gridResolution.y || 
+            curr_cell.z < 0 || curr_cell.z >= ddaUniforms.gridResolution.z) {
+            return vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
+        // Read the cell color
+        uint index = curr_cell.z + 
+            ddaUniforms.gridResolution.z * curr_cell.y + 
+            ddaUniforms.gridResolution.z * ddaUniforms.gridResolution.y * curr_cell.x; 
+        vec4 color = voxels.data[index].color;
+        if (color.a >= 0.9f) {
+            return color;
+        }
+
+        // x
+        if (nextCross_t.x <= nextCross_t.y && nextCross_t.x <= nextCross_t.z) {
+            curr_t = nextCross_t.x;
+            nextCross_t.x += d_t.x;
+            curr_cell.x += d_cell.x;
+        }   
+        // y
+        else if (nextCross_t.y <= nextCross_t.z) {
+            curr_t = nextCross_t.y;
+            nextCross_t.y += d_t.y;
+            curr_cell.y += d_cell.y;
+        }
+        // z
+        else {
+            curr_t = nextCross_t.z;
+            nextCross_t.z += d_t.z;
+            curr_cell.z += d_cell.z;
+        }
+    }
 }
 
 void main()
@@ -23,14 +149,23 @@ void main()
     if (gid.x < ddaUniforms.screenResolution.x && 
         gid.y < ddaUniforms.screenResolution.y) {
     
+        // Compute the ray direction
         float dx = 2.0f * (gid.x / float(ddaUniforms.screenResolution.x)) - 1.0f;
         float dy = 2.0f * (gid.y / float(ddaUniforms.screenResolution.y)) - 1.0f;
-        vec3 direction =
+        vec3 dir = normalize(
             ddaUniforms.cameraForward.xyz +
             dx * ddaUniforms.cameraRight.xyz +
-            dy * ddaUniforms.cameraUp.xyz;
+            dy * ddaUniforms.cameraUp.xyz);
 
-        vec4 color = raytrace(ddaUniforms.cameraPosition.xyz, normalize(direction));        
+        float start_t = raygrid_intersect(ddaUniforms.cameraPosition.xyz, dir);
+        //vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        //if (start_t > 0.0f) {
+            // Project the origin onto the grid, along the ray direction.
+            //vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir;
+            //color = raytrace(projected_orig, dir);           
+            //color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+        //}
+        vec4 color = vec4(start_t, start_t, start_t, 1.0f);
         imageStore(outImg, ivec2(gid), color);
     }
 }
