@@ -3,11 +3,12 @@
 #include "vk_wrapper/image.h"
 #include "vk_wrapper/buffer.h"
 #include <vector>
-#include "engine/swapchain.h"
+#include "engine/render_target.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
 #include "engine/camera.h"
 #include "engine/cube_grid.h"
+#include "engine/renderer.h"
 
 
 class Application : public EngineBase
@@ -51,30 +52,8 @@ private:
         glm::vec4 direction;
     } DDALight;
 
-    vkw::Image m_image;
-    VkImageView m_imageView;
-    VkSampler m_sampler;
-
-    struct {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
-        std::vector<VkDescriptorSet> dSets;
-    
-        VkQueue queue;
-        VkCommandPool cmdPool;
-        // signaled when the graphics command is finished,
-        // waited on by the compute command.
-        VkSemaphore semaphore;
-        // signaled when the graphics command is finished,
-        // waited on by the present command;
-        VkSemaphore presentSem;
-        // signaled when the swapchain image is acquired
-        VkSemaphore imageReadySem;
-        
-        Swapchain swapchain;
-        // signaled when the graphics command is finished
-        VkFence fence;
-    } m_graphics;
+    RenderTarget m_target;
+    Renderer m_renderer;
 
     struct {
         VkPipeline pipeline;
@@ -96,12 +75,7 @@ private:
         Camera camera;
     } m_compute;
 
-    void InitImage();
-
-    void InitGraphicsPipeline();
-    void InitGraphics();
-    void RecordGraphicsCmd(VkCommandBuffer cmd, uint32_t swapchainImgIdx);
-    void SubmitGraphicsCmd(VkCommandBuffer cmd);
+    void InitRenderTarget();
 
     void InitComputePipeline();
     void InitCompute();
