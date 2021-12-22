@@ -55,36 +55,13 @@ private:
     RenderTarget m_target;
     Renderer m_renderer;
 
-    struct {
-        VkPipeline pipeline;
-        VkPipelineLayout pipelineLayout;
-        std::vector<VkDescriptorSet> dSets;
-        
-        VkQueue queue;
-        VkCommandPool cmdPool;
-        // signaled when the compute command is finished
-        VkSemaphore semaphore;
-        // signaled when the compute command is finished
-        VkFence fence; 
-
-        vkw::Buffer ddaUniforms;
-        vkw::Buffer ddaVoxels;
-        CubeGrid voxelGrid;
-        vkw::Buffer ddaLights;
-        const size_t lightCount = 2;
-        Camera camera;
-    } m_compute;
 
     void InitRenderTarget();
-
-    void InitComputePipeline();
-    void InitCompute();
-    void RecordComputeCmd(VkCommandBuffer cmd);
-    void SubmitComputeCmd(VkCommandBuffer cmd);
 
     void UpdateDDAVoxels();
     void UpdateDDAUniforms();
     void UpdateDDALights();
+    
     VkCommandBuffer BuildCommand(
         VkCommandPool pool, 
         std::function<void(VkCommandBuffer)>&& record);
