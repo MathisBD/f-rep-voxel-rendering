@@ -162,7 +162,7 @@ void EngineBase::Run()
 
     while (!quit) {
         Timer::UpdateTime();
-        printf("time in ms: %.1f\n", 1000.0f * Timer::s_dt);
+        
         // poll SDL events
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {

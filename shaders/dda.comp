@@ -1,7 +1,11 @@
 #version 450
 
+
+// Kernel group size.
 layout (local_size_x = 16, local_size_y = 16) in;
+// Output image.
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
+// Shader basic data.
 layout (set = 0, binding = 1) uniform DDAUniforms {
     uvec4 screenResolution;
     vec4 screenWorldSize;
@@ -15,14 +19,25 @@ layout (set = 0, binding = 1) uniform DDAUniforms {
     uvec4 gridResolution;
 } ddaUniforms;
 
+// Voxels
 struct VoxelData {
     vec4 color;
+    vec4 normal;
 };
-
 layout (std140, set = 0, binding = 2) readonly buffer Voxels {
     VoxelData data[];
 } voxels;
 
+// Lights
+struct DirectionalLight {
+    vec4 color;
+    vec4 direction;
+};
+layout (std140, set = 0, binding = 3) uniform LightBuffer
+{
+    uvec4 lightCount;
+    DirectionalLight lights[];
+} lightBuffer;
 
 // returns 0 if x < 0
 //         1 if x > 0

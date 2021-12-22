@@ -37,6 +37,19 @@ private:
         glm::uvec4 gridResolution;
     } DDAUniforms;
 
+    typedef struct {
+        glm::vec4 color;
+        // The normal vector at the center of the voxel (w unused).
+        glm::vec4 normal;
+    } DDAVoxel;
+
+    // A single point light.
+    typedef struct {
+        glm::vec4 color;
+        // The direction the light is pointing (w unused).
+        glm::vec4 direction;
+    } DDALight;
+
     vkw::Image m_image;
     VkImageView m_imageView;
     VkSampler m_sampler;
@@ -77,6 +90,8 @@ private:
         vkw::Buffer ddaUniforms;
         vkw::Buffer ddaVoxels;
         const size_t gridResolution = 128;
+        vkw::Buffer ddaLights;
+        const size_t lightCount = 2;
         Camera camera;
     } m_compute;
 
@@ -94,6 +109,7 @@ private:
 
     void UpdateDDAVoxels();
     void UpdateDDAUniforms();
+    void UpdateDDALights();
     VkCommandBuffer BuildCommand(
         VkCommandPool pool, 
         std::function<void(VkCommandBuffer)>&& record);

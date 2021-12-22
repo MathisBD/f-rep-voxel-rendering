@@ -219,11 +219,19 @@ void Application::InitCompute()
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_compute.ddaUniforms.Cleanup(); });
 
+    // Lights buffer
+    m_compute.ddaLights.Init(m_vmaAllocator);
+    m_compute.ddaLights.Allocate(
+        sizeof(glm::vec4) + m_compute.lightCount * sizeof(DDALight),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_cleanupQueue.AddFunction([=] { m_compute.ddaLights.Cleanup(); });
+
     // Voxels buffer
     size_t res = m_compute.gridResolution;
     m_compute.ddaVoxels.Init(m_vmaAllocator);
     m_compute.ddaVoxels.Allocate(
-        res * res * res * sizeof(glm::vec4),
+        res * res * res * sizeof(DDAVoxel),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_compute.ddaVoxels.Cleanup(); });
@@ -257,10 +265,13 @@ void Application::InitComputePipeline()
         m_compute.ddaUniforms.buffer, 0, m_compute.ddaUniforms.size);
     auto ddaVoxelsInfo = vkw::init::DescriptorBufferInfo(
         m_compute.ddaVoxels.buffer, 0, m_compute.ddaVoxels.size);
+    auto ddaLightsInfo = vkw::init::DescriptorBufferInfo(
+        m_compute.ddaLights.buffer, 0, m_compute.ddaLights.size);
     vkw::DescriptorBuilder(&m_descriptorCache, &m_descriptorAllocator)
         .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &ddaUniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &ddaVoxelsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &ddaLightsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_compute.dSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -396,23 +407,52 @@ void Application::UpdateDDAUniforms()
 
 void Application::UpdateDDAVoxels() 
 {
-    glm::vec4* contents = (glm::vec4*)m_compute.ddaVoxels.Map();
+    auto density = [] (float x, float y, float z) {
+        return 32.0f*32.0f - (x*x+y*y+z*z);
+    };
+
+    DDAVoxel* contents = (DDAVoxel*)m_compute.ddaVoxels.Map();
 
     size_t res = m_compute.gridResolution;
     for (size_t x = 0; x < res; x++) {
         for (size_t y = 0; y < res; y++) {
             for (size_t z = 0; z < res; z++) {
                 size_t index = z + y * res + x * res * res;
-                if (glm::distance(glm::vec3({ 64, 64, 64 }), glm::vec3({ x, y, z })) <= 32) {
-                    contents[index] = { 1.0f, 1.0f, 0.0f, 1.0f };
+                float d = density(x, y, z);
+                if (d >= 0.0f) {
+                    float eps = 0.0001f;
+                    contents[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
+                    contents[index].normal = { 
+                        (density(x + eps, y, z) - d) / eps,
+                        (density(x, y + eps, z) - d) / eps,
+                        (density(x, y, z + eps) - d) / eps,
+                        0.0f };
                 } 
                 else {
-                    contents[index] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    contents[index].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    contents[index].normal = { 0.0f, 0.0f, 0.0f, 0.0f };
                 }
             }
         }
     }
     m_compute.ddaVoxels.Unmap();    
+}
+
+void Application::UpdateDDALights() 
+{
+    void* contents = m_compute.ddaLights.Map();
+
+    glm::uvec4* count = (glm::uvec4*)contents;
+    count->x = m_compute.lightCount;
+
+    DDALight* lights = (DDALight*)(reinterpret_cast<size_t>(contents) + sizeof(glm::uvec4));
+    lights[0].direction = { -1, -1, 0, 0 };
+    lights[0].color = { 1, 0, 0, 0 };
+
+    lights[1].direction = { 1, -1, 0, 0 };
+    lights[1].color = { 0, 0, 1, 0 };
+
+    m_compute.ddaLights.Unmap();    
 }
 
 VkCommandBuffer Application::BuildCommand(
