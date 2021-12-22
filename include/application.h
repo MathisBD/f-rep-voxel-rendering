@@ -7,6 +7,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
 #include "engine/camera.h"
+#include "engine/cube_grid.h"
 
 
 class Application : public EngineBase
@@ -89,7 +90,7 @@ private:
 
         vkw::Buffer ddaUniforms;
         vkw::Buffer ddaVoxels;
-        const size_t gridResolution = 128;
+        CubeGrid voxelGrid;
         vkw::Buffer ddaLights;
         const size_t lightCount = 2;
         Camera camera;

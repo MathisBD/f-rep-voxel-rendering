@@ -3,6 +3,7 @@
 #include "vk_wrapper/vk_check.h"
 #include "vk_wrapper/shader.h"
 #include "vk_wrapper/pipeline_builder.h"
+#include <glm/gtx/norm.hpp>
 
 
 void Application::Init()
@@ -227,11 +228,14 @@ void Application::InitCompute()
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_compute.ddaLights.Cleanup(); });
 
+    // Voxel grid
+    m_compute.voxelGrid = CubeGrid(128, { -10, -10, -10 }, 20);
+
     // Voxels buffer
-    size_t res = m_compute.gridResolution;
+    size_t dim = m_compute.voxelGrid.dim;
     m_compute.ddaVoxels.Init(m_vmaAllocator);
     m_compute.ddaVoxels.Allocate(
-        res * res * res * sizeof(DDAVoxel),
+        dim * dim * dim * sizeof(DDAVoxel),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_compute.ddaVoxels.Cleanup(); });
@@ -399,8 +403,8 @@ void Application::UpdateDDAUniforms()
     contents->cameraRight    = glm::vec4(m_compute.camera.Right(), 0.0f);
 
     // Grid positions
-    contents->gridWorldCoords = { -10.0f, -10.0f, -10.0f, 20.0f };
-    contents->gridResolution = { m_compute.gridResolution, m_compute.gridResolution, m_compute.gridResolution, 0 };
+    contents->gridWorldCoords = glm::vec4(m_compute.voxelGrid.lowVertex, m_compute.voxelGrid.worldSize);
+    contents->gridResolution = { m_compute.voxelGrid.dim, m_compute.voxelGrid.dim, m_compute.voxelGrid.dim, 0 };
 
     m_compute.ddaUniforms.Unmap(); 
 }
@@ -408,27 +412,28 @@ void Application::UpdateDDAUniforms()
 void Application::UpdateDDAVoxels() 
 {
     auto density = [] (float x, float y, float z) {
-        float dx = x - 64;
-        float dy = y - 64;
-        float dz = z - 64;
-        return 32.0f*32.0f - (dx*dx+dy*dy+dz*dz);
+        glm::vec3 pos = { x, y, z };
+        glm::vec3 center = { 0, 0, 0 };
+        float radius = 5;
+        return radius*radius - glm::length2(pos - center);
     };
 
     DDAVoxel* contents = (DDAVoxel*)m_compute.ddaVoxels.Map();
 
-    size_t res = m_compute.gridResolution;
-    for (size_t x = 0; x < res; x++) {
-        for (size_t y = 0; y < res; y++) {
-            for (size_t z = 0; z < res; z++) {
-                size_t index = z + y * res + x * res * res;
-                float d = density(x, y, z);
+    size_t dim = m_compute.voxelGrid.dim;
+    for (size_t x = 0; x < dim; x++) {
+        for (size_t y = 0; y < dim; y++) {
+            for (size_t z = 0; z < dim; z++) {
+                size_t index = z + y * dim + x * dim * dim;
+                glm::vec3 pos = m_compute.voxelGrid.WorldPosition({ x, y, z });
+                float d = density(pos.x, pos.y, pos.z);
                 if (d >= 0.0f) {
                     float eps = 0.001f;
                     contents[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
                     contents[index].normal = { 
-                        (density(x + eps, y, z) - d) / eps,
-                        (density(x, y + eps, z) - d) / eps,
-                        (density(x, y, z + eps) - d) / eps,
+                        (density(pos.x + eps, pos.y, pos.z) - d) / eps,
+                        (density(pos.x, pos.y + eps, pos.z) - d) / eps,
+                        (density(pos.x, pos.y, pos.z + eps) - d) / eps,
                         0.0f };
                     contents[index].normal = -glm::normalize(contents[index].normal);
                 } 
