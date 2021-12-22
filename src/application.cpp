@@ -408,7 +408,10 @@ void Application::UpdateDDAUniforms()
 void Application::UpdateDDAVoxels() 
 {
     auto density = [] (float x, float y, float z) {
-        return 32.0f*32.0f - (x*x+y*y+z*z);
+        float dx = x - 64;
+        float dy = y - 64;
+        float dz = z - 64;
+        return 32.0f*32.0f - (dx*dx+dy*dy+dz*dz);
     };
 
     DDAVoxel* contents = (DDAVoxel*)m_compute.ddaVoxels.Map();
@@ -420,13 +423,14 @@ void Application::UpdateDDAVoxels()
                 size_t index = z + y * res + x * res * res;
                 float d = density(x, y, z);
                 if (d >= 0.0f) {
-                    float eps = 0.0001f;
+                    float eps = 0.001f;
                     contents[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
                     contents[index].normal = { 
                         (density(x + eps, y, z) - d) / eps,
                         (density(x, y + eps, z) - d) / eps,
                         (density(x, y, z + eps) - d) / eps,
                         0.0f };
+                    contents[index].normal = -glm::normalize(contents[index].normal);
                 } 
                 else {
                     contents[index].color = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -450,7 +454,7 @@ void Application::UpdateDDALights()
     lights[0].color = { 1, 0, 0, 0 };
 
     lights[1].direction = { 1, -1, 0, 0 };
-    lights[1].color = { 0, 0, 1, 0 };
+    lights[1].color = { 0, 0, 2, 0 };
 
     m_compute.ddaLights.Unmap();    
 }
@@ -490,8 +494,9 @@ void Application::Draw()
     // Wait for the previous command to finish.
     VK_CHECK(vkWaitForFences(m_device.logicalDevice, 1, &m_compute.fence, true, 1000000000));
     VK_CHECK(vkResetFences(m_device.logicalDevice, 1, &m_compute.fence));
-    // Update the uniform buffer
+    // Update the uniform buffers
     UpdateDDAUniforms();
+    UpdateDDALights();
     // Submit a new command
     auto computeCmd = BuildCommand(m_compute.cmdPool, 
         [=] (VkCommandBuffer cmd) { RecordComputeCmd(cmd); });

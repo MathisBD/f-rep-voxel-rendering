@@ -36,7 +36,7 @@ struct DirectionalLight {
 layout (std140, set = 0, binding = 3) uniform LightBuffer
 {
     uvec4 lightCount;
-    DirectionalLight lights[];
+    DirectionalLight lights[8]; // maximum 8 lights for now
 } lightBuffer;
 
 // returns 0 if x < 0
@@ -91,6 +91,24 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     }
 }
 
+vec4 shade(ivec3 cell, vec3 ray_dir)
+{
+    uint index = cell.z +
+        ddaUniforms.gridResolution.z * cell.y + 
+        ddaUniforms.gridResolution.z * ddaUniforms.gridResolution.y * cell.x; 
+    VoxelData voxel = voxels.data[index];
+
+    vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < lightBuffer.lightCount.x; i++) {
+        DirectionalLight light = lightBuffer.lights[i];
+        float intensity = max(dot(-light.direction, voxel.normal), 0.0f);
+        diffuse += intensity * light.color;
+    }
+
+    vec4 ambient = vec4(0.2f, 0.2f, 0.2f, 0.0f);
+
+    return voxel.color * (ambient + diffuse);
+}
 
 vec4 raytrace(vec3 orig, vec3 dir)
 {
@@ -130,7 +148,7 @@ vec4 raytrace(vec3 orig, vec3 dir)
             ddaUniforms.gridResolution.z * ddaUniforms.gridResolution.y * curr_cell.x; 
         vec4 color = voxels.data[index].color;
         if (color.a >= 0.9f) {
-            return color;
+            return shade(curr_cell, dir);
         }
 
         // x
