@@ -17,11 +17,11 @@ void EngineBase::Init()
 
     m_inputManager.Init({ m_windowExtent.width, m_windowExtent.height });
 
-    m_descriptorAllocator.Init(m_device.logicalDevice);
-    m_cleanupQueue.AddFunction([=] { m_descriptorAllocator.Cleanup(); });
+    m_descAllocator.Init(m_device.logicalDevice);
+    m_cleanupQueue.AddFunction([=] { m_descAllocator.Cleanup(); });
     
-    m_descriptorCache.Init(m_device.logicalDevice);
-    m_cleanupQueue.AddFunction([=] { m_descriptorCache.Cleanup(); });
+    m_descCache.Init(m_device.logicalDevice);
+    m_cleanupQueue.AddFunction([=] { m_descCache.Cleanup(); });
 }
 
 void EngineBase::InitSDL()

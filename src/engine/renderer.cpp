@@ -6,6 +6,7 @@
 #include "vk_wrapper/pipeline_builder.h"
 #include <assert.h>
 
+
 void Renderer::Init(
     vkw::Device* device, 
     vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
@@ -28,6 +29,8 @@ void Renderer::Init(
     
     InitSynchronization();
     InitPipeline();
+
+    SetClearColor({ 0.0f, 0.0f, 0.0f });
 }
 
 void Renderer::Cleanup() 
@@ -211,18 +214,12 @@ void Renderer::RecordRenderCmd(VkCommandBuffer cmd)
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         0, VK_ACCESS_SHADER_READ_BIT);*/
 
-    VkClearValue clear;
-    clear.color.float32[0] = 0.0f;
-    clear.color.float32[1] = 0.0f;
-    clear.color.float32[2] = 0.0f;
-    clear.color.float32[3] = 1.0f;
-
     // Begin renderpass
     auto rpInfo = vkw::init::RenderPassBeginInfo(
         m_renderPass, 
         m_swapchain.framebuffers[m_swapCurrImg], 
         m_swapchain.windowExtent,
-        &clear);
+        &m_clearValue);
     vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
@@ -287,4 +284,12 @@ void Renderer::EndFrame()
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = &m_presentSem;
     VK_CHECK(vkQueuePresentKHR(m_queue, &presentInfo));  
+}
+
+void Renderer::SetClearColor(glm::vec3 color) 
+{
+    m_clearValue.color.float32[0] = color.x;
+    m_clearValue.color.float32[1] = color.y;
+    m_clearValue.color.float32[2] = color.z;
+    m_clearValue.color.float32[3] = 1.0f;
 }

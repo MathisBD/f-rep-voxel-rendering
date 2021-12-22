@@ -38,7 +38,4 @@ private:
     void Move(float x, float y, float z);
     void RotateHorizontal(float x);
     void RotateVertical(float y);
-
-    void UpdateMatrix();
-    void UpdateFrustrumPlanes();
 };

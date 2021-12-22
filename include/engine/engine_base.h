@@ -31,8 +31,8 @@ protected:
     // Engine components
     CleanupQueue m_cleanupQueue;
     InputManager m_inputManager;
-    vkw::DescriptorLayoutCache m_descriptorCache;
-    vkw::DescriptorAllocator m_descriptorAllocator;
+    vkw::DescriptorLayoutCache m_descCache;
+    vkw::DescriptorAllocator m_descAllocator;
     VmaAllocator m_vmaAllocator;
     struct {
         VkQueue queue;

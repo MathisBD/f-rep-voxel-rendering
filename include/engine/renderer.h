@@ -5,6 +5,7 @@
 #include "vk_wrapper/descriptor.h"
 #include "vk_wrapper/image.h"
 #include "engine/render_target.h"
+#include <glm/glm.hpp>
 
 
 class Renderer
@@ -27,7 +28,8 @@ public:
 
     // Returns the semaphore signaled when the render command ends,
     // to be waited on by the compute command.
-    VkSemaphore GetRenderSemaphore() { return m_renderSem; }
+    VkSemaphore GetRenderSemaphore() const { return m_renderSem; }
+    void SetClearColor(glm::vec3 color);
 private:
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
@@ -61,6 +63,7 @@ private:
     vkw::Swapchain m_swapchain;
     // The index of the swapchain image currently in use.
     uint32_t m_swapCurrImg;
+    VkClearValue m_clearValue;
 
     void InitCommands();
     void InitRenderPass();

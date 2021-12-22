@@ -17,6 +17,8 @@ layout (set = 0, binding = 1) uniform DDAUniforms {
 
     vec4 gridWorldCoords;
     uvec4 gridResolution;
+
+    vec4 backgroundColor;
 } ddaUniforms;
 
 // Voxels
@@ -139,7 +141,7 @@ vec4 raytrace(vec3 orig, vec3 dir)
         if (curr_cell.x < 0 || curr_cell.x >= ddaUniforms.gridResolution.x || 
             curr_cell.y < 0 || curr_cell.y >= ddaUniforms.gridResolution.y || 
             curr_cell.z < 0 || curr_cell.z >= ddaUniforms.gridResolution.z) {
-            return vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            return ddaUniforms.backgroundColor;
         }
 
         // Read the cell color
@@ -187,11 +189,14 @@ void main()
             dy * ddaUniforms.screenWorldSize.y * ddaUniforms.cameraUp.xyz);
 
         float start_t = raygrid_intersect(ddaUniforms.cameraPosition.xyz, dir);
-        vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        vec4 color;
         if (start_t > 0.0f) {
             // Project the origin onto the grid, along the ray direction.
             vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir + 0.001f * dir;
             color = raytrace(projected_orig, dir);           
+        }
+        else {
+            color = ddaUniforms.backgroundColor;
         }
         imageStore(outImg, ivec2(gid), color);
     }
