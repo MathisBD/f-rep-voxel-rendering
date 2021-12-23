@@ -1,7 +1,11 @@
 #include "application.h"
 #include "vk_wrapper/initializers.h"
 #include "vk_wrapper/vk_check.h"
+#include "utils/running_average.h"
+#include "utils/timer.h"
 
+
+Application::Application() : m_frameTime(32) {}
 
 void Application::Init()
 {
@@ -84,6 +88,10 @@ void Application::InitRenderTarget()
 
 void Application::Draw() 
 {
+    m_frameTime.AddSample(Timer::s_dt);
+    printf("Frame time : %.1fms (%.1ffps)\n", 
+        1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
+
     m_camera.Update(m_inputManager);
     m_raytracer.Trace(m_renderer.GetRenderSemaphore(), &m_camera);
     

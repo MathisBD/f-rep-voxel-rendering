@@ -7,17 +7,21 @@
 #include "engine/camera.h"
 #include "engine/renderer.h"
 #include "engine/raytracer.h"
+#include "utils/running_average.h"
 
 
 class Application : public EngineBase
 {
 public:
+    Application();
     virtual void Init() override;
 private:
     RenderTarget m_target;
     Renderer m_renderer;
     Raytracer m_raytracer;
     Camera m_camera;
+
+    RunningAverage<float> m_frameTime;
 
     void InitRenderTarget();
     void Draw() override;
