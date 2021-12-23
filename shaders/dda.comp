@@ -17,7 +17,7 @@ struct DirectionalLight {
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
 
 // Shader basic data.
-layout (std140, set = 0, binding = 1) uniform UniformBuffer {
+layout (set = 0, binding = 1) uniform UniformBuffer {
     uint lightCount;
     uint gridDim;
     uvec2 _padding_;

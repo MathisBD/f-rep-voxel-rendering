@@ -18,7 +18,7 @@ void Raytracer::Init(
     m_descCache = descCache;
 
     // Voxel grid
-    m_voxelGrid = CubeGrid(256, { -10, -10, -10 }, 20);
+    m_voxelGrid = CubeGrid(64, { -10, -10, -10 }, 20);
 
     InitCommands();
     InitSynchronization();
