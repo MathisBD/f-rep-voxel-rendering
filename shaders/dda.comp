@@ -92,9 +92,12 @@ uint voxel_position(uint index)
     uint q = index >> 5;
     uint r = index & ((1 << 5) - 1);
     
-    uint pos = voxelMaskPCBuffer.partialCount[q];
+    uint pos = 0;
+    if (q > 0) {
+        pos += voxelMaskPCBuffer.partialCount[q-1];
+    }
     if (r > 0) {
-        pos += bitCount(voxelMaskBuffer.mask[q+1] & ((1 << r) - 1));
+        pos += bitCount(voxelMaskBuffer.mask[q] & ((1 << r) - 1));
     }
     return pos;
 }
