@@ -103,10 +103,9 @@ void Raytracer::InitBuffers()
     m_cleanupQueue.AddFunction([=] { m_buffers.voxelMask.Cleanup(); });
 
     // Voxel mask PC buffer
-    assert((m_buffers.voxelMask.size >> m_voxelMaskPCFactor) > 0);
     m_buffers.voxelMaskPC.Init(m_vmaAllocator);
     m_buffers.voxelMaskPC.Allocate(
-        m_buffers.voxelMask.size >> m_voxelMaskPCFactor,
+        m_buffers.voxelMask.size,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
     m_cleanupQueue.AddFunction([=] { m_buffers.voxelMaskPC.Cleanup(); });
@@ -220,8 +219,6 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->lights[1].direction = { 1, -1, 0, 0 };
     contents->lights[1].color = { 0, 0, 2, 0 };
 
-    contents->voxelMaskPCFactor = { m_voxelMaskPCFactor, 0, 0, 0 };
-
     m_buffers.uniforms.Unmap(); 
 }
 
@@ -283,14 +280,10 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
         }
     }
     // Compute the mask partial counts
-    assert(m_voxelMaskPCFactor > 0);
-    for (uint32_t q2 = 0; q2 < (voxelCount / 32) >> m_voxelMaskPCFactor; q2++) {
-        uint32_t partialCount = 0;
-        for (uint32_t r2 = 0; r2 < (1U << m_voxelMaskPCFactor); r2++) {
-            uint32_t q = (q2 << m_voxelMaskPCFactor) + r2;
-            partialCount += __builtin_popcount(mask[q]);
-        }
-        maskPC[q2] = partialCount;
+    uint32_t partialCount = 0;
+    for (uint32_t q = 0; q < (voxelCount / 32); q++) {
+        partialCount += __builtin_popcount(mask[q]);
+        maskPC[q] = partialCount;
     }
     stagingData.Unmap();
     stagingMask.Unmap();

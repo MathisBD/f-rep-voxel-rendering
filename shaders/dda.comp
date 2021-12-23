@@ -33,8 +33,6 @@ layout (set = 0, binding = 1) uniform UniformBuffer {
 
     uvec4 lightCount;
     DirectionalLight lights[8]; // maximum 8 lights for now
-
-    uvec4 voxelMaskPCFactor;
 } uniformBuffer;
 
 // Voxels
@@ -48,8 +46,8 @@ layout (std430, set = 0, binding = 3) readonly buffer VoxelMaskBuffer {
 } voxelMaskBuffer;
 // This buffer contains the partial counts of the voxel mask,
 // i.e. partialCount[i] contains the number of 1 bits in the voxel mask
-// between uint '0' and uint 'i << voxelMaskPCFactor'.
-// This buffer's size is thus '1/(1 << voxelMaskPCFactor)' times the size of the mask buffer. 
+// between uint '0' and uint 'i' (both included).
+// This buffer's size is the same as the mask buffer. 
 layout (std430, set = 0, binding = 4) readonly buffer VoxelMaskPCBuffer {
     uint partialCount[];
 } voxelMaskPCBuffer;
@@ -89,19 +87,10 @@ uint voxel_position(uint index)
 {
     // We have to count the number of 1s in the mask,
     // strictly before the bit at 'index'.
-    uint factor = uniformBuffer.voxelMaskPCFactor.x;
-    
     uint q = index >> 5;
     uint r = index & ((1 << 5) - 1);
-    uint q2 = q >> factor;
     
-    uint pos = 0;
-    for (uint i = 0; i < q2; i++) {
-        pos += voxelMaskPCBuffer.partialCount[i];
-    }
-    for (uint i = (q2 << factor); i < q; i++) {
-        pos += bitCount(voxelMaskBuffer.mask[i]);
-    }
+    uint pos = voxelMaskPCBuffer.partialCount[q];
     if (r > 0) {
         pos += bitCount(voxelMaskBuffer.mask[q+1] & ((1 << r) - 1));
     }
