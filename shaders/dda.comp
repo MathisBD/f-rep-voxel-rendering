@@ -17,21 +17,23 @@ struct DirectionalLight {
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
 
 // Shader basic data.
-layout (set = 0, binding = 1) uniform UniformBuffer {
-    uvec4 screenResolution;
-    vec4 screenWorldSize;
+layout (std140, set = 0, binding = 1) uniform UniformBuffer {
+    uint lightCount;
+    uint gridDim;
+    uvec2 _padding_;
+
+    uvec2 screenResolution;
+    vec2 screenWorldSize;
 
     vec4 cameraPosition;
     vec4 cameraForward;
     vec4 cameraUp;
     vec4 cameraRight;
 
-    vec4 gridWorldCoords;
-    uvec4 gridResolution;
-
+    vec3 gridWorldCoords;
+    float gridWorldSize;
+    
     vec4 backgroundColor;
-
-    uvec4 lightCount;
     DirectionalLight lights[8]; // maximum 8 lights for now
 } uniformBuffer;
 
@@ -102,8 +104,8 @@ uint voxel_position(uint index)
 float raygrid_intersect(vec3 orig, vec3 dir)
 {
     vec3 invDir = 1.0f / dir;
-    vec3 t_0 = (uniformBuffer.gridWorldCoords.xyz - orig) * invDir; 
-    vec3 t_1 = (uniformBuffer.gridWorldCoords.xyz + uniformBuffer.gridWorldCoords.www - orig) * invDir;
+    vec3 t_0 = (uniformBuffer.gridWorldCoords - orig) * invDir; 
+    vec3 t_1 = (uniformBuffer.gridWorldCoords + uniformBuffer.gridWorldSize - orig) * invDir;
     
 #define SWAP(a, b) { float tmp = a; a = b; b = tmp; }
     // We chech invDir.x < 0f rather than t_0.x > t_1.x (almost equivalent),
@@ -149,8 +151,8 @@ vec4 shade(uint cell_index, vec3 ray_dir)
 
 vec4 raytrace(vec3 orig, vec3 dir)
 {
-    float cellSize = uniformBuffer.gridWorldCoords.w / uniformBuffer.gridResolution.x;
-    vec3 normOrig = (orig - uniformBuffer.gridWorldCoords.xyz) / cellSize;
+    float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.gridDim;
+    vec3 normOrig = (orig - uniformBuffer.gridWorldCoords) / cellSize;
     vec3 invDir = 1.0f / dir;
 
     // Differential cell/time values.
@@ -173,14 +175,14 @@ vec4 raytrace(vec3 orig, vec3 dir)
 
     while (true) {
         // Out of grid
-        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.gridResolution.x || 
-            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.gridResolution.x || 
-            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.gridResolution.x) {
+        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.gridDim || 
+            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.gridDim || 
+            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.gridDim) {
             return uniformBuffer.backgroundColor;
         }
 
         // Is there a voxel here ?
-        uint index = INDEX3D(curr_cell, uniformBuffer.gridResolution.x); 
+        uint index = INDEX3D(curr_cell, uniformBuffer.gridDim); 
         if (has_voxel(index)) {
             return shade(index, dir);
         }

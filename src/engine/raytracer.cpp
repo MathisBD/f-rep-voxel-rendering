@@ -187,6 +187,10 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
 {
     DDAUniforms* contents = (DDAUniforms*)m_buffers.uniforms.Map();
     
+    m_lightCount = 2;
+    contents->lightCount = m_lightCount;
+    contents->gridDim = m_voxelGrid.dim;
+
     contents->screenResolution.x = m_target->image.extent.width;
     contents->screenResolution.y = m_target->image.extent.height;
 
@@ -203,16 +207,13 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->cameraRight    = glm::vec4(camera->Right(), 0.0f);
 
     // Grid positions
-    contents->gridWorldCoords = glm::vec4(m_voxelGrid.lowVertex, m_voxelGrid.worldSize);
-    contents->gridResolution = { m_voxelGrid.dim, 0, 0, 0 };
-
+    contents->gridWorldCoords = m_voxelGrid.lowVertex;
+    contents->gridWorldSize = m_voxelGrid.worldSize;
+    
     // Background color
     contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
     // Lights
-    m_lightCount = 2;
-    contents->lightCount = { m_lightCount, 0, 0, 0 };
-
     contents->lights[0].direction = { -1, -1, 0, 0 };
     contents->lights[0].color = { 1, 0, 0, 0 };
 

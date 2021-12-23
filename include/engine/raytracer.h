@@ -37,12 +37,16 @@ private:
         glm::vec4 direction;
     } DDALight;
 
-    typedef struct {     
-        // The screen resolution in pixels (zw unused).
-        glm::uvec4 screenResolution;
+    typedef struct {
+        uint32_t lightCount;
+        uint32_t gridDim;  
+        uint32_t _padding_[2];
+
+        // The screen resolution in pixels.
+        glm::uvec2 screenResolution;
         // The world size of the screen boundaries
-        // at one unit away from the camera position (zw unused).
-        glm::vec4 screenWorldSize;
+        // at one unit away from the camera position.
+        glm::vec2 screenWorldSize;
 
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
@@ -53,15 +57,12 @@ private:
         glm::vec4 cameraUp;
         glm::vec4 cameraRight;
 
-        // The world positions of the grid bottom left corner (xyz)
-        // and the world size of the grid (w).
-        glm::vec4 gridWorldCoords;
-        // The number of subdivisions along each grid axis (yzw unused).
-        glm::uvec4 gridResolution;
+        // The world positions of the grid bottom left corner.
+        glm::vec3 gridWorldCoords;
+        float gridWorldSize;
 
         // The color we use for rays that don't intersect any voxel (w unused).
         glm::vec4 backgroundColor;
-        glm::uvec4 lightCount;
         DDALight lights[8];
     } DDAUniforms;
 
