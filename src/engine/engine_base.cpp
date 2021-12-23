@@ -8,10 +8,10 @@
 
 
 
-void EngineBase::Init() 
+void EngineBase::Init(bool enableValidationLayers) 
 {
     InitSDL();
-    InitVulkanCore();
+    InitVulkanCore(enableValidationLayers);
     InitVma();
     InitImmUploadCtxt();
 
@@ -42,21 +42,22 @@ void EngineBase::InitSDL()
     m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
 }
 
-void EngineBase::InitVulkanCore() 
+void EngineBase::InitVulkanCore(bool enableValidationLayers) 
 {
     // Vulkan instance
     vkb::InstanceBuilder builder;
-    vkb::Instance vkbInst = builder
-        .set_app_name("Vulkan Project")
-        .require_api_version(1, 1, 0)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
-        .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT)
-        //.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
-        .enable_validation_layers(true)
-        .use_default_debug_messenger()
-        .build()
-        .value();
+    builder.set_app_name("Vulkan Project")
+           .require_api_version(1, 1, 0)
+           .use_default_debug_messenger();
+
+    if (enableValidationLayers) {
+        builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
+               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
+               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT)
+               //.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
+               .enable_validation_layers(true);
+    }
+    vkb::Instance vkbInst = builder.build().value();
     m_instance = vkbInst.instance;
     m_debugMessenger = vkbInst.debug_messenger;
 

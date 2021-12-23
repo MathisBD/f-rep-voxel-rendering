@@ -14,7 +14,7 @@
 class EngineBase
 {
 public:
-    virtual void Init();
+    virtual void Init(bool enableValidationLayers);
     void Run();
     virtual void Cleanup();
 protected:
@@ -42,7 +42,7 @@ protected:
     
 
     void InitSDL();
-    void InitVulkanCore();
+    void InitVulkanCore(bool enableValidationLayers);
     void InitVma();
     void InitImmUploadCtxt();
     

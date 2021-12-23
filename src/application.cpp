@@ -7,9 +7,9 @@
 
 Application::Application() : m_frameTime(32) {}
 
-void Application::Init()
+void Application::Init(bool enableValidationLayers)
 {
-    EngineBase::Init();
+    EngineBase::Init(enableValidationLayers);
 
     printf("[+] Queue families :\n\tgraphics=%u\n\tcompute=%u\n\ttransfer=%u\n",
         m_device.queueFamilies.graphics, 

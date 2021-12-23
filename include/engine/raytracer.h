@@ -81,6 +81,12 @@ private:
     // signaled when the compute command is finished
     VkFence m_fence; 
 
+    // The context used for submitting an immediate command.
+    struct {
+        VkCommandPool cmdPool;
+        VkFence fence;
+    } m_uploadCtxt;
+
     vkw::Buffer m_ddaUniforms;
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
     vkw::Buffer m_ddaVoxels;
@@ -92,6 +98,7 @@ private:
     void InitSynchronization();
     void InitPipeline();
     void InitBuffers();
+    void InitUploadCtxt();
 
     void UpdateDDAUniforms(const Camera* camera);
     void UpdateDDAVoxels();
@@ -99,4 +106,5 @@ private:
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);
+    void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record);
 };

@@ -24,6 +24,7 @@ void Raytracer::Init(
     InitSynchronization();
     InitBuffers();
     InitPipeline();
+    InitUploadCtxt();
 
     // We only upload the voxels once.
     UpdateDDAVoxels();
@@ -90,8 +91,8 @@ void Raytracer::InitBuffers()
     m_ddaVoxels.Init(m_vmaAllocator);
     m_ddaVoxels.Allocate(
         dim * dim * dim * sizeof(DDAVoxel),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
     m_cleanupQueue.AddFunction([=] { m_ddaVoxels.Cleanup(); });
 }
 
@@ -145,6 +146,24 @@ void Raytracer::InitPipeline()
     });
 }
 
+void Raytracer::InitUploadCtxt() 
+{
+    // Command pool
+    auto poolInfo = vkw::init::CommandPoolCreateInfo(
+        m_device->queueFamilies.compute);
+    VK_CHECK(vkCreateCommandPool(m_device->logicalDevice, &poolInfo, nullptr, &m_uploadCtxt.cmdPool));
+    m_cleanupQueue.AddFunction([=] { 
+        vkDestroyCommandPool(m_device->logicalDevice, m_uploadCtxt.cmdPool, nullptr); 
+    });
+
+    // Fence
+    auto fenceInfo = vkw::init::FenceCreateInfo();
+    VK_CHECK(vkCreateFence(m_device->logicalDevice, &fenceInfo, nullptr, &m_uploadCtxt.fence));
+    m_cleanupQueue.AddFunction([=] {
+        vkDestroyFence(m_device->logicalDevice, m_uploadCtxt.fence, nullptr);
+    });
+}
+
 
 void Raytracer::UpdateDDAUniforms(const Camera* camera) 
 {
@@ -184,7 +203,13 @@ void Raytracer::UpdateDDAVoxels()
         return radius*radius - glm::length2(pos - center);
     };
 
-    DDAVoxel* contents = (DDAVoxel*)m_ddaVoxels.Map();
+    vkw::Buffer stagingBuf;
+    stagingBuf.Init(m_vmaAllocator);
+    stagingBuf.Allocate(m_ddaVoxels.size, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VMA_MEMORY_USAGE_CPU_ONLY);
+
+    DDAVoxel* contents = (DDAVoxel*)stagingBuf.Map();
 
     size_t dim = m_voxelGrid.dim;
     for (size_t x = 0; x < dim; x++) {
@@ -210,7 +235,17 @@ void Raytracer::UpdateDDAVoxels()
             }
         }
     }
-    m_ddaVoxels.Unmap();    
+    stagingBuf.Unmap();
+
+    // Copy the data to the GPU.
+    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
+        VkBufferCopy region;
+        region.srcOffset = 0;
+        region.dstOffset = 0;
+        region.size = m_ddaVoxels.size;
+        vkCmdCopyBuffer(cmd, stagingBuf.buffer, m_ddaVoxels.buffer, 1, &region);
+    });
+    stagingBuf.Cleanup();
 }
 
 void Raytracer::UpdateDDALights() 
@@ -286,4 +321,33 @@ void Raytracer::Trace(VkSemaphore renderSem, const Camera* camera)
 void Raytracer::SetBackgroundColor(const glm::vec3& color) 
 {
     m_backgroundColor = color;    
+}
+
+void Raytracer::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record) 
+{ 
+    VkCommandBuffer cmd;
+    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_uploadCtxt.cmdPool);
+    VK_CHECK(vkAllocateCommandBuffers(
+        m_device->logicalDevice, &allocInfo, &cmd));
+
+    auto beginInfo = vkw::init::CommandBufferBeginInfo(
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+    record(cmd);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    auto submitInfo = vkw::init::SubmitInfo(&cmd);
+    VK_CHECK(vkQueueSubmit(
+        m_queue, 1, &submitInfo, m_uploadCtxt.fence));
+
+    // Wait for the command to finish
+    VK_CHECK(vkWaitForFences(
+        m_device->logicalDevice, 1, &m_uploadCtxt.fence, VK_TRUE, 1000000000));
+    VK_CHECK(vkResetFences(
+        m_device->logicalDevice, 1, &m_uploadCtxt.fence));
+
+    VK_CHECK(vkResetCommandPool(
+        m_device->logicalDevice, m_uploadCtxt.cmdPool, 0));
 }

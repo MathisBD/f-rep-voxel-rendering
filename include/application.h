@@ -14,7 +14,7 @@ class Application : public EngineBase
 {
 public:
     Application();
-    virtual void Init() override;
+    virtual void Init(bool enableValidationLayers) override;
 private:
     RenderTarget m_target;
     Renderer m_renderer;
