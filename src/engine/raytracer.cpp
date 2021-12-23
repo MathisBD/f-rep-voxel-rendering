@@ -18,7 +18,7 @@ void Raytracer::Init(
     m_descCache = descCache;
 
     // Voxel grid
-    m_voxelGrid = CubeGrid(512, { -10, -10, -10 }, 20);
+    m_voxelGrid = CubeGrid(256, { -10, -10, -10 }, 20);
 
     InitCommands();
     InitSynchronization();
@@ -101,6 +101,15 @@ void Raytracer::InitBuffers()
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
     m_cleanupQueue.AddFunction([=] { m_buffers.voxelMask.Cleanup(); });
+
+    // Voxel mask PC buffer
+    assert((m_buffers.voxelMask.size >> m_voxelMaskPCFactor) > 0);
+    m_buffers.voxelMaskPC.Init(m_vmaAllocator);
+    m_buffers.voxelMaskPC.Allocate(
+        m_buffers.voxelMask.size >> m_voxelMaskPCFactor,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+    m_cleanupQueue.AddFunction([=] { m_buffers.voxelMaskPC.Cleanup(); });
 }
 
 void Raytracer::InitPipeline() 
@@ -122,11 +131,14 @@ void Raytracer::InitPipeline()
         m_buffers.voxelData.buffer, 0, m_buffers.voxelData.size);
     auto voxelMaskInfo = vkw::init::DescriptorBufferInfo(
         m_buffers.voxelMask.buffer, 0, m_buffers.voxelMask.size);
+    auto voxelMaskPCInfo = vkw::init::DescriptorBufferInfo(
+        m_buffers.voxelMaskPC.buffer, 0, m_buffers.voxelMaskPC.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &uniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &voxelDataInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &voxelMaskInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(4, &voxelMaskPCInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -208,6 +220,8 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->lights[1].direction = { 1, -1, 0, 0 };
     contents->lights[1].color = { 0, 0, 2, 0 };
 
+    contents->voxelMaskPCFactor = { m_voxelMaskPCFactor, 0, 0, 0 };
+
     m_buffers.uniforms.Unmap(); 
 }
 
@@ -219,13 +233,21 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
     vkw::Buffer stagingData;
     stagingData.Init(m_vmaAllocator);
     stagingData.Allocate(m_buffers.voxelData.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    vkw::Buffer stagingMaskPC;
+    stagingMaskPC.Init(m_vmaAllocator);
+    stagingMaskPC.Allocate(m_buffers.voxelMaskPC.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     uint32_t* mask = (uint32_t*)stagingMask.Map();
     DDAVoxel* data = (DDAVoxel*)stagingData.Map();
+    uint32_t* maskPC = (uint32_t*)stagingMaskPC.Map();
     memset(mask, 0, stagingMask.size);
     memset(data, 0, stagingData.size);
+    memset(maskPC, 0, stagingMaskPC.size);
     
     size_t dim = m_voxelGrid.dim;
+    size_t voxelCount = dim * dim * dim;
+
+    // Generate the voxel data and mask.
     for (size_t x = 0; x < dim; x++) {
         for (size_t y = 0; y < dim; y++) {
             for (size_t z = 0; z < dim; z++) {
@@ -234,7 +256,9 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
                 float d = density(pos.x, pos.y, pos.z);
 
                 if (d >= 0.0f) {
-                    mask[index >> 5] |= (1 << (index & (0x1F)));
+                    uint32_t q = index >> 5;
+                    uint32_t r = index & ((1 << 5) - 1);
+                    mask[q] |= (1 << r);
                     
                     float eps = 0.001f;
                     data[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
@@ -248,8 +272,29 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
             }
         }
     }
+    // Compactify the voxel data buffer
+    size_t vPos = 0;
+    for (size_t index = 0; index < voxelCount; index++) {
+        uint32_t q = index >> 5;
+        uint32_t r = index & ((1 << 5) - 1);
+        if (mask[q] & (1 << r)) {
+            data[vPos] = data[index];
+            vPos++;
+        }
+    }
+    // Compute the mask partial counts
+    assert(m_voxelMaskPCFactor > 0);
+    for (uint32_t q2 = 0; q2 < (voxelCount / 32) >> m_voxelMaskPCFactor; q2++) {
+        uint32_t partialCount = 0;
+        for (uint32_t r2 = 0; r2 < (1U << m_voxelMaskPCFactor); r2++) {
+            uint32_t q = (q2 << m_voxelMaskPCFactor) + r2;
+            partialCount += __builtin_popcount(mask[q]);
+        }
+        maskPC[q2] = partialCount;
+    }
     stagingData.Unmap();
     stagingMask.Unmap();
+    stagingMaskPC.Unmap();
 
     // Copy the data to the GPU.
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
@@ -264,9 +309,16 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
         dataRegion.dstOffset = 0;
         dataRegion.size = m_buffers.voxelData.size;
         vkCmdCopyBuffer(cmd, stagingData.buffer, m_buffers.voxelData.buffer, 1, &dataRegion);
+    
+        VkBufferCopy maskPCRegion;
+        maskPCRegion.srcOffset = 0;
+        maskPCRegion.dstOffset = 0;
+        maskPCRegion.size = m_buffers.voxelMaskPC.size;
+        vkCmdCopyBuffer(cmd, stagingMaskPC.buffer, m_buffers.voxelMaskPC.buffer, 1, &maskPCRegion);
     });
     stagingMask.Cleanup();
     stagingData.Cleanup();
+    stagingMaskPC.Cleanup();
 }
 
 

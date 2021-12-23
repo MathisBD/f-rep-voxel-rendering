@@ -63,6 +63,8 @@ private:
         glm::vec4 backgroundColor;
         glm::uvec4 lightCount;
         DDALight lights[8];
+
+        glm::uvec4 voxelMaskPCFactor;
     } DDAUniforms;
 
     CleanupQueue m_cleanupQueue;
@@ -92,11 +94,13 @@ private:
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
     size_t m_lightCount = 0;
     CubeGrid m_voxelGrid;
+    uint32_t m_voxelMaskPCFactor = 10;
 
     struct {
         vkw::Buffer uniforms;
         vkw::Buffer voxelData;
         vkw::Buffer voxelMask;
+        vkw::Buffer voxelMaskPC;
     } m_buffers;
 
     void InitCommands();
