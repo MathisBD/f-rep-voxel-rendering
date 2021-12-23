@@ -18,7 +18,7 @@ void Raytracer::Init(
     m_descCache = descCache;
 
     // Voxel grid
-    m_voxelGrid = CubeGrid(128, { -10, -10, -10 }, 20);
+    m_voxelGrid = CubeGrid(512, { -10, -10, -10 }, 20);
 
     InitCommands();
     InitSynchronization();
@@ -26,8 +26,14 @@ void Raytracer::Init(
     InitPipeline();
     InitUploadCtxt();
 
-    // We only upload the voxels once.
-    UpdateDDAVoxels();
+    // We only upload the voxels once.    
+    auto density = [] (float x, float y, float z) {
+        glm::vec3 pos = { x, y, z };
+        glm::vec3 center = { 0, 0, 0 };
+        float radius = 5;
+        return radius * radius - glm::length2(pos - center);
+    };
+    UpdateVoxelBuffers(density);
 }
 
 void Raytracer::Cleanup() 
@@ -71,29 +77,30 @@ void Raytracer::InitSynchronization()
 void Raytracer::InitBuffers()
 {
     // Uniform buffer
-    m_ddaUniforms.Init(m_vmaAllocator);
-    m_ddaUniforms.Allocate(
+    m_buffers.uniforms.Init(m_vmaAllocator);
+    m_buffers.uniforms.Allocate(
         sizeof(DDAUniforms), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] { m_ddaUniforms.Cleanup(); });
+    m_cleanupQueue.AddFunction([=] { m_buffers.uniforms.Cleanup(); });
 
-    // Lights buffer
-    m_ddaLights.Init(m_vmaAllocator);
-    m_ddaLights.Allocate(
-        sizeof(glm::vec4) + m_lightCount * sizeof(DDALight),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] { m_ddaLights.Cleanup(); });
-
-    // Voxels buffer
-    size_t dim = m_voxelGrid.dim;
-    m_ddaVoxels.Init(m_vmaAllocator);
-    m_ddaVoxels.Allocate(
-        dim * dim * dim * sizeof(DDAVoxel),
+    // Voxel data buffer
+    size_t voxelCount = m_voxelGrid.dim * m_voxelGrid.dim * m_voxelGrid.dim;
+    m_buffers.voxelData.Init(m_vmaAllocator);
+    m_buffers.voxelData.Allocate(
+        voxelCount * sizeof(DDAVoxel), 
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
-    m_cleanupQueue.AddFunction([=] { m_ddaVoxels.Cleanup(); });
+    m_cleanupQueue.AddFunction([=] { m_buffers.voxelData.Cleanup(); });
+
+    // Voxel mask buffer
+    size_t bitsPerByte = 8;
+    m_buffers.voxelMask.Init(m_vmaAllocator);
+    m_buffers.voxelMask.Allocate(
+        voxelCount / bitsPerByte, // there are voxelCount bits in the mask.
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+    m_cleanupQueue.AddFunction([=] { m_buffers.voxelMask.Cleanup(); });
 }
 
 void Raytracer::InitPipeline() 
@@ -109,17 +116,17 @@ void Raytracer::InitPipeline()
     // Descriptor Set 0    
     auto outImageInfo = vkw::init::DescriptorImageInfo(
         m_target->sampler, m_target->view, VK_IMAGE_LAYOUT_GENERAL);
-    auto ddaUniformsInfo = vkw::init::DescriptorBufferInfo(
-        m_ddaUniforms.buffer, 0, m_ddaUniforms.size);
-    auto ddaVoxelsInfo = vkw::init::DescriptorBufferInfo(
-        m_ddaVoxels.buffer, 0, m_ddaVoxels.size);
-    auto ddaLightsInfo = vkw::init::DescriptorBufferInfo(
-        m_ddaLights.buffer, 0, m_ddaLights.size);
+    auto uniformsInfo = vkw::init::DescriptorBufferInfo(
+        m_buffers.uniforms.buffer, 0, m_buffers.uniforms.size);
+    auto voxelDataInfo = vkw::init::DescriptorBufferInfo(
+        m_buffers.voxelData.buffer, 0, m_buffers.voxelData.size);
+    auto voxelMaskInfo = vkw::init::DescriptorBufferInfo(
+        m_buffers.voxelMask.buffer, 0, m_buffers.voxelMask.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(1, &ddaUniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(2, &ddaVoxelsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(3, &ddaLightsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(1, &uniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &voxelDataInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &voxelMaskInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -165,9 +172,9 @@ void Raytracer::InitUploadCtxt()
 }
 
 
-void Raytracer::UpdateDDAUniforms(const Camera* camera) 
+void Raytracer::UpdateUniformBuffer(const Camera* camera) 
 {
-    DDAUniforms* contents = (DDAUniforms*)m_ddaUniforms.Map();
+    DDAUniforms* contents = (DDAUniforms*)m_buffers.uniforms.Map();
     
     contents->screenResolution.x = m_target->image.extent.width;
     contents->screenResolution.y = m_target->image.extent.height;
@@ -186,31 +193,38 @@ void Raytracer::UpdateDDAUniforms(const Camera* camera)
 
     // Grid positions
     contents->gridWorldCoords = glm::vec4(m_voxelGrid.lowVertex, m_voxelGrid.worldSize);
-    contents->gridResolution = { m_voxelGrid.dim, m_voxelGrid.dim, m_voxelGrid.dim, 0 };
+    contents->gridResolution = { m_voxelGrid.dim, 0, 0, 0 };
 
     // Background color
     contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
-    m_ddaUniforms.Unmap(); 
+    // Lights
+    m_lightCount = 2;
+    contents->lightCount = { m_lightCount, 0, 0, 0 };
+
+    contents->lights[0].direction = { -1, -1, 0, 0 };
+    contents->lights[0].color = { 1, 0, 0, 0 };
+
+    contents->lights[1].direction = { 1, -1, 0, 0 };
+    contents->lights[1].color = { 0, 0, 2, 0 };
+
+    m_buffers.uniforms.Unmap(); 
 }
 
-void Raytracer::UpdateDDAVoxels() 
+void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& density) 
 {
-    auto density = [] (float x, float y, float z) {
-        glm::vec3 pos = { x, y, z };
-        glm::vec3 center = { 0, 0, 0 };
-        float radius = 5;
-        return radius*radius - glm::length2(pos - center);
-    };
+    vkw::Buffer stagingMask;
+    stagingMask.Init(m_vmaAllocator);
+    stagingMask.Allocate(m_buffers.voxelMask.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    vkw::Buffer stagingData;
+    stagingData.Init(m_vmaAllocator);
+    stagingData.Allocate(m_buffers.voxelData.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-    vkw::Buffer stagingBuf;
-    stagingBuf.Init(m_vmaAllocator);
-    stagingBuf.Allocate(m_ddaVoxels.size, 
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VMA_MEMORY_USAGE_CPU_ONLY);
-
-    DDAVoxel* contents = (DDAVoxel*)stagingBuf.Map();
-
+    uint32_t* mask = (uint32_t*)stagingMask.Map();
+    DDAVoxel* data = (DDAVoxel*)stagingData.Map();
+    memset(mask, 0, stagingMask.size);
+    memset(data, 0, stagingData.size);
+    
     size_t dim = m_voxelGrid.dim;
     for (size_t x = 0; x < dim; x++) {
         for (size_t y = 0; y < dim; y++) {
@@ -218,52 +232,43 @@ void Raytracer::UpdateDDAVoxels()
                 size_t index = z + y * dim + x * dim * dim;
                 glm::vec3 pos = m_voxelGrid.WorldPosition({ x, y, z });
                 float d = density(pos.x, pos.y, pos.z);
+
                 if (d >= 0.0f) {
+                    mask[index >> 5] |= (1 << (index & (0x1F)));
+                    
                     float eps = 0.001f;
-                    contents[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
-                    contents[index].normal = { 
+                    data[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
+                    data[index].normal = { 
                         (density(pos.x + eps, pos.y, pos.z) - d) / eps,
                         (density(pos.x, pos.y + eps, pos.z) - d) / eps,
                         (density(pos.x, pos.y, pos.z + eps) - d) / eps,
                         0.0f };
-                    contents[index].normal = -glm::normalize(contents[index].normal);
-                } 
-                else {
-                    contents[index].color = { 0.0f, 0.0f, 0.0f, 0.0f };
-                    contents[index].normal = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    data[index].normal = -glm::normalize(data[index].normal);
                 }
             }
         }
     }
-    stagingBuf.Unmap();
+    stagingData.Unmap();
+    stagingMask.Unmap();
 
     // Copy the data to the GPU.
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
-        VkBufferCopy region;
-        region.srcOffset = 0;
-        region.dstOffset = 0;
-        region.size = m_ddaVoxels.size;
-        vkCmdCopyBuffer(cmd, stagingBuf.buffer, m_ddaVoxels.buffer, 1, &region);
+        VkBufferCopy maskRegion;
+        maskRegion.srcOffset = 0;
+        maskRegion.dstOffset = 0;
+        maskRegion.size = m_buffers.voxelMask.size;
+        vkCmdCopyBuffer(cmd, stagingMask.buffer, m_buffers.voxelMask.buffer, 1, &maskRegion);
+    
+        VkBufferCopy dataRegion;
+        dataRegion.srcOffset = 0;
+        dataRegion.dstOffset = 0;
+        dataRegion.size = m_buffers.voxelData.size;
+        vkCmdCopyBuffer(cmd, stagingData.buffer, m_buffers.voxelData.buffer, 1, &dataRegion);
     });
-    stagingBuf.Cleanup();
+    stagingMask.Cleanup();
+    stagingData.Cleanup();
 }
 
-void Raytracer::UpdateDDALights() 
-{
-    void* contents = m_ddaLights.Map();
-
-    glm::uvec4* count = (glm::uvec4*)contents;
-    count->x = m_lightCount;
-
-    DDALight* lights = (DDALight*)(reinterpret_cast<size_t>(contents) + sizeof(glm::uvec4));
-    lights[0].direction = { -1, -1, 0, 0 };
-    lights[0].color = { 1, 0, 0, 0 };
-
-    lights[1].direction = { 1, -1, 0, 0 };
-    lights[1].color = { 0, 0, 2, 0 };
-
-    m_ddaLights.Unmap();    
-}
 
 void Raytracer::RecordComputeCmd(VkCommandBuffer cmd) 
 {
@@ -296,9 +301,8 @@ void Raytracer::Trace(VkSemaphore renderSem, const Camera* camera)
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
     
-    // Update the uniform buffers
-    UpdateDDAUniforms(camera);
-    UpdateDDALights();
+    // Update the uniform buffer
+    UpdateUniformBuffer(camera);
 
     // Reset the command pool (and its buffers).
     VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));

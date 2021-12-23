@@ -1,12 +1,23 @@
 #version 450
-
-
 // Kernel group size.
 layout (local_size_x = 16, local_size_y = 16) in;
+
+
+
+struct VoxelData {
+    vec4 color;
+    vec4 normal;
+};
+struct DirectionalLight {
+    vec4 color;
+    vec4 direction;
+};
+
 // Output image.
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
+
 // Shader basic data.
-layout (set = 0, binding = 1) uniform DDAUniforms {
+layout (set = 0, binding = 1) uniform UniformBuffer {
     uvec4 screenResolution;
     vec4 screenWorldSize;
 
@@ -19,27 +30,25 @@ layout (set = 0, binding = 1) uniform DDAUniforms {
     uvec4 gridResolution;
 
     vec4 backgroundColor;
-} ddaUniforms;
 
-// Voxels
-struct VoxelData {
-    vec4 color;
-    vec4 normal;
-};
-layout (std140, set = 0, binding = 2) readonly buffer Voxels {
-    VoxelData data[];
-} voxels;
-
-// Lights
-struct DirectionalLight {
-    vec4 color;
-    vec4 direction;
-};
-layout (std140, set = 0, binding = 3) uniform LightBuffer
-{
     uvec4 lightCount;
     DirectionalLight lights[8]; // maximum 8 lights for now
-} lightBuffer;
+} uniformBuffer;
+
+// Voxels
+layout (std140, set = 0, binding = 2) readonly buffer VoxelDataBuffer {
+    VoxelData data[];
+} voxelDataBuffer;
+// We need the std430 layout here so that the array stride is 4 bytes.
+// The std140 layout would round it up to 16 bytes.
+layout (std430, set = 0, binding = 3) readonly buffer VoxelMaskBuffer {
+    uint mask[];
+} voxelMaskBuffer;
+
+
+#define INDEX3D(cell, dim) ((cell).z + (dim) * (cell).y + (dim) * (dim) * (cell).x)
+#define BIT_SET(x, bit) ((x) & (1 << (bit)))
+
 
 // returns 0 if x < 0
 //         1 if x > 0
@@ -59,13 +68,23 @@ float min3_(float a, float b, float c)
     return min(a, min(b, c));
 }
 
+bool has_voxel(uint index)
+{
+    // The voxels.mask is an array of uints,
+    // each 32 bits wide == (1 << 5) bits wide).
+    uint mask = voxelMaskBuffer.mask[index >> 5];
+    return bool(BIT_SET(mask, index & 0x1F));
+    //VoxelData voxel = voxelDataBuffer.data[index];
+    //return voxel.color.a >= 0.9f;
+}
+
 // A negative value means no intersection.
 // A positive value t means the intersection point is at orig + t * dir.
 float raygrid_intersect(vec3 orig, vec3 dir)
 {
     vec3 invDir = 1.0f / dir;
-    vec3 t_0 = (ddaUniforms.gridWorldCoords.xyz - orig) * invDir; 
-    vec3 t_1 = (ddaUniforms.gridWorldCoords.xyz + ddaUniforms.gridWorldCoords.www - orig) * invDir;
+    vec3 t_0 = (uniformBuffer.gridWorldCoords.xyz - orig) * invDir; 
+    vec3 t_1 = (uniformBuffer.gridWorldCoords.xyz + uniformBuffer.gridWorldCoords.www - orig) * invDir;
     
 #define SWAP(a, b) { float tmp = a; a = b; b = tmp; }
     // We chech invDir.x < 0f rather than t_0.x > t_1.x (almost equivalent),
@@ -93,16 +112,13 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     }
 }
 
-vec4 shade(ivec3 cell, vec3 ray_dir)
+vec4 shade(uint cell_index, vec3 ray_dir)
 {
-    uint index = cell.z +
-        ddaUniforms.gridResolution.z * cell.y + 
-        ddaUniforms.gridResolution.z * ddaUniforms.gridResolution.y * cell.x; 
-    VoxelData voxel = voxels.data[index];
+    VoxelData voxel = voxelDataBuffer.data[cell_index];
 
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint i = 0; i < lightBuffer.lightCount.x; i++) {
-        DirectionalLight light = lightBuffer.lights[i];
+    for (uint i = 0; i < uniformBuffer.lightCount.x; i++) {
+        DirectionalLight light = uniformBuffer.lights[i];
         float intensity = max(dot(-light.direction, voxel.normal), 0.0f);
         diffuse += intensity * light.color;
     }
@@ -114,8 +130,8 @@ vec4 shade(ivec3 cell, vec3 ray_dir)
 
 vec4 raytrace(vec3 orig, vec3 dir)
 {
-    vec3 cellSize = ddaUniforms.gridWorldCoords.www / ddaUniforms.gridResolution.xyz;
-    vec3 normOrig = (orig - ddaUniforms.gridWorldCoords.xyz) / cellSize;
+    float cellSize = uniformBuffer.gridWorldCoords.w / uniformBuffer.gridResolution.x;
+    vec3 normOrig = (orig - uniformBuffer.gridWorldCoords.xyz) / cellSize;
     vec3 invDir = 1.0f / dir;
 
     // Differential cell/time values.
@@ -138,19 +154,16 @@ vec4 raytrace(vec3 orig, vec3 dir)
 
     while (true) {
         // Out of grid
-        if (curr_cell.x < 0 || curr_cell.x >= ddaUniforms.gridResolution.x || 
-            curr_cell.y < 0 || curr_cell.y >= ddaUniforms.gridResolution.y || 
-            curr_cell.z < 0 || curr_cell.z >= ddaUniforms.gridResolution.z) {
-            return ddaUniforms.backgroundColor;
+        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.gridResolution.x || 
+            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.gridResolution.x || 
+            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.gridResolution.x) {
+            return uniformBuffer.backgroundColor;
         }
 
-        // Read the cell color
-        uint index = curr_cell.z + 
-            ddaUniforms.gridResolution.z * curr_cell.y + 
-            ddaUniforms.gridResolution.z * ddaUniforms.gridResolution.y * curr_cell.x; 
-        vec4 color = voxels.data[index].color;
-        if (color.a >= 0.9f) {
-            return shade(curr_cell, dir);
+        // Is there a voxel here ?
+        uint index = INDEX3D(curr_cell, uniformBuffer.gridResolution.x); 
+        if (has_voxel(index)) {
+            return shade(index, dir);
         }
 
         // x
@@ -177,26 +190,26 @@ vec4 raytrace(vec3 orig, vec3 dir)
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
-    if (gid.x < ddaUniforms.screenResolution.x && 
-        gid.y < ddaUniforms.screenResolution.y) {
+    if (gid.x < uniformBuffer.screenResolution.x && 
+        gid.y < uniformBuffer.screenResolution.y) {
     
         // Compute the ray direction
-        float dx = 2.0f * (gid.x / float(ddaUniforms.screenResolution.x)) - 1.0f;
-        float dy = 2.0f * (gid.y / float(ddaUniforms.screenResolution.y)) - 1.0f;
+        float dx = 2.0f * (gid.x / float(uniformBuffer.screenResolution.x)) - 1.0f;
+        float dy = 2.0f * (gid.y / float(uniformBuffer.screenResolution.y)) - 1.0f;
         vec3 dir = normalize(
-            ddaUniforms.cameraForward.xyz +
-            dx * ddaUniforms.screenWorldSize.x * ddaUniforms.cameraRight.xyz +
-            dy * ddaUniforms.screenWorldSize.y * ddaUniforms.cameraUp.xyz);
+            uniformBuffer.cameraForward.xyz +
+            dx * uniformBuffer.screenWorldSize.x * uniformBuffer.cameraRight.xyz +
+            dy * uniformBuffer.screenWorldSize.y * uniformBuffer.cameraUp.xyz);
 
-        float start_t = raygrid_intersect(ddaUniforms.cameraPosition.xyz, dir);
+        float start_t = raygrid_intersect(uniformBuffer.cameraPosition.xyz, dir);
         vec4 color;
         if (start_t > 0.0f) {
             // Project the origin onto the grid, along the ray direction.
-            vec3 projected_orig = ddaUniforms.cameraPosition.xyz + start_t * dir + 0.001f * dir;
+            vec3 projected_orig = uniformBuffer.cameraPosition.xyz + start_t * dir + 0.001f * dir;
             color = raytrace(projected_orig, dir);           
         }
         else {
-            color = ddaUniforms.backgroundColor;
+            color = uniformBuffer.backgroundColor;
         }
         imageStore(outImg, ivec2(gid), color);
     }

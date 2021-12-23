@@ -24,6 +24,19 @@ public:
     VkSemaphore GetComputeSemaphore() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
+    typedef struct {
+        glm::vec4 color;
+        // The normal vector at the center of the voxel (w unused).
+        glm::vec4 normal;
+    } DDAVoxel;
+
+    // A single point light.
+    typedef struct {
+        glm::vec4 color;
+        // The direction the light is pointing (w unused).
+        glm::vec4 direction;
+    } DDALight;
+
     typedef struct {     
         // The screen resolution in pixels (zw unused).
         glm::uvec4 screenResolution;
@@ -43,25 +56,14 @@ private:
         // The world positions of the grid bottom left corner (xyz)
         // and the world size of the grid (w).
         glm::vec4 gridWorldCoords;
-        // The number of subdivisions along each grid axis (w unused).
+        // The number of subdivisions along each grid axis (yzw unused).
         glm::uvec4 gridResolution;
 
         // The color we use for rays that don't intersect any voxel (w unused).
         glm::vec4 backgroundColor;
+        glm::uvec4 lightCount;
+        DDALight lights[8];
     } DDAUniforms;
-
-    typedef struct {
-        glm::vec4 color;
-        // The normal vector at the center of the voxel (w unused).
-        glm::vec4 normal;
-    } DDAVoxel;
-
-    // A single point light.
-    typedef struct {
-        glm::vec4 color;
-        // The direction the light is pointing (w unused).
-        glm::vec4 direction;
-    } DDALight;
 
     CleanupQueue m_cleanupQueue;
     vkw::Device* m_device;
@@ -87,12 +89,15 @@ private:
         VkFence fence;
     } m_uploadCtxt;
 
-    vkw::Buffer m_ddaUniforms;
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
-    vkw::Buffer m_ddaVoxels;
+    size_t m_lightCount = 0;
     CubeGrid m_voxelGrid;
-    vkw::Buffer m_ddaLights;
-    const size_t m_lightCount = 2;
+
+    struct {
+        vkw::Buffer uniforms;
+        vkw::Buffer voxelData;
+        vkw::Buffer voxelMask;
+    } m_buffers;
 
     void InitCommands();
     void InitSynchronization();
@@ -100,9 +105,8 @@ private:
     void InitBuffers();
     void InitUploadCtxt();
 
-    void UpdateDDAUniforms(const Camera* camera);
-    void UpdateDDAVoxels();
-    void UpdateDDALights();
+    void UpdateUniformBuffer(const Camera* camera);
+    void UpdateVoxelBuffers(std::function<float(float, float, float)>&& density);
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);
