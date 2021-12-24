@@ -18,7 +18,7 @@ void Raytracer::Init(
     m_descCache = descCache;
 
     // Voxel grid
-    m_voxelGrid = CubeGrid(256, { -10, -10, -10 }, 20);
+    m_voxelGrid = CubeGrid(128, { -20, -20, -20 }, 40);
 
     InitCommands();
     InitSynchronization();
@@ -27,13 +27,40 @@ void Raytracer::Init(
     InitUploadCtxt();
 
     // We only upload the voxels once.    
-    auto density = [] (float x, float y, float z) {
+    /*auto circle = [] (float x, float y, float z) {
         glm::vec3 pos = { x, y, z };
         glm::vec3 center = { 0, 0, 0 };
         float radius = 5;
         return radius * radius - glm::length2(pos - center);
+    };*/
+    auto tanglecube = [] (float x, float y, float z) {
+        x /= 3;
+        y /= 3;
+        z /= 3;
+        float x2 = x*x;
+        float y2 = y*y;
+        float z2 = z*z;
+        float x4 = x2*x2;
+        float y4 = y2*y2;
+        float z4 = z2*z2;
+        return -(x4 + y4 + z4 - 8 * (x2 + y2 + z2) + 25);
     };
-    UpdateVoxelBuffers(density);
+    /*auto barth_sextic = [] (float x, float y, float z) {
+        auto square = [] (float a) { return a*a; };
+        x /= 4;
+        y /= 4;
+        z /= 4;
+        
+        float t = (1 + glm::sqrt(5)) / 2;
+        float x2 = x*x;
+        float y2 = y*y;
+        float z2 = z*z;
+        float t2 = t*t;
+        float res = 4 * (t2*x2 - y2) * (t2*y2 - z2) * (t2*z2 - x2) -
+            (1 + 2*t) * square(x2 + y2 + z2 - 1);
+        return res;    
+    };*/
+    UpdateVoxelBuffers(tanglecube);
 }
 
 void Raytracer::Cleanup() 
