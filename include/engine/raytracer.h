@@ -113,4 +113,7 @@ private:
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);
     void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record);
+
+    uint32_t SplitBy3(uint32_t x);
+    uint32_t MortonEncode(glm::u32vec3 cell);
 };

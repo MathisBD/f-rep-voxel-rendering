@@ -18,7 +18,7 @@ void Raytracer::Init(
     m_descCache = descCache;
 
     // Voxel grid
-    m_voxelGrid = CubeGrid(128, { -20, -20, -20 }, 40);
+    m_voxelGrid = CubeGrid(256, { -20, -20, -20 }, 40);
 
     InitCommands();
     InitSynchronization();
@@ -27,10 +27,10 @@ void Raytracer::Init(
     InitUploadCtxt();
 
     // We only upload the voxels once.    
-    /*auto circle = [] (float x, float y, float z) {
+    /*auto sphere = [] (float x, float y, float z) {
         glm::vec3 pos = { x, y, z };
         glm::vec3 center = { 0, 0, 0 };
-        float radius = 5;
+        float radius = 15;
         return radius * radius - glm::length2(pos - center);
     };*/
     auto tanglecube = [] (float x, float y, float z) {
@@ -241,10 +241,10 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
     // Lights
-    contents->lights[0].direction = { -1, -1, 0, 0 };
+    contents->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, 0, 0 }));
     contents->lights[0].color = { 1, 0, 0, 0 };
 
-    contents->lights[1].direction = { 1, -1, 0, 0 };
+    contents->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, 0, 0 }));
     contents->lights[1].color = { 0, 0, 2, 0 };
 
     m_buffers.uniforms.Unmap(); 
@@ -269,14 +269,16 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
     memset(data, 0, stagingData.size);
     memset(maskPC, 0, stagingMaskPC.size);
     
-    size_t dim = m_voxelGrid.dim;
-    size_t voxelCount = dim * dim * dim;
+    uint32_t dim = m_voxelGrid.dim;
+    uint32_t voxelCount = dim * dim * dim;
 
     // Generate the voxel data and mask.
-    for (size_t x = 0; x < dim; x++) {
-        for (size_t y = 0; y < dim; y++) {
-            for (size_t z = 0; z < dim; z++) {
-                size_t index = z + y * dim + x * dim * dim;
+    for (uint32_t x = 0; x < dim; x++) {
+        for (uint32_t y = 0; y < dim; y++) {
+            for (uint32_t z = 0; z < dim; z++) {
+                uint32_t index = z + y * dim + x * dim * dim;
+                //uint32_t index = MortonEncode({x, y, z});
+                
                 glm::vec3 pos = m_voxelGrid.WorldPosition({ x, y, z });
                 float d = density(pos.x, pos.y, pos.z);
 
@@ -286,7 +288,7 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
                     mask[q] |= (1 << r);
                     
                     float eps = 0.001f;
-                    data[index].color = { 1.0f, 1.0f, 0.3f, 1.0f };
+                    data[index].color = { 1.0f, 1.0f, 1.0f, 1.0f };
                     data[index].normal = { 
                         (density(pos.x + eps, pos.y, pos.z) - d) / eps,
                         (density(pos.x, pos.y + eps, pos.z) - d) / eps,
@@ -298,8 +300,8 @@ void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& d
         }
     }
     // Compactify the voxel data buffer
-    size_t vPos = 0;
-    for (size_t index = 0; index < voxelCount; index++) {
+    uint32_t vPos = 0;
+    for (uint32_t index = 0; index < voxelCount; index++) {
         uint32_t q = index >> 5;
         uint32_t r = index & ((1 << 5) - 1);
         if (mask[q] & (1 << r)) {
@@ -427,4 +429,19 @@ void Raytracer::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record)
 
     VK_CHECK(vkResetCommandPool(
         m_device->logicalDevice, m_uploadCtxt.cmdPool, 0));
+}
+
+
+uint32_t Raytracer::SplitBy3(uint32_t x) 
+{
+    x &= 0xFF;                     // 0000 0000 0000 0000 1111 1111
+    x = (x | (x << 8)) & 0x00F00F; // 0000 0000 1111 0000 0000 1111
+    x = (x | (x << 4)) & 0x0c30c3; // 0000 1100 0011 0000 1100 0011
+    x = (x | (x << 2)) & 0x249249; // 0010 0100 1001 0010 0100 1001
+    return x;
+}
+
+uint32_t Raytracer::MortonEncode(glm::u32vec3 cell) 
+{
+    return SplitBy3(cell.x) | (SplitBy3(cell.y) << 1) | (SplitBy3(cell.z) << 2);
 }

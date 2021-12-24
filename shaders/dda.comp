@@ -54,8 +54,24 @@ layout (std430, set = 0, binding = 4) readonly buffer VoxelMaskPCBuffer {
     uint partialCount[];
 } voxelMaskPCBuffer;
 
+// Assumes x fits on 8 bits
+uint split_by_3(uint x)
+{
+    x &= 0xFF;                     // 0000 0000 0000 0000 1111 1111
+    x = (x | (x << 8)) & 0x00F00F; // 0000 0000 1111 0000 0000 1111
+    x = (x | (x << 4)) & 0x0c30c3; // 0000 1100 0011 0000 1100 0011
+    x = (x | (x << 2)) & 0x249249; // 0010 0100 1001 0010 0100 1001
+    return x;
+}
 
+#define INDEX_MORTON(cell) (        \
+    split_by_3((cell).x) |          \
+    (split_by_3((cell).y) << 1) |   \
+    (split_by_3((cell).z) << 2)     \
+)     
 #define INDEX3D(cell, dim) ((cell).z + (dim) * (cell).y + (dim) * (dim) * (cell).x)
+#define INDEX(cell, dim) INDEX3D(cell, dim)
+
 #define BIT_SET(x, bit) ((x) & (1 << (bit)))
 
 
@@ -136,31 +152,18 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     }
 }
 
-vec4 shade(uint cell_index, vec3 ray_dir)
-{
-    VoxelData voxel = voxelDataBuffer.data[voxel_position(cell_index)];
-
-    vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint i = 0; i < uniformBuffer.lightCount.x; i++) {
-        DirectionalLight light = uniformBuffer.lights[i];
-        float intensity = max(dot(-light.direction, voxel.normal), 0.0f);
-        diffuse += intensity * light.color;
-    }
-
-    vec4 ambient = vec4(0.2f, 0.2f, 0.2f, 0.0f);
-
-    return voxel.color * (ambient + diffuse);
-}
-
-vec4 raytrace(vec3 orig, vec3 dir)
+bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
 {
     float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.gridDim;
     vec3 normOrig = (orig - uniformBuffer.gridWorldCoords) / cellSize;
     vec3 invDir = 1.0f / dir;
 
     // Differential cell/time values.
-    ivec3 d_cell = ivec3(sign(dir));
     vec3 d_t = cellSize * abs(invDir);
+    ivec3 d_cell = ivec3(sign(dir));
+    // make sure d_cell != 0, to avoid any infite loop.
+    bvec3 mask = equal(d_cell, vec3(0, 0, 0));
+    d_cell += ivec3(mask);
 
     // Current cell/time values.
     float curr_t = 0;
@@ -181,13 +184,15 @@ vec4 raytrace(vec3 orig, vec3 dir)
         if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.gridDim || 
             curr_cell.y < 0 || curr_cell.y >= uniformBuffer.gridDim || 
             curr_cell.z < 0 || curr_cell.z >= uniformBuffer.gridDim) {
-            return uniformBuffer.backgroundColor;
+            return false;
         }
 
         // Is there a voxel here ?
-        uint index = INDEX3D(curr_cell, uniformBuffer.gridDim); 
+        uint index = INDEX(curr_cell, uniformBuffer.gridDim); 
         if (has_voxel(index)) {
-            return shade(index, dir);
+            out_t = curr_t;
+            out_cell = uvec3(curr_cell);
+            return true;
         }
 
         // x
@@ -211,6 +216,46 @@ vec4 raytrace(vec3 orig, vec3 dir)
     }
 }
 
+
+vec4 shade(uint cell_index, vec3 hit_pos, vec3 ray_dir)
+{
+    VoxelData voxel = voxelDataBuffer.data[voxel_position(cell_index)];
+
+    vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < uniformBuffer.lightCount; i++) {
+        DirectionalLight light = uniformBuffer.lights[i];
+        
+        // Check the light illuminates the voxel
+        float dummy_t;
+        vec3 dummy_cell;
+        bool hit = dda(hit_pos, -light.direction.xyz, dummy_t, dummy_cell);
+        if (!hit) {
+            // Add the light contribution
+            float intensity = max(dot(-light.direction, voxel.normal), 0.0f);
+            diffuse += intensity * light.color;
+        }
+    }
+
+    vec4 ambient = vec4(0.05f, 0.05f, 0.05f, 1.0f);
+
+    return voxel.color * (ambient + diffuse);
+}
+
+vec4 raytrace(vec3 orig, vec3 dir)
+{
+    float t;
+    uvec3 cell;
+    bool hit = dda(orig, dir, t, cell);
+    if (hit) {
+        uint index = INDEX(cell, uniformBuffer.gridDim);
+        return shade(index, orig + (t - 0.0001f) * dir, dir);
+    }
+    else {
+        return uniformBuffer.backgroundColor;
+    }
+}
+
+
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
@@ -226,14 +271,11 @@ void main()
             dy * uniformBuffer.screenWorldSize.y * uniformBuffer.cameraUp.xyz);
 
         float start_t = raygrid_intersect(uniformBuffer.cameraPosition.xyz, dir);
-        vec4 color;
-        if (start_t > 0.0f) {
+        vec4 color = uniformBuffer.backgroundColor;
+        if (start_t >= 0.0f) {
             // Project the origin onto the grid, along the ray direction.
             vec3 projected_orig = uniformBuffer.cameraPosition.xyz + start_t * dir + 0.001f * dir;
-            color = raytrace(projected_orig, dir);           
-        }
-        else {
-            color = uniformBuffer.backgroundColor;
+            color = raytrace(projected_orig, dir);
         }
         imageStore(outImg, ivec2(gid), color);
     }
