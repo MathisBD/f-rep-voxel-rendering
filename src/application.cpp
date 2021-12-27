@@ -17,6 +17,7 @@ void Application::Init(bool enableValidationLayers)
         m_device.queueFamilies.transfer);
 
     InitRenderTarget();
+    InitVoxels();
 
     m_renderer.Init(
         &m_device, &m_descAllocator, &m_descCache,
@@ -25,10 +26,13 @@ void Application::Init(bool enableValidationLayers)
 
     m_raytracer.Init(
         &m_device, &m_descAllocator, &m_descCache,
-        &m_target, m_vmaAllocator);
+        &m_target, &m_voxels, m_vmaAllocator);
     m_cleanupQueue.AddFunction([=] { m_raytracer.Cleanup(); });
     m_raytracer.SetBackgroundColor({ 0.0f, 0.0f, 0.0f });
 
+    m_builder.Init(m_vmaAllocator, &m_voxels);
+    m_cleanupQueue.AddFunction([=] { m_builder.Cleanup(); });
+    
     // Camera
     m_camera.position = { 0, 0, 40.0f };
     m_camera.forward = { 0, 0, -1 };
@@ -36,6 +40,59 @@ void Application::Init(bool enableValidationLayers)
     m_camera.fovDeg = 45;
     m_camera.aspectRatio = m_windowExtent.width / (float)m_windowExtent.height;
     m_camera.Init();
+
+    // Create the voxels
+    /*auto sphere = [] (float x, float y, float z) {
+        glm::vec3 pos = { x, y, z };
+        glm::vec3 center = { 0, 0, 0 };
+        float radius = 15;
+        return radius * radius - glm::length2(pos - center);
+    };*/
+    auto tanglecube = [] (float x, float y, float z) {
+        x /= 3;
+        y /= 3;
+        z /= 3;
+        float x2 = x*x;
+        float y2 = y*y;
+        float z2 = z*z;
+        float x4 = x2*x2;
+        float y4 = y2*y2;
+        float z4 = z2*z2;
+        return -(x4 + y4 + z4 - 8 * (x2 + y2 + z2) + 25);
+    };
+    /*auto barth_sextic = [] (float x, float y, float z) {
+        auto square = [] (float a) { return a*a; };
+        x /= 4;
+        y /= 4;
+        z /= 4;
+        
+        float t = (1 + glm::sqrt(5)) / 2;
+        float x2 = x*x;
+        float y2 = y*y;
+        float z2 = z*z;
+        float t2 = t*t;
+        float res = 4 * (t2*x2 - y2) * (t2*y2 - z2) * (t2*z2 - x2) -
+            (1 + 2*t) * square(x2 + y2 + z2 - 1);
+        return res;    
+    };*/
+    m_builder.CreateVoxels(tanglecube);
+    m_builder.AllocateGPUBuffers();
+    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
+        m_builder.CopyStagingBuffers(cmd);
+    });
+    m_builder.CleanupStagingBuffers();
+}
+
+void Application::InitVoxels() 
+{
+    m_voxels.gridLevels = 1;
+    m_voxels.gridDims = { 32 };
+    m_voxels.lowVertex = { -20, -20, -20 };
+    m_voxels.worldSize = 40;
+
+    m_voxels.nodeBuffer.Init(m_vmaAllocator);
+    m_voxels.childBuffer.Init(m_vmaAllocator);
+    m_voxels.voxelBuffer.Init(m_vmaAllocator);
 }
 
 void Application::InitRenderTarget() 

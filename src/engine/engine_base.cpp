@@ -136,7 +136,7 @@ void EngineBase::InitVma()
 
 void EngineBase::InitImmUploadCtxt() 
 {
-    uint32_t queueFamily = m_device.queueFamilies.graphics;
+    uint32_t queueFamily = m_device.queueFamilies.compute;
 
     // Queue
     vkGetDeviceQueue(m_device.logicalDevice, queueFamily, 0, &m_immUploadCtxt.queue);

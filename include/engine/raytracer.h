@@ -5,7 +5,7 @@
 #include "vk_wrapper/device.h"
 #include "engine/render_target.h"
 #include "engine/camera.h"
-#include "engine/cube_grid.h"
+#include "engine/voxel_storage.h"
 #include "engine/cleanup_queue.h"
 #include "vk_wrapper/descriptor.h"
 
@@ -17,7 +17,7 @@ public:
     void Init(
         vkw::Device* device, 
         vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-        RenderTarget* target, VmaAllocator vmaAllocator);
+        RenderTarget* target, VoxelStorage* voxels, VmaAllocator vmaAllocator);
     void Cleanup();
 
     void Trace(VkSemaphore renderSem, const Camera* camera);
@@ -69,6 +69,7 @@ private:
     CleanupQueue m_cleanupQueue;
     vkw::Device* m_device;
     RenderTarget* m_target;
+    VoxelStorage* m_voxels;
     VmaAllocator m_vmaAllocator;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
@@ -108,7 +109,6 @@ private:
     void InitUploadCtxt();
 
     void UpdateUniformBuffer(const Camera* camera);
-    void UpdateVoxelBuffers(std::function<float(float, float, float)>&& density);
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);

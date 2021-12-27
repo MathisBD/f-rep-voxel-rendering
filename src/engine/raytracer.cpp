@@ -9,13 +9,14 @@
 void Raytracer::Init(
     vkw::Device* device, 
     vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-    RenderTarget* target, VmaAllocator vmaAllocator) 
+    RenderTarget* target, VoxelStorage* voxels, VmaAllocator vmaAllocator) 
 {
     m_device = device;
     m_target = target;
     m_vmaAllocator = vmaAllocator;
     m_descAllocator = descAllocator;
     m_descCache = descCache;
+    m_voxels = voxels;
 
     // Voxel grid
     m_voxelGrid = CubeGrid(256, { -20, -20, -20 }, 40);
@@ -25,42 +26,6 @@ void Raytracer::Init(
     InitBuffers();
     InitPipeline();
     InitUploadCtxt();
-
-    // We only upload the voxels once.    
-    /*auto sphere = [] (float x, float y, float z) {
-        glm::vec3 pos = { x, y, z };
-        glm::vec3 center = { 0, 0, 0 };
-        float radius = 15;
-        return radius * radius - glm::length2(pos - center);
-    };*/
-    auto tanglecube = [] (float x, float y, float z) {
-        x /= 3;
-        y /= 3;
-        z /= 3;
-        float x2 = x*x;
-        float y2 = y*y;
-        float z2 = z*z;
-        float x4 = x2*x2;
-        float y4 = y2*y2;
-        float z4 = z2*z2;
-        return -(x4 + y4 + z4 - 8 * (x2 + y2 + z2) + 25);
-    };
-    /*auto barth_sextic = [] (float x, float y, float z) {
-        auto square = [] (float a) { return a*a; };
-        x /= 4;
-        y /= 4;
-        z /= 4;
-        
-        float t = (1 + glm::sqrt(5)) / 2;
-        float x2 = x*x;
-        float y2 = y*y;
-        float z2 = z*z;
-        float t2 = t*t;
-        float res = 4 * (t2*x2 - y2) * (t2*y2 - z2) * (t2*z2 - x2) -
-            (1 + 2*t) * square(x2 + y2 + z2 - 1);
-        return res;    
-    };*/
-    UpdateVoxelBuffers(tanglecube);
 }
 
 void Raytracer::Cleanup() 
@@ -248,100 +213,6 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->lights[1].color = { 0, 0, 2, 0 };
 
     m_buffers.uniforms.Unmap(); 
-}
-
-void Raytracer::UpdateVoxelBuffers(std::function<float(float, float, float)>&& density) 
-{
-    vkw::Buffer stagingMask;
-    stagingMask.Init(m_vmaAllocator);
-    stagingMask.Allocate(m_buffers.voxelMask.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-    vkw::Buffer stagingData;
-    stagingData.Init(m_vmaAllocator);
-    stagingData.Allocate(m_buffers.voxelData.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-    vkw::Buffer stagingMaskPC;
-    stagingMaskPC.Init(m_vmaAllocator);
-    stagingMaskPC.Allocate(m_buffers.voxelMaskPC.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-
-    uint32_t* mask = (uint32_t*)stagingMask.Map();
-    DDAVoxel* data = (DDAVoxel*)stagingData.Map();
-    uint32_t* maskPC = (uint32_t*)stagingMaskPC.Map();
-    memset(mask, 0, stagingMask.size);
-    memset(data, 0, stagingData.size);
-    memset(maskPC, 0, stagingMaskPC.size);
-    
-    uint32_t dim = m_voxelGrid.dim;
-    uint32_t voxelCount = dim * dim * dim;
-
-    // Generate the voxel data and mask.
-    for (uint32_t x = 0; x < dim; x++) {
-        for (uint32_t y = 0; y < dim; y++) {
-            for (uint32_t z = 0; z < dim; z++) {
-                uint32_t index = z + y * dim + x * dim * dim;
-                //uint32_t index = MortonEncode({x, y, z});
-                
-                glm::vec3 pos = m_voxelGrid.WorldPosition({ x, y, z });
-                float d = density(pos.x, pos.y, pos.z);
-
-                if (d >= 0.0f) {
-                    uint32_t q = index >> 5;
-                    uint32_t r = index & ((1 << 5) - 1);
-                    mask[q] |= (1 << r);
-                    
-                    float eps = 0.001f;
-                    data[index].color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                    data[index].normal = { 
-                        (density(pos.x + eps, pos.y, pos.z) - d) / eps,
-                        (density(pos.x, pos.y + eps, pos.z) - d) / eps,
-                        (density(pos.x, pos.y, pos.z + eps) - d) / eps,
-                        0.0f };
-                    data[index].normal = -glm::normalize(data[index].normal);
-                }
-            }
-        }
-    }
-    // Compactify the voxel data buffer
-    uint32_t vPos = 0;
-    for (uint32_t index = 0; index < voxelCount; index++) {
-        uint32_t q = index >> 5;
-        uint32_t r = index & ((1 << 5) - 1);
-        if (mask[q] & (1 << r)) {
-            data[vPos] = data[index];
-            vPos++;
-        }
-    }
-    // Compute the mask partial counts
-    uint32_t partialCount = 0;
-    for (uint32_t q = 0; q < (voxelCount / 32); q++) {
-        partialCount += __builtin_popcount(mask[q]);
-        maskPC[q] = partialCount;
-    }
-    stagingData.Unmap();
-    stagingMask.Unmap();
-    stagingMaskPC.Unmap();
-
-    // Copy the data to the GPU.
-    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
-        VkBufferCopy maskRegion;
-        maskRegion.srcOffset = 0;
-        maskRegion.dstOffset = 0;
-        maskRegion.size = m_buffers.voxelMask.size;
-        vkCmdCopyBuffer(cmd, stagingMask.buffer, m_buffers.voxelMask.buffer, 1, &maskRegion);
-    
-        VkBufferCopy dataRegion;
-        dataRegion.srcOffset = 0;
-        dataRegion.dstOffset = 0;
-        dataRegion.size = m_buffers.voxelData.size;
-        vkCmdCopyBuffer(cmd, stagingData.buffer, m_buffers.voxelData.buffer, 1, &dataRegion);
-    
-        VkBufferCopy maskPCRegion;
-        maskPCRegion.srcOffset = 0;
-        maskPCRegion.dstOffset = 0;
-        maskPCRegion.size = m_buffers.voxelMaskPC.size;
-        vkCmdCopyBuffer(cmd, stagingMaskPC.buffer, m_buffers.voxelMaskPC.buffer, 1, &maskPCRegion);
-    });
-    stagingMask.Cleanup();
-    stagingData.Cleanup();
-    stagingMaskPC.Cleanup();
 }
 
 

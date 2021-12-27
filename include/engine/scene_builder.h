@@ -7,25 +7,24 @@
 class SceneBuilder
 {
 public:
-    VoxelStorage voxels;
-    // This grid has the finest dimension (i.e. the
-    // product of the dimensions of every grid level).
-    CubeGrid fineGrid;
+    VoxelStorage* voxels;
     std::function<float(float, float, float)> density;
 
-    void Init(VmaAllocator vmaAllocator);
-    void CreateVoxels(
-        std::function<float(float, float, float)>&& density,
-        CubeGrid& fineGrid);
+    void Init(VmaAllocator vmaAllocator, VoxelStorage* voxels);
     void Cleanup();
+
+    void CreateVoxels(std::function<float(float, float, float)>&& density);
+    void AllocateGPUBuffers();
+    void CopyStagingBuffers(VkCommandBuffer cmd);
+    void CleanupStagingBuffers();
+
 private:
     VmaAllocator m_allocator;
-    
+    uint32_t m_actualVoxelCount;
+
     // These are CPU buffers.
     // They are copied into the corresponding GPU buffer.
     vkw::Buffer m_nodeStagingBuffer;
     vkw::Buffer m_childStagingBuffer;
     vkw::Buffer m_voxelStagingBuffer;
-
-    void CopyStagingBuffers();
 };
