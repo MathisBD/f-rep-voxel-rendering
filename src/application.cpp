@@ -86,8 +86,8 @@ void Application::InitVoxels()
 {
     m_voxels.gridLevels = 1;
     m_voxels.gridDims = { 32 };
-    m_voxels.lowVertex = { -20, -20, -20 };
-    m_voxels.worldSize = 40;
+    m_voxels.lowVertex = { -10, -10, -10 };
+    m_voxels.worldSize = 20;
 
     m_voxels.nodeBuffer.Init(m_vmaAllocator);
     m_voxels.childBuffer.Init(m_vmaAllocator);

@@ -159,12 +159,6 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->gridWorldCoords = m_voxels->lowVertex;
     contents->gridWorldSize = m_voxels->worldSize;
     
-    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        contents->gridDims[i] = m_voxels->gridDims[i];
-    }
-    contents->nodeBufferOfs[0] = 0;
-    contents->childBufferOfs[0] = 0;
-
     contents->screenResolution.x = m_target->image.extent.width;
     contents->screenResolution.y = m_target->image.extent.height;
 
@@ -179,6 +173,13 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->cameraForward  = glm::vec4(camera->forward, 0.0f);
     contents->cameraUp       = glm::vec4(camera->Up(), 0.0f);
     contents->cameraRight    = glm::vec4(camera->Right(), 0.0f);
+
+    // Level data
+    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+        contents->levels[i].dim = m_voxels->gridDims[i];
+        contents->levels[i].nodeOfs = 0;
+        contents->levels[i].childOfs = 0;
+    }
 
     // Background color
     contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);

@@ -1,11 +1,14 @@
 #version 450
+
 // Kernel group size.
 layout (local_size_x = 16, local_size_y = 16) in;
 
+
 // Include other files
 #extension GL_GOOGLE_include_directive : enable
-#include "raycasting/utils.comp.incl"
-#include "raycasting/inputs.comp.incl"
+#include "raycasting/utils.comp_header"
+#include "raycasting/inputs.comp_header"
+
 
 
 bool has_voxel(uint index)
@@ -71,7 +74,7 @@ float raygrid_intersect(vec3 orig, vec3 dir)
 
 bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
 {
-    float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.gridDims[0];
+    float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.levels[0].dim;
     vec3 normOrig = (orig - uniformBuffer.gridWorldCoords) / cellSize;
     vec3 invDir = 1.0f / dir;
 
@@ -98,14 +101,14 @@ bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
 
     while (true) {
         // Out of grid
-        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.gridDims[0] || 
-            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.gridDims[0] || 
-            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.gridDims[0]) {
+        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.levels[0].dim || 
+            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.levels[0].dim || 
+            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.levels[0].dim) {
             return false;
         }
 
         // Is there a voxel here ?
-        uint index = INDEX3D(curr_cell, uniformBuffer.gridDims[0]); 
+        uint index = INDEX3D(curr_cell, uniformBuffer.levels[0].dim); 
         if (has_voxel(index)) {
             out_t = curr_t;
             out_cell = uvec3(curr_cell);
@@ -164,7 +167,7 @@ vec4 raytrace(vec3 orig, vec3 dir)
     uvec3 cell;
     bool hit = dda(orig, dir, t, cell);
     if (hit) {
-        uint index = INDEX3D(cell, uniformBuffer.gridDims[0]);
+        uint index = INDEX3D(cell, uniformBuffer.levels[0].dim);
         return shade(index, orig + (t - 0.0001f) * dir, dir);
     }
     else {

@@ -1,5 +1,4 @@
 
-
 #define CUBE(x) ((x)*(x)*(x))
 
 #define INDEX3D(cell, dim) ((cell).z + (dim) * (cell).y + (dim) * (dim) * (cell).x)

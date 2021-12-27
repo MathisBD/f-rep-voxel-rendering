@@ -17,6 +17,13 @@ struct Material {
     vec4 color;
 };
 
+struct LevelData {
+    uint dim;
+    uint nodeOfs;
+    uint childOfs;
+    uint _padding_;
+};
+
 // Output image.
 layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
 
@@ -29,23 +36,18 @@ layout (set = 0, binding = 1) uniform UniformBuffer {
     uint gridLevels;
     uint _padding_;
 
-    vec3 gridWorldCoords;
-    float gridWorldSize;
-
-    // The grid dimensions at each level.
-    uint gridDims[MAX_LEVEL_COUNT];
-    // The offset (in uints) in the node buffer of the nodes at a specific level.
-    uint nodeBufferOfs[MAX_LEVEL_COUNT];
-    // The offset (in uints) in the child buffer of the nodes at a specific level.
-    uint childBufferOfs[MAX_LEVEL_COUNT];
-
-    uvec2 screenResolution;
-    vec2 screenWorldSize;
-
     vec4 cameraPosition;
     vec4 cameraForward;
     vec4 cameraUp;
     vec4 cameraRight;
+
+    vec3 gridWorldCoords;
+    float gridWorldSize;
+
+    uvec2 screenResolution;
+    vec2 screenWorldSize;
+
+    LevelData levels[MAX_LEVEL_COUNT];
 
     vec4 backgroundColor;
     DirectionalLight lights[MAX_LIGHT_COUNT]; 
@@ -69,11 +71,11 @@ layout (std430, set = 0, binding = 4) readonly buffer VoxelBuffer {
 
 // Node structure.
 // Sizes are given in uints rather than bytes.
-#define NODE_SIZE(level) (1 + (CUBE(uniformBuffer.gridDims[(level)])) >> 4)
+#define NODE_SIZE(level) (1 + (CUBE(uniformBuffer.levels[(level)].dim)) >> 4)
 #define NODE_OFS_CL_IDX(level)  0
 #define NODE_OFS_MASK(level)    1
-#define NODE_OFS_MASK_PC(level) (1 + (CUBE(uniformBuffer.gridDims[(level)]) >> 5))
+#define NODE_OFS_MASK_PC(level) (1 + (CUBE(uniformBuffer.levels[(level)].dim) >> 5))
 
 // Child list structure.
 // Sizes are given in uints rather than bytes.
-#define CL_SIZE(level) CUBE(uniformBuffer.gridDims[(level)])
+#define CL_SIZE(level) CUBE(uniformBuffer.levels[(level)].dim)

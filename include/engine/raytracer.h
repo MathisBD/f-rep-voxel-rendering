@@ -29,6 +29,13 @@ typedef struct {
 } ShaderLight;
 
 typedef struct {
+    uint32_t dim;
+    uint32_t nodeOfs;
+    uint32_t childOfs;
+    uint32_t _padding_;
+} ShaderLevelData;
+
+typedef struct {
     glm::vec4 color;
 } ShaderMaterial;
 
@@ -37,20 +44,6 @@ typedef struct {
     uint32_t materialCount;
     uint32_t gridLevels;  
     uint32_t _padding_;
-    
-    // The world positions of the grid bottom left corner.
-    glm::vec3 gridWorldCoords;
-    float gridWorldSize;
-
-    uint32_t gridDims[MAX_LEVEL_COUNT];
-    uint32_t nodeBufferOfs[MAX_LEVEL_COUNT];
-    uint32_t childBufferOfs[MAX_LEVEL_COUNT];
-
-    // The screen resolution in pixels.
-    glm::uvec2 screenResolution;
-    // The world size of the screen boundaries
-    // at one unit away from the camera position.
-    glm::vec2 screenWorldSize;
 
     // The camera world position (w unused).
     glm::vec4 cameraPosition;
@@ -60,6 +53,18 @@ typedef struct {
     glm::vec4 cameraForward;
     glm::vec4 cameraUp;
     glm::vec4 cameraRight;
+    
+    // The world positions of the grid bottom left corner.
+    glm::vec3 gridWorldCoords;
+    float gridWorldSize;
+
+    // The screen resolution in pixels.
+    glm::uvec2 screenResolution;
+    // The world size of the screen boundaries
+    // at one unit away from the camera position.
+    glm::vec2 screenWorldSize;
+
+    ShaderLevelData levels[MAX_LEVEL_COUNT];
 
     // The color we use for rays that don't intersect any voxel (w unused).
     glm::vec4 backgroundColor;
