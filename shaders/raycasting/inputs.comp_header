@@ -19,6 +19,7 @@ struct Material {
 
 struct LevelData {
     uint dim;
+    // The offsets are given in uints rather than in bytes.
     uint nodeOfs;
     uint childOfs;
     uint _padding_;

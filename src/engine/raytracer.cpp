@@ -175,10 +175,17 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->cameraRight    = glm::vec4(camera->Right(), 0.0f);
 
     // Level data
+    uint32_t nodeOfs = 0;
+    uint32_t childOfs = 0;
     for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        contents->levels[i].dim = m_voxels->gridDims[i];
-        contents->levels[i].nodeOfs = 0;
-        contents->levels[i].childOfs = 0;
+        uint32_t dim = m_voxels->gridDims[i];
+        contents->levels[i].dim = dim;
+        contents->levels[i].nodeOfs = nodeOfs;
+        contents->levels[i].childOfs = childOfs;
+
+        // Remember : the offsets are in uints (not in bytes).
+        nodeOfs += m_voxels->nodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
+        childOfs += m_voxels->nodeCount[i] * (dim * dim * dim);
     }
 
     // Background color

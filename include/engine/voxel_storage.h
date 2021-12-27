@@ -13,22 +13,46 @@ public:
         uint32_t materialIndex;
     };
 
+    // These should be filled before calling Init().
     uint32_t gridLevels;
     std::vector<uint32_t> gridDims;
-
     glm::vec3 lowVertex;
     float worldSize;
+
+    // This is the dimension of the finest grid.
+    // Example : for a 3-level grid (3, 4, 2), 
+    // the fine grid dimension is 24. 
+    glm::uint32_t fineGridDim;
+
+    // The number of nodes in each level.
+    // Leaf nodes are counted but not voxels.
+    std::vector<uint32_t> nodeCount;
 
     // These are GPU buffers.
     vkw::Buffer nodeBuffer;
     vkw::Buffer childBuffer;
     vkw::Buffer voxelBuffer;
 
+    void Init(VmaAllocator allocator) 
+    {
+        assert(gridDims.size() == gridLevels);
 
+        fineGridDim = 1;
+        for (auto dim : gridDims) {
+            fineGridDim *= dim;
+        }
+
+        nodeCount = std::vector<uint32_t>(gridLevels, 0);
+
+        nodeBuffer.Init(allocator);
+        childBuffer.Init(allocator);
+        voxelBuffer.Init(allocator);
+    }
+
+    // The coordinates are given in the finest grid dimensions.
     inline glm::vec3 WorldPosition(glm::u32vec3 pos) const 
     {
-        assert(pos.x < gridDims[0] && pos.y < gridDims[0] && pos.z < gridDims[0]);
-        return lowVertex + glm::vec3(pos) * worldSize / (float)(gridDims[0]-1);    
+        return lowVertex + glm::vec3(pos) * worldSize / (float)(fineGridDim-1);    
     }
 
     // The sizes are in bytes.

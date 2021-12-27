@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <vulkan/vulkan.h>
 #include <stdlib.h>
+#include <assert.h>
 
 
 #define VK_CHECK(x)                                                 \
@@ -12,7 +13,7 @@
 		{                                                           \
 			printf("[-] Vulkan error: %d\n\tfile: %s:%d\n",          \
 				err, __FILE__, __LINE__);                           \
-			exit(-1);                                               \
+			assert(false);                                               \
 		}                                                           \
 	} while (0)
 	
