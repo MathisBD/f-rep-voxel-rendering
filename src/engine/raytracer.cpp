@@ -18,9 +18,6 @@ void Raytracer::Init(
     m_descCache = descCache;
     m_voxels = voxels;
 
-    // Voxel grid
-    m_voxelGrid = CubeGrid(256, { -20, -20, -20 }, 40);
-
     InitCommands();
     InitSynchronization();
     InitBuffers();
@@ -69,45 +66,19 @@ void Raytracer::InitSynchronization()
 void Raytracer::InitBuffers()
 {
     // Uniform buffer
-    m_buffers.uniforms.Init(m_vmaAllocator);
-    m_buffers.uniforms.Allocate(
-        sizeof(DDAUniforms), 
+    m_uniformsBuffer.Init(m_vmaAllocator);
+    m_uniformsBuffer.Allocate(
+        sizeof(ShaderUniforms), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] { m_buffers.uniforms.Cleanup(); });
-
-    // Voxel data buffer
-    size_t voxelCount = m_voxelGrid.dim * m_voxelGrid.dim * m_voxelGrid.dim;
-    m_buffers.voxelData.Init(m_vmaAllocator);
-    m_buffers.voxelData.Allocate(
-        voxelCount * sizeof(DDAVoxel), 
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_cleanupQueue.AddFunction([=] { m_buffers.voxelData.Cleanup(); });
-
-    // Voxel mask buffer
-    size_t bitsPerByte = 8;
-    m_buffers.voxelMask.Init(m_vmaAllocator);
-    m_buffers.voxelMask.Allocate(
-        voxelCount / bitsPerByte, // there are voxelCount bits in the mask.
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_cleanupQueue.AddFunction([=] { m_buffers.voxelMask.Cleanup(); });
-
-    // Voxel mask PC buffer
-    m_buffers.voxelMaskPC.Init(m_vmaAllocator);
-    m_buffers.voxelMaskPC.Allocate(
-        m_buffers.voxelMask.size,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_cleanupQueue.AddFunction([=] { m_buffers.voxelMaskPC.Cleanup(); });
+    m_cleanupQueue.AddFunction([=] { m_uniformsBuffer.Cleanup(); });
 }
 
 void Raytracer::InitPipeline() 
 {
     // Load the shader
     vkw::Shader shader;
-    shader.Init(m_device->logicalDevice, "../shaders/dda.comp.spv");
+    shader.Init(m_device->logicalDevice, "../shaders/raycasting/main.comp.spv");
     
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
@@ -117,19 +88,19 @@ void Raytracer::InitPipeline()
     auto outImageInfo = vkw::init::DescriptorImageInfo(
         m_target->sampler, m_target->view, VK_IMAGE_LAYOUT_GENERAL);
     auto uniformsInfo = vkw::init::DescriptorBufferInfo(
-        m_buffers.uniforms.buffer, 0, m_buffers.uniforms.size);
-    auto voxelDataInfo = vkw::init::DescriptorBufferInfo(
-        m_buffers.voxelData.buffer, 0, m_buffers.voxelData.size);
-    auto voxelMaskInfo = vkw::init::DescriptorBufferInfo(
-        m_buffers.voxelMask.buffer, 0, m_buffers.voxelMask.size);
-    auto voxelMaskPCInfo = vkw::init::DescriptorBufferInfo(
-        m_buffers.voxelMaskPC.buffer, 0, m_buffers.voxelMaskPC.size);
+        m_uniformsBuffer.buffer, 0, m_uniformsBuffer.size);
+    auto nodeInfo = vkw::init::DescriptorBufferInfo(
+        m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
+    auto childInfo = vkw::init::DescriptorBufferInfo(
+        m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
+    auto voxelsInfo = vkw::init::DescriptorBufferInfo(
+        m_voxels->voxelBuffer.buffer, 0, m_voxels->voxelBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &uniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(2, &voxelDataInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(3, &voxelMaskInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(4, &voxelMaskPCInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &nodeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &childInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(4, &voxelsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -177,11 +148,22 @@ void Raytracer::InitUploadCtxt()
 
 void Raytracer::UpdateUniformBuffer(const Camera* camera) 
 {
-    DDAUniforms* contents = (DDAUniforms*)m_buffers.uniforms.Map();
+    assert(m_voxels->gridLevels < MAX_LEVEL_COUNT);
+    ShaderUniforms* contents = (ShaderUniforms*)m_uniformsBuffer.Map();
     
-    m_lightCount = 2;
-    contents->lightCount = m_lightCount;
-    contents->gridDim = m_voxelGrid.dim;
+    contents->lightCount = 2;
+    contents->materialCount = 1;
+    contents->gridLevels = m_voxels->gridLevels;
+
+    // Grid positions
+    contents->gridWorldCoords = m_voxels->lowVertex;
+    contents->gridWorldSize = m_voxels->worldSize;
+    
+    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+        contents->gridDims[i] = m_voxels->gridDims[i];
+    }
+    contents->nodeBufferOfs[0] = 0;
+    contents->childBufferOfs[0] = 0;
 
     contents->screenResolution.x = m_target->image.extent.width;
     contents->screenResolution.y = m_target->image.extent.height;
@@ -198,10 +180,6 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->cameraUp       = glm::vec4(camera->Up(), 0.0f);
     contents->cameraRight    = glm::vec4(camera->Right(), 0.0f);
 
-    // Grid positions
-    contents->gridWorldCoords = m_voxelGrid.lowVertex;
-    contents->gridWorldSize = m_voxelGrid.worldSize;
-    
     // Background color
     contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
@@ -212,7 +190,10 @@ void Raytracer::UpdateUniformBuffer(const Camera* camera)
     contents->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, 0, 0 }));
     contents->lights[1].color = { 0, 0, 2, 0 };
 
-    m_buffers.uniforms.Unmap(); 
+    // Materials
+    contents->materials[0].color = { 1, 1, 0.8f, 0 };
+
+    m_uniformsBuffer.Unmap(); 
 }
 
 

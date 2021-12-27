@@ -19,28 +19,9 @@ void Application::Init(bool enableValidationLayers)
     InitRenderTarget();
     InitVoxels();
 
-    m_renderer.Init(
-        &m_device, &m_descAllocator, &m_descCache,
-        &m_target, m_windowExtent, m_surface);
-    m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
-
-    m_raytracer.Init(
-        &m_device, &m_descAllocator, &m_descCache,
-        &m_target, &m_voxels, m_vmaAllocator);
-    m_cleanupQueue.AddFunction([=] { m_raytracer.Cleanup(); });
-    m_raytracer.SetBackgroundColor({ 0.0f, 0.0f, 0.0f });
-
     m_builder.Init(m_vmaAllocator, &m_voxels);
     m_cleanupQueue.AddFunction([=] { m_builder.Cleanup(); });
     
-    // Camera
-    m_camera.position = { 0, 0, 40.0f };
-    m_camera.forward = { 0, 0, -1 };
-    m_camera.initialUp = { 0, 1, 0 };
-    m_camera.fovDeg = 45;
-    m_camera.aspectRatio = m_windowExtent.width / (float)m_windowExtent.height;
-    m_camera.Init();
-
     // Create the voxels
     /*auto sphere = [] (float x, float y, float z) {
         glm::vec3 pos = { x, y, z };
@@ -80,7 +61,25 @@ void Application::Init(bool enableValidationLayers)
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
         m_builder.CopyStagingBuffers(cmd);
     });
-    m_builder.CleanupStagingBuffers();
+
+    m_renderer.Init(
+        &m_device, &m_descAllocator, &m_descCache,
+        &m_target, m_windowExtent, m_surface);
+    m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
+
+    m_raytracer.Init(
+        &m_device, &m_descAllocator, &m_descCache,
+        &m_target, &m_voxels, m_vmaAllocator);
+    m_cleanupQueue.AddFunction([=] { m_raytracer.Cleanup(); });
+    m_raytracer.SetBackgroundColor({ 0.0f, 0.0f, 0.0f });
+
+    // Camera
+    m_camera.position = { 0, 0, 40.0f };
+    m_camera.forward = { 0, 0, -1 };
+    m_camera.initialUp = { 0, 1, 0 };
+    m_camera.fovDeg = 45;
+    m_camera.aspectRatio = m_windowExtent.width / (float)m_windowExtent.height;
+    m_camera.Init();
 }
 
 void Application::InitVoxels() 
@@ -93,6 +92,12 @@ void Application::InitVoxels()
     m_voxels.nodeBuffer.Init(m_vmaAllocator);
     m_voxels.childBuffer.Init(m_vmaAllocator);
     m_voxels.voxelBuffer.Init(m_vmaAllocator);
+
+    m_cleanupQueue.AddFunction([=] {
+        m_voxels.nodeBuffer.Cleanup();
+        m_voxels.childBuffer.Cleanup();
+        m_voxels.voxelBuffer.Cleanup();
+    });
 }
 
 void Application::InitRenderTarget() 

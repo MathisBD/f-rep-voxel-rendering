@@ -11,7 +11,7 @@ target_include_directories(proj PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Warnings/Errors : there's no reason to ignore warnings in this project.
 target_compile_options(proj PUBLIC -Wall -Wextra)
-target_compile_options(proj PUBLIC -Werror)
+target_compile_options(proj PUBLIC -Werror -Wno-unused-parameter)
 
 # SDL2
 find_package(SDL2 REQUIRED)
@@ -34,6 +34,7 @@ target_link_libraries(proj ${GLM_LIBRARIES})
 
 # Compile shaders
 set(GLSL_VALIDATOR "glslangValidator")
+set(SHADER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/shaders")
 
 file(GLOB_RECURSE SHADER_SOURCES
     "${CMAKE_SOURCE_DIR}/shaders/*.frag"
@@ -45,7 +46,7 @@ foreach(SHADER ${SHADER_SOURCES})
     set(SPIRV "${SHADER}.spv")
     add_custom_command(
         OUTPUT ${SPIRV}
-        COMMAND ${GLSL_VALIDATOR} -V ${SHADER} -o ${SPIRV}
+        COMMAND ${GLSL_VALIDATOR} -V -I${SHADER_INCLUDE_DIR} ${SHADER} -o ${SPIRV}
         DEPENDS ${SHADER})
     list(APPEND SPIRV_FILES ${SPIRV})
 endforeach(SHADER)

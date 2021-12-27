@@ -11,6 +11,63 @@
 
 
 
+#define MAX_LIGHT_COUNT     8
+#define MAX_MATERIAL_COUNT  8
+#define MAX_LEVEL_COUNT     8
+
+typedef struct {
+    // The normal vector at the center of the voxel (w unused).
+    glm::vec3 normal;
+    uint32_t materialIndex;
+} ShaderVoxel;
+
+// A single point light.
+typedef struct {
+    glm::vec4 color;
+    // The direction the light is pointing (w unused).
+    glm::vec4 direction;
+} ShaderLight;
+
+typedef struct {
+    glm::vec4 color;
+} ShaderMaterial;
+
+typedef struct {
+    uint32_t lightCount;
+    uint32_t materialCount;
+    uint32_t gridLevels;  
+    uint32_t _padding_;
+    
+    // The world positions of the grid bottom left corner.
+    glm::vec3 gridWorldCoords;
+    float gridWorldSize;
+
+    uint32_t gridDims[MAX_LEVEL_COUNT];
+    uint32_t nodeBufferOfs[MAX_LEVEL_COUNT];
+    uint32_t childBufferOfs[MAX_LEVEL_COUNT];
+
+    // The screen resolution in pixels.
+    glm::uvec2 screenResolution;
+    // The world size of the screen boundaries
+    // at one unit away from the camera position.
+    glm::vec2 screenWorldSize;
+
+    // The camera world position (w unused).
+    glm::vec4 cameraPosition;
+    // The direction the camera is looking in (w unused).
+    // The camera forward, up and right vectors are normalized
+    // and orthogonal.
+    glm::vec4 cameraForward;
+    glm::vec4 cameraUp;
+    glm::vec4 cameraRight;
+
+    // The color we use for rays that don't intersect any voxel (w unused).
+    glm::vec4 backgroundColor;
+    ShaderLight lights[MAX_LIGHT_COUNT];
+    ShaderMaterial materials[MAX_MATERIAL_COUNT];
+} ShaderUniforms;
+
+
 class Raytracer
 {
 public:
@@ -24,48 +81,6 @@ public:
     VkSemaphore GetComputeSemaphore() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
-    typedef struct {
-        glm::vec4 color;
-        // The normal vector at the center of the voxel (w unused).
-        glm::vec4 normal;
-    } DDAVoxel;
-
-    // A single point light.
-    typedef struct {
-        glm::vec4 color;
-        // The direction the light is pointing (w unused).
-        glm::vec4 direction;
-    } DDALight;
-
-    typedef struct {
-        uint32_t lightCount;
-        uint32_t gridDim;  
-        uint32_t _padding_[2];
-
-        // The screen resolution in pixels.
-        glm::uvec2 screenResolution;
-        // The world size of the screen boundaries
-        // at one unit away from the camera position.
-        glm::vec2 screenWorldSize;
-
-        // The camera world position (w unused).
-        glm::vec4 cameraPosition;
-        // The direction the camera is looking in (w unused).
-        // The camera forward, up and right vectors are normalized
-        // and orthogonal.
-        glm::vec4 cameraForward;
-        glm::vec4 cameraUp;
-        glm::vec4 cameraRight;
-
-        // The world positions of the grid bottom left corner.
-        glm::vec3 gridWorldCoords;
-        float gridWorldSize;
-
-        // The color we use for rays that don't intersect any voxel (w unused).
-        glm::vec4 backgroundColor;
-        DDALight lights[8];
-    } DDAUniforms;
-
     CleanupQueue m_cleanupQueue;
     vkw::Device* m_device;
     RenderTarget* m_target;
@@ -92,15 +107,7 @@ private:
     } m_uploadCtxt;
 
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
-    size_t m_lightCount = 0;
-    CubeGrid m_voxelGrid;
-
-    struct {
-        vkw::Buffer uniforms;
-        vkw::Buffer voxelData;
-        vkw::Buffer voxelMask;
-        vkw::Buffer voxelMaskPC;
-    } m_buffers;
+    vkw::Buffer m_uniformsBuffer;
 
     void InitCommands();
     void InitSynchronization();
