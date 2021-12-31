@@ -93,13 +93,16 @@ void SceneBuilder::CompactifyChildList(TreeNode* node)
     }
 }
 
-VoxelStorage::Voxel* SceneBuilder::BuildVoxel(const glm::u32vec3& coords) 
+
+// Returns the index of the voxel in the voxel data vector.
+// Returns the maximum size_t number if no voxel was built.
+size_t SceneBuilder::BuildVoxel(const glm::u32vec3& coords) 
 {
     glm::vec3 pos = m_voxels->WorldPosition(coords);
     float d = m_density(pos.x, pos.y, pos.z);
 
     if (d < 0.0f) {
-        return nullptr;
+        return std::numeric_limits<size_t>::max();
     }
 
     VoxelStorage::Voxel voxel;
@@ -113,7 +116,7 @@ VoxelStorage::Voxel* SceneBuilder::BuildVoxel(const glm::u32vec3& coords)
     // The real voxel will live in the vector.
     m_voxelData.push_back(std::move(voxel));
     
-    return &m_voxelData.back();
+    return m_voxelData.size() - 1;
 }
 
 SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32vec3& coords) 
@@ -126,7 +129,7 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
     node->level = level;
     node->mask = std::vector<uint32_t>((dim*dim*dim) / 32);
     node->maskPC = std::vector<uint32_t>((dim*dim*dim) / 32);
-    node->childList = std::vector<void*>(dim*dim*dim);
+    node->childList = std::vector<size_t>(dim*dim*dim);
 
     // Recurse on the children / create the voxels
     for (uint32_t x = 0; x < dim; x++) {
@@ -137,16 +140,22 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
                 if (level > 0) {
                     childCoords += coords * m_voxels->gridDims[level-1];    
                 }
+
+                bool hasChild;
                 // Voxel.
                 if (level == m_voxels->gridLevels - 1) {
-                    node->childList[index] = (void*)BuildVoxel(childCoords);
+                    size_t voxelId = BuildVoxel(childCoords);
+                    hasChild = (voxelId != std::numeric_limits<size_t>::max());
+                    node->childList[index] = voxelId;
                 }
                 // Child.
                 else {
-                    node->childList[index] = (void*)BuildNode(level + 1, childCoords);  
+                    TreeNode* childPtr = BuildNode(level + 1, childCoords); 
+                    hasChild = (childPtr != nullptr); 
+                    node->childList[index] = (size_t)childPtr;
                 }
                 // Update the node mask
-                if (node->childList[index] != nullptr) {
+                if (hasChild) {
                     uint32_t q = index >> 5;
                     uint32_t r = index & ((1 << 5) - 1);
                     node->mask[q] |= 1 << r;
@@ -246,13 +255,19 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
     childAddr += idx * (dim * dim * dim) * sizeof(uint32_t);
     uint32_t* childList = (uint32_t*)childAddr;
 
+    
     // Recurse on children
-    if (node->level < m_voxels->gridLevels - 1) {
-        uint32_t childCount = node->maskPC.back();
-        for (uint32_t pos = 0; pos < childCount; pos++) {
-            uint32_t childIdx = LayoutNode((TreeNode*)(node->childList[pos]), nextNodeIdx);
-            childList[pos] = childIdx;
+    uint32_t childCount = node->maskPC.back();
+    for (uint32_t pos = 0; pos < childCount; pos++) {
+        uint32_t childIdx;
+        if (node->level < m_voxels->gridLevels - 1) {
+            TreeNode* childNode = (TreeNode*)node->childList[pos];
+            childIdx = LayoutNode(childNode, nextNodeIdx);
         }
+        else {
+            childIdx = (uint32_t)node->childList[pos];
+        }
+        childList[pos] = childIdx;
     }
 
     return idx;

@@ -11,16 +11,22 @@ layout (local_size_x = 16, local_size_y = 16) in;
 
 
 
-bool has_voxel(uint index)
+struct Hit {
+    float t;
+    uint voxel_id;
+};
+
+
+/*bool has_voxel(uint index)
 {
     // The voxels.mask is an array of uints,
     // each 32 bits wide == (1 << 5) bits wide).
     uint mask = nodeBuffer.data[NODE_OFS_MASK(0) + (index >> 5)];
     return bool(IS_BIT_SET(mask, index & 0x1F));
-}
+}*/
 
 
-uint voxel_position(uint index)
+/*uint voxel_position(uint index)
 {
     // We have to count the number of 1s in the mask,
     // strictly before the bit at 'index'.
@@ -35,7 +41,7 @@ uint voxel_position(uint index)
         pos += bitCount(nodeBuffer.data[NODE_OFS_MASK(0) + q] & ((1 << r) - 1));
     }
     return pos;
-}
+}*/
 
 
 // A negative value means no intersection.
@@ -72,7 +78,52 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     }
 }
 
-bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
+// child_index == INDEX(local position in the node)
+bool node_has_child(uint node_id, uint level, uint child_index)
+{
+    // get the node's mask position in the node buffer
+    uint mask_pos = 
+        uniformBuffer.levels[level].nodeOfs +
+        NODE_SIZE(level) * node_id +
+        NODE_OFS_MASK(level);
+    
+    uint q = child_index >> 5;
+    uint r = child_index & 0x1F;
+
+    uint mask = nodeBuffer.data[mask_pos + q];
+    return bool(mask & (1 << r));
+}
+
+// child_index == INDEX(local position in the node)
+// Returns the node id / voxel id of the child.
+uint node_get_child(uint node_id, uint level, uint child_index)
+{
+    // The node's position in the node buffer.
+    uint node_pos = uniformBuffer.levels[level].nodeOfs +
+        NODE_SIZE(level) * node_id;
+    
+    uint q = child_index >> 5;
+    uint r = child_index & 0x1F;
+
+    // Compute the child's position in the child list
+    uint child_pos = 0;
+    if (q > 0) {
+        child_pos += nodeBuffer.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
+    }
+    if (r > 0) {
+        uint mask = nodeBuffer.data[node_pos + NODE_OFS_MASK(level) + q];
+        child_pos += bitCount(mask & ((1 << r) - 1));
+    }
+
+    // The node's child list position in the child buffer
+    uint cl_pos = uniformBuffer.levels[level].childOfs +
+        CL_SIZE(level) * node_id;
+
+    return childBuffer.data[cl_pos + child_pos];
+}
+
+
+bool dda(vec3 orig, vec3 dir, out Hit out_hit)
 {
     float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.levels[0].dim;
     vec3 normOrig = (orig - uniformBuffer.gridWorldCoords) / cellSize;
@@ -109,9 +160,9 @@ bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
 
         // Is there a voxel here ?
         uint index = INDEX3D(curr_cell, uniformBuffer.levels[0].dim); 
-        if (has_voxel(index)) {
-            out_t = curr_t;
-            out_cell = uvec3(curr_cell);
+        if (node_has_child(0, 0, index)) {
+            out_hit.t = curr_t;
+            out_hit.voxel_id = node_get_child(0, 0, index);
             return true;
         }
 
@@ -137,19 +188,19 @@ bool dda(vec3 orig, vec3 dir, out float out_t, out uvec3 out_cell)
 }
 
 
-vec4 shade(uint cell_index, vec3 hit_pos, vec3 ray_dir)
+vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 {
-    VoxelData voxel = voxelBuffer.voxels[voxel_position(cell_index)];
-
+    VoxelData voxel = voxelBuffer.voxels[hit.voxel_id];
+    
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < uniformBuffer.lightCount; i++) {
         DirectionalLight light = uniformBuffer.lights[i];
         
         // Check the light illuminates the voxel
-        float dummy_t;
-        vec3 dummy_cell;
-        bool hit = dda(hit_pos, -light.direction.xyz, dummy_t, dummy_cell);
-        if (!hit) {
+        vec3 shadow_ray_orig = ray_orig + (hit.t - 0.0001f) * ray_dir; 
+        Hit dummy_hit;
+        bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
+        if (!did_hit) {
             // Add the light contribution
             float intensity = max(dot(-light.direction.xyz, voxel.normal), 0.0f);
             diffuse += intensity * light.color;
@@ -159,16 +210,55 @@ vec4 shade(uint cell_index, vec3 hit_pos, vec3 ray_dir)
     vec4 ambient = vec4(0.05f, 0.05f, 0.05f, 1.0f);
 
     return uniformBuffer.materials[voxel.material_idx].color * (ambient + diffuse);
+    //float x = 1.0f - (hit.t / 30.0f);
+    //return vec4(x, x, x, 1.0f) * (ambient + diffuse);
 }
+
+
+/*bool dda(vec3 origin, vec3 dir, out Hit hit)
+{
+    uint level = 0;
+    uint node_id[max_level];
+    uvec3 local_pos[max_level];
+    float curr_t[max_level];
+
+    ivec3 d_cell = ivec3(sign(dir));
+    // make sure d_cell != 0, to avoid any infite loop.
+    bvec3 mask = equal(d_cell, vec3(0, 0, 0));
+    d_cell += ivec3(mask);
+
+    while (true) {
+        while (out_of_bounds(local_pos[level])) {
+            if (level == 0) {
+                return false;
+            }
+            DDA_UP();
+            DDA_STEP();
+        }
+
+        uint child_index = INDEX3D(local_pos[level], uniformBuffer.levels[level].dim);
+        if (node_has_child(node_id[level], level, child_index)) {
+            // We hit something : return.
+            if (level == max_level - 1) {
+                hit.t = curr_t[level];
+                hit.voxel_id = node_get_child(node_id[level], level, child_index);
+                return true;
+            }
+            // Recurse on the child
+            DDA_DOWN();
+        }
+
+        DDA_STEP();
+    }
+}*/
+
 
 vec4 raytrace(vec3 orig, vec3 dir)
 {
-    float t;
-    uvec3 cell;
-    bool hit = dda(orig, dir, t, cell);
-    if (hit) {
-        uint index = INDEX3D(cell, uniformBuffer.levels[0].dim);
-        return shade(index, orig + (t - 0.0001f) * dir, dir);
+    Hit hit;
+    bool did_hit = dda(orig, dir, hit);
+    if (did_hit) {
+        return shade(orig, dir, hit);
     }
     else {
         return uniformBuffer.backgroundColor;

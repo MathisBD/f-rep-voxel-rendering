@@ -20,8 +20,8 @@ private:
         std::vector<uint32_t> maskPC;
         // Entries in childList are either :
         // -> pointers to TreeNodes (non-leaf node).
-        // -> pointers to Voxels in the voxel data vector (leaf node).
-        std::vector<void*> childList;
+        // -> indices of Voxels in the voxel data vector (leaf node).
+        std::vector<size_t> childList;
     };
 
     VmaAllocator m_allocator;
@@ -48,7 +48,7 @@ private:
     uint32_t Index3D(uint32_t x, uint32_t y, uint32_t z, uint32_t dim);
 
     // The coordinates are in the finest grid.
-    VoxelStorage::Voxel* BuildVoxel(const glm::u32vec3& coords);
+    size_t BuildVoxel(const glm::u32vec3& coords);
     void ComputeMaskPC(TreeNode* node);
     void CompactifyChildList(TreeNode* node);
     // The coordinates are in the finest grid AT THE NODE's level.
