@@ -289,14 +289,14 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
 
 
     // Print the node.
-    /*{
-        uint32_t dim = m_voxels->gridDims[node->level];
+    {
+        //uint32_t dim = m_voxels->gridDims[node->level];
 
-        printf("%s: level=%d\tcoords=%u %u %u\n", 
+        printf("%s:%u level=%d\tcoords=%u %u %u\n", 
             node->level == m_voxels->gridLevels - 1 ? "LEAF" : "INTERIOR",
-            node->level, node->coords.x, node->coords.y, node->coords.z);
-        
-        printf("\tmask = ");
+            idx, node->level, coords[0], coords[1], coords[2]);
+        printf("coords offset (in bytes)=%lu\n", (size_t)coords - (size_t)m_bufferContents.node);
+        /*printf("\tmask = ");
         assert(node->mask.size() == (dim*dim*dim) / 32);
         for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
             printf("%x ", node->mask[i]);
@@ -308,14 +308,14 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
         for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
             printf("%u ", node->maskPC[i]);
         }
-        printf("\n");
+        printf("\n");*/
 
         printf("\tchildren = ");
         for (size_t i = 0; i < node->maskPC.back(); i++) {
             printf("%u ", childList[i]);
         }
         printf("\n\n");
-    }*/
+    }
 
     return idx;
 }

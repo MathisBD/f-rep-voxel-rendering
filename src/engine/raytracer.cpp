@@ -192,13 +192,13 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
         childOfs += m_voxels->nodeCount[i] * (dim * dim * dim);
     }
     
-    /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
         printf("\n");
         printf("node count[%u] = %u\n", i, m_voxels->nodeCount[i]);
         printf("node ofs[%u] = %u\n", i, params->levels[i].nodeOfs);
         printf("child ofs[%u] = %u\n", i, params->levels[i].childOfs);
         printf("cell size[%u] = %.2f\n", i, params->levels[i].cellSize);
-    }*/
+    }
 
     // Background color
     params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);

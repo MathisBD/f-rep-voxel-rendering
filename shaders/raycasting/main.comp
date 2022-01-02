@@ -178,13 +178,21 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     curr_t[0] = 0;
     node_id[0] = 0;
     DDA_INIT();
-
+  
     // Main loop.
     while (true) {
+        if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+            debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
+                level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+        }   
+
         while (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
                local_cell.y < 0 || local_cell.y >= params_buf.levels[level].dim ||
                local_cell.z < 0 || local_cell.z >= params_buf.levels[level].dim) 
         {
+            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("out of bounds : returning\n");
+            }
             return false;
             /*if (level == params_buf.level_count - 1) {
                 hit.t = 0;
@@ -205,20 +213,35 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
         while (node_has_child(node_id[level], level, child_index)) {
             // We hit something : return.
             if (level == params_buf.level_count - 1) {
+                if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                    debugPrintfEXT("hit a voxel : returning\n");
+                }
                 hit.t = curr_t[level];
                 hit.voxel_id = node_get_child(node_id[level], level, child_index);
                 return true;
             }
             // Otherwise recurse in the child node.
+            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("hit a cell : going down\n");
+            }
             node_id[level + 1] = node_get_child(node_id[level], level, child_index);
             curr_t[level + 1] = curr_t[level];
             level++;
             DDA_INIT();
             
-            if (local_cell.x < 0 ||/* local_cell.x >= params_buf.levels[level].dim ||*/
-                local_cell.y < 0 ||/* local_cell.y >= params_buf.levels[level].dim ||*/
-                local_cell.z < 0) /*|| local_cell.z >= params_buf.levels[level].dim)*/{
+            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+            }
+
+            if (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
+                local_cell.y < 0 || local_cell.y >= params_buf.levels[level].dim ||
+                local_cell.z < 0 || local_cell.z >= params_buf.levels[level].dim) {
                 
+                if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                    debugPrintfEXT("error : aborting\n");
+                }
+
                 hit.t = -1;
                 return true;
             }
@@ -278,6 +301,10 @@ vec4 raytrace(vec3 orig, vec3 dir)
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
+
+    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+        debugPrintfEXT("\n");
+    }
 
     if (gid.x < params_buf.screen_res.x && 
         gid.y < params_buf.screen_res.y) 
