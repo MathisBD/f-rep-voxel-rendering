@@ -53,70 +53,6 @@ float raygrid_intersect(vec3 orig, vec3 dir)
 }
 
 
-/*bool dda(vec3 orig, vec3 dir, out Hit out_hit)
-{
-    vec3 normOrig = (orig - NODE_WORLD_POS(0, 0)) / CELL_SIZE(0);
-    vec3 invDir = 1.0f / dir;
-  
-    // Differential cell/time values.
-    vec3 d_t = CELL_SIZE(0) * abs(invDir);
-    ivec3 d_cell = ivec3(sign(dir));
-    // make sure d_cell != 0, to avoid any infite loop.
-    bvec3 mask = equal(d_cell, vec3(0, 0, 0));
-    d_cell += ivec3(mask);
-
-    // Current cell/time values.
-    float curr_t = 0;
-    ivec3 curr_cell = ivec3(floor(normOrig));
-    
-    // Next crossing times.
-    // For numerical stability reasons we check the sign of invDir rather than dir.
-    // If e.g. dir.x == -0f, then dir.x >= 0f is true but 1f / dir.x = -inf,
-    // which is not what we want (when dir.x >= 0f, we want 1f / dir.x >= 0f); 
-    vec3 nextCross_t = curr_cell - normOrig;
-    if (invDir.x >= 0.0f) nextCross_t.x += 1.0f;
-    if (invDir.y >= 0.0f) nextCross_t.y += 1.0f;
-    if (invDir.z >= 0.0f) nextCross_t.z += 1.0f;
-    nextCross_t *= CELL_SIZE(0) * invDir;
-
-    while (true) {
-        // Out of grid
-        if (curr_cell.x < 0 || curr_cell.x >= uniformBuffer.levels[0].dim || 
-            curr_cell.y < 0 || curr_cell.y >= uniformBuffer.levels[0].dim || 
-            curr_cell.z < 0 || curr_cell.z >= uniformBuffer.levels[0].dim) {
-            return false;
-        }
-
-        // Is there a voxel here ?
-        uint index = INDEX3D(curr_cell, uniformBuffer.levels[0].dim); 
-        if (node_has_child(0, 0, index)) {
-            out_hit.t = curr_t;
-            out_hit.voxel_id = node_get_child(0, 0, index);
-            return true;
-        }
-
-        // x
-        if (nextCross_t.x <= nextCross_t.y && nextCross_t.x <= nextCross_t.z) {
-            curr_t = nextCross_t.x;
-            nextCross_t.x += d_t.x;
-            curr_cell.x += d_cell.x;
-        }   
-        // y
-        else if (nextCross_t.y <= nextCross_t.z) {
-            curr_t = nextCross_t.y;
-            nextCross_t.y += d_t.y;
-            curr_cell.y += d_cell.y;
-        }
-        // z
-        else {
-            curr_t = nextCross_t.z;
-            nextCross_t.z += d_t.z;
-            curr_cell.z += d_cell.z;
-        }
-    }
-}*/
-
-
 
 bool dda(vec3 orig, vec3 dir, out Hit hit)
 {
@@ -140,9 +76,15 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 // Computes the local cell and the next crossing times.
 // Typically called when we change level.
 #define DDA_INIT() {                                        \
-    vec3 norm_pos = (orig + (curr_t[level] + 0.001f) * dir -\
+    vec3 norm_pos = (orig + curr_t[level] * dir -           \
         node_world_pos(node_id[level], level)) /            \
         params_buf.levels[level].cell_size;                 \
+    norm_pos.x = clamp(norm_pos.x, 0.0f, params_buf.levels[level].dim - EPSILON);   \
+    norm_pos.y = clamp(norm_pos.y, 0.0f, params_buf.levels[level].dim - EPSILON);   \
+    norm_pos.z = clamp(norm_pos.z, 0.0f, params_buf.levels[level].dim - EPSILON);   \
+    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) { \
+        debugPrintfEXT("norm_pos=%v3f   dir=%.3v3f\n", norm_pos, dir);  \
+    }                                                       \
                                                             \
     local_cell = ivec3(floor(norm_pos));                    \
                                                             \
@@ -182,31 +124,37 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     // Main loop.
     while (true) {
         if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-            debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
-                level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+            debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+                level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
         }   
 
         while (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
                local_cell.y < 0 || local_cell.y >= params_buf.levels[level].dim ||
                local_cell.z < 0 || local_cell.z >= params_buf.levels[level].dim) 
         {
-            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-                debugPrintfEXT("out of bounds : returning\n");
-            }
-            return false;
-            /*if (level == params_buf.level_count - 1) {
-                hit.t = 0;
-                hit.voxel_id = 0;
-                return true;
-            }
-            hit.t = 0;
-            hit.voxel_id = 5;
-            return true;*/
+            //if (level == 0) {
+                if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                    debugPrintfEXT("out of bounds : returning\n");
+                }
+                return false;
+            //}
 
-            //if (level == 0) return false;
-            //level--;
-            //DDA_INIT();
-            //DDA_STEP();
+            /*if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("out of bounds : going up\n");
+            }
+                
+            level--;
+            DDA_INIT();
+            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+            }   
+            DDA_STEP();
+
+            if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+            }*/
         }
 
         uint child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
@@ -230,8 +178,8 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             DDA_INIT();
             
             if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
-                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
             }
 
             if (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
@@ -263,7 +211,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
         DirectionalLight light = params_buf.lights[i];
         
         // Check the light illuminates the voxel
-        //vec3 shadow_ray_orig = ray_orig + (hit.t - 0.0001f) * ray_dir; 
+        //vec3 shadow_ray_orig = ray_orig + (hit.t - EPSILON) * ray_dir; 
         //Hit dummy_hit;
         //bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
         //if (!did_hit) {
@@ -321,7 +269,7 @@ void main()
         vec4 color = params_buf.background_color;
         if (start_t >= 0.0f) {
             // Project the origin onto the grid, along the ray direction.
-            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + 0.001f) * dir;
+            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + EPSILON) * dir;
             color = raytrace(projected_orig, dir);
         }
         imageStore(out_img, ivec2(gid), color);

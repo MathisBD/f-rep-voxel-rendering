@@ -8,3 +8,5 @@
 #define MAX_3(x, y, z) max((x), max((y), (z)))
 
 #define MIN_3(x, y, z) min((x), min((y), (z)))
+
+#define EPSILON 0.000001f

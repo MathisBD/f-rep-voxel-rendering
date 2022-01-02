@@ -1,6 +1,13 @@
 # f-rep-voxel-rendering
 Large scale rendering of f-rep geometry, using sparse voxel datastructures, on the GPU.
 
+# Building
+Go to /build and run :
+cmake -DCMAKE_BUILD_TYPE=Debug .. && make && ./proj
+
+To print shader debug messages on stdout, run the following before launching the program :
+export DEBUG_PRINTF_TO_STDOUT=true
+
 # Sources
 
 "Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces"
