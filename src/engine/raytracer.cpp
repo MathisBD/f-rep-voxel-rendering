@@ -180,8 +180,8 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
     float cellSize = m_voxels->worldSize;
     for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
         uint32_t dim = m_voxels->gridDims[i];    
-        cellSize /= dim - 1;
-    
+        cellSize /= dim;
+
         params->levels[i].dim = dim;
         params->levels[i].nodeOfs = nodeOfs;
         params->levels[i].childOfs = childOfs;

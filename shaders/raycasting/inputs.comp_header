@@ -24,8 +24,8 @@ struct LevelData {
     uint node_ofs;
     uint child_ofs;
     // The world size of a single child cell at this level.
-    // The cell_size of the last level (gridLevels-1) is the finest cell size.
-    // The cell_size of level 0 is world_size / 
+    // The cell_size of the last level (level_count-1) is the voxel size.
+    // The cell_size of level 0 is world_size / dim[0].
     float cell_size;
 };
 
@@ -132,19 +132,17 @@ uint node_get_child(uint node_id, uint level, uint child_index)
     return child_buf.data[cl_pos + child_pos];
 }
 
-uvec3 node_get_coords(uint node_id, uint level)
+vec3 node_world_pos(uint node_id, uint level)
 {
     uint coords_pos = 
         params_buf.levels[level].node_ofs +
         NODE_SIZE(level) * node_id +
         NODE_OFS_COORDS(level);
-    return uvec3(
+    uvec3 coords = uvec3(
         node_buf.data[coords_pos],
         node_buf.data[coords_pos + 1],
         node_buf.data[coords_pos + 2]);
-}
 
-#define NODE_WORLD_POS(node_id, level)                  \
-    (params_buf.grid_world_pos +                        \
-    node_get_coords((node_id), (level)) *               \
-    params_buf.levels[params_buf.level_count - 1].cell_size)
+    return params_buf.grid_world_pos +
+        vec3(coords) * params_buf.levels[params_buf.level_count - 1].cell_size;
+}

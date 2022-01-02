@@ -14,11 +14,14 @@ public:
     };
 
     // These should be filled before calling Init().
-    uint32_t gridLevels;
+    // gridDims[i] is the number of VOXELS in each direction for nodes
+    // at level i (not the number of vertices in each direction).
     std::vector<uint32_t> gridDims;
     glm::vec3 lowVertex;
     float worldSize;
-
+    
+    uint32_t gridLevels;
+    
     // This is the dimension of the finest grid.
     // Example : for a 3-level grid (3, 4, 2), 
     // the fine grid dimension is 24. 
@@ -35,7 +38,7 @@ public:
 
     void Init(VmaAllocator allocator) 
     {
-        assert(gridDims.size() == gridLevels);
+        gridLevels = gridDims.size();
 
         fineGridDim = 1;
         for (auto dim : gridDims) {
@@ -52,7 +55,7 @@ public:
     // The coordinates are given in the finest grid dimensions.
     inline glm::vec3 WorldPosition(glm::u32vec3 pos) const 
     {
-        return lowVertex + glm::vec3(pos) * worldSize / (float)(fineGridDim-1);    
+        return lowVertex + glm::vec3(pos) * worldSize / (float)fineGridDim;    
     }
 
     // The sizes are in bytes.

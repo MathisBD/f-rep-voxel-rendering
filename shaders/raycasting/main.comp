@@ -139,7 +139,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 // Typically called when we change level.
 #define DDA_INIT() {                                        \
     vec3 norm_pos = (orig + (curr_t[level] + 0.001f) * dir -\
-        NODE_WORLD_POS(node_id[level], level)) /            \
+        node_world_pos(node_id[level], level)) /            \
         params_buf.levels[level].cell_size;                 \
                                                             \
     local_cell = ivec3(floor(norm_pos));                    \
@@ -200,7 +200,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
         }
 
         uint child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
-        if (node_has_child(node_id[level], level, child_index)) {
+        while (node_has_child(node_id[level], level, child_index)) {
             // We hit something : return.
             if (level == params_buf.level_count - 1) {
                 hit.t = curr_t[level];
@@ -212,6 +212,16 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             curr_t[level + 1] = curr_t[level];
             level++;
             DDA_INIT();
+            
+            if (local_cell.x < 0 ||/* local_cell.x >= params_buf.levels[level].dim ||*/
+                local_cell.y < 0 ||/* local_cell.y >= params_buf.levels[level].dim ||*/
+                local_cell.z < 0) /*|| local_cell.z >= params_buf.levels[level].dim)*/{
+                
+                hit.t = -1;
+                return true;
+            }
+        
+            child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
         }
 
         DDA_STEP();
@@ -250,6 +260,11 @@ vec4 raytrace(vec3 orig, vec3 dir)
     Hit hit;
     bool did_hit = dda(orig, dir, hit);
     if (did_hit) {
+        // Something went wrong : show a debug color.
+        if (hit.t < 0.0f) {
+            return vec4(1, 1, 1, 1);
+        }
+        // All is good.
         return shade(orig, dir, hit);
     }
     else {
