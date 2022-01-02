@@ -16,6 +16,7 @@ private:
     {
     public:
         uint32_t level;
+        glm::u32vec3 coords;
         std::vector<uint32_t> mask;
         std::vector<uint32_t> maskPC;
         // Entries in childList are either :
@@ -51,6 +52,8 @@ private:
     size_t BuildVoxel(const glm::u32vec3& coords);
     void ComputeMaskPC(TreeNode* node);
     void CompactifyChildList(TreeNode* node);
+    // The coordinates are in the finest grid AT THE NODE's level.
+    void ComputeCoords(TreeNode* node, const glm::u32vec3& coords);
     // The coordinates are in the finest grid AT THE NODE's level.
     TreeNode* BuildNode(uint32_t level, const glm::u32vec3& coords);
     void BuildTrees();

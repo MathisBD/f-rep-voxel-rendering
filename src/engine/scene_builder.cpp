@@ -119,6 +119,17 @@ size_t SceneBuilder::BuildVoxel(const glm::u32vec3& coords)
     return m_voxelData.size() - 1;
 }
 
+void SceneBuilder::ComputeCoords(TreeNode* node, const glm::u32vec3& coords) 
+{
+    // Compute the total dimension of the child nodes.
+    uint32_t dim = 1;
+    for (uint32_t level = node->level; level < m_voxels->gridLevels; level++) 
+    {
+        dim *= m_voxels->gridDims[level];
+    }
+    node->coords = coords * dim;    
+}
+
 SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32vec3& coords) 
 {
     assert(level < m_voxels->gridLevels);
@@ -171,6 +182,7 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
         return nullptr;
     }
     CompactifyChildList(node);
+    ComputeCoords(node, coords);
     return node;
 }
 
@@ -185,7 +197,7 @@ void SceneBuilder::CountNodes(TreeNode* node)
  
     if (node->level < m_voxels->gridLevels - 1) {   
         uint32_t childCount = node->maskPC.back();
-        for (uint32_t pos; pos < childCount; pos++) {
+        for (uint32_t pos = 0; pos < childCount; pos++) {
             CountNodes((TreeNode*)(node->childList[pos]));
         }
     }
@@ -238,6 +250,11 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
     // This is for now the same as the node index.
     uint32_t* clIdx = (uint32_t*)(nodeAddr + m_voxels->NodeOfsCLIdx(node->level));
     *clIdx = idx;
+    // Copy the coordinates.
+    uint32_t* coords = (uint32_t*)(nodeAddr + m_voxels->NodeOfsCoords(node->level));
+    coords[0] = node->coords.x;
+    coords[1] = node->coords.y;
+    coords[2] = node->coords.z;
     // Copy the mask
     memcpy((void*)(nodeAddr + m_voxels->NodeOfsMask(node->level)), 
         node->mask.data(), 
@@ -269,6 +286,36 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
         }
         childList[pos] = childIdx;
     }
+
+
+    // Print the node.
+    /*{
+        uint32_t dim = m_voxels->gridDims[node->level];
+
+        printf("%s: level=%d\tcoords=%u %u %u\n", 
+            node->level == m_voxels->gridLevels - 1 ? "LEAF" : "INTERIOR",
+            node->level, node->coords.x, node->coords.y, node->coords.z);
+        
+        printf("\tmask = ");
+        assert(node->mask.size() == (dim*dim*dim) / 32);
+        for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
+            printf("%x ", node->mask[i]);
+        }
+        printf("\n");
+
+        printf("\tmask PC = ");
+        assert(node->maskPC.size() == (dim*dim*dim) / 32);
+        for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
+            printf("%u ", node->maskPC[i]);
+        }
+        printf("\n");
+
+        printf("\tchildren = ");
+        for (size_t i = 0; i < node->maskPC.back(); i++) {
+            printf("%u ", childList[i]);
+        }
+        printf("\n\n");
+    }*/
 
     return idx;
 }

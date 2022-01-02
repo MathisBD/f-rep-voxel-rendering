@@ -66,12 +66,12 @@ void Raytracer::InitSynchronization()
 void Raytracer::InitBuffers()
 {
     // Uniform buffer
-    m_uniformsBuffer.Init(m_vmaAllocator);
-    m_uniformsBuffer.Allocate(
-        sizeof(ShaderUniforms), 
+    m_paramsBuffer.Init(m_vmaAllocator);
+    m_paramsBuffer.Allocate(
+        sizeof(ShaderParams), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_cleanupQueue.AddFunction([=] { m_uniformsBuffer.Cleanup(); });
+    m_cleanupQueue.AddFunction([=] { m_paramsBuffer.Cleanup(); });
 }
 
 void Raytracer::InitPipeline() 
@@ -88,7 +88,7 @@ void Raytracer::InitPipeline()
     auto outImageInfo = vkw::init::DescriptorImageInfo(
         m_target->sampler, m_target->view, VK_IMAGE_LAYOUT_GENERAL);
     auto uniformsInfo = vkw::init::DescriptorBufferInfo(
-        m_uniformsBuffer.buffer, 0, m_uniformsBuffer.size);
+        m_paramsBuffer.buffer, 0, m_paramsBuffer.size);
     auto nodeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
     auto childInfo = vkw::init::DescriptorBufferInfo(
@@ -146,62 +146,74 @@ void Raytracer::InitUploadCtxt()
 }
 
 
-void Raytracer::UpdateUniformBuffer(const Camera* camera) 
+void Raytracer::UpdateShaderParams(const Camera* camera) 
 {
     assert(m_voxels->gridLevels < MAX_LEVEL_COUNT);
-    ShaderUniforms* contents = (ShaderUniforms*)m_uniformsBuffer.Map();
+    ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
     
-    contents->lightCount = 2;
-    contents->materialCount = 1;
-    contents->gridLevels = m_voxels->gridLevels;
+    params->lightCount = 2;
+    params->materialCount = 1;
+    params->levelCount = m_voxels->gridLevels;
 
     // Grid positions
-    contents->gridWorldCoords = m_voxels->lowVertex;
-    contents->gridWorldSize = m_voxels->worldSize;
+    params->gridWorldCoords = m_voxels->lowVertex;
+    params->gridWorldSize = m_voxels->worldSize;
     
-    contents->screenResolution.x = m_target->image.extent.width;
-    contents->screenResolution.y = m_target->image.extent.height;
+    params->screenResolution.x = m_target->image.extent.width;
+    params->screenResolution.y = m_target->image.extent.height;
 
     // Horizontal field of view in degrees.
     float FOVrad = glm::radians(camera->fovDeg);
-    contents->screenWorldSize.x = 2.0f * glm::tan(FOVrad / 2.0f);
-    contents->screenWorldSize.y = contents->screenWorldSize.x * 
-        (contents->screenResolution.y / (float)contents->screenResolution.x);
+    params->screenWorldSize.x = 2.0f * glm::tan(FOVrad / 2.0f);
+    params->screenWorldSize.y = params->screenWorldSize.x * 
+        (params->screenResolution.y / (float)params->screenResolution.x);
     
     // A dummy camera looking down the Z axis, with the Y axis facing up.
-    contents->cameraPosition = glm::vec4(camera->position, 0.0f);
-    contents->cameraForward  = glm::vec4(camera->forward, 0.0f);
-    contents->cameraUp       = glm::vec4(camera->Up(), 0.0f);
-    contents->cameraRight    = glm::vec4(camera->Right(), 0.0f);
+    params->cameraPosition = glm::vec4(camera->position, 0.0f);
+    params->cameraForward  = glm::vec4(camera->forward, 0.0f);
+    params->cameraUp       = glm::vec4(camera->Up(), 0.0f);
+    params->cameraRight    = glm::vec4(camera->Right(), 0.0f);
 
     // Level data
     uint32_t nodeOfs = 0;
     uint32_t childOfs = 0;
+    float cellSize = m_voxels->worldSize;
     for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        uint32_t dim = m_voxels->gridDims[i];
-        contents->levels[i].dim = dim;
-        contents->levels[i].nodeOfs = nodeOfs;
-        contents->levels[i].childOfs = childOfs;
+        uint32_t dim = m_voxels->gridDims[i];    
+        cellSize /= dim - 1;
+    
+        params->levels[i].dim = dim;
+        params->levels[i].nodeOfs = nodeOfs;
+        params->levels[i].childOfs = childOfs;
+        params->levels[i].cellSize = cellSize;
 
         // Remember : the offsets are in uints (not in bytes).
         nodeOfs += m_voxels->nodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
         childOfs += m_voxels->nodeCount[i] * (dim * dim * dim);
     }
+    
+    /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+        printf("\n");
+        printf("node count[%u] = %u\n", i, m_voxels->nodeCount[i]);
+        printf("node ofs[%u] = %u\n", i, params->levels[i].nodeOfs);
+        printf("child ofs[%u] = %u\n", i, params->levels[i].childOfs);
+        printf("cell size[%u] = %.2f\n", i, params->levels[i].cellSize);
+    }*/
 
     // Background color
-    contents->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
+    params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
     // Lights
-    contents->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, 0, 0 }));
-    contents->lights[0].color = { 1, 0, 0, 0 };
+    params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, 0, 0 }));
+    params->lights[0].color = { 1, 0, 0, 0 };
 
-    contents->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, 0, 0 }));
-    contents->lights[1].color = { 0, 0, 2, 0 };
+    params->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, 0, 0 }));
+    params->lights[1].color = { 0, 0, 2, 0 };
 
     // Materials
-    contents->materials[0].color = { 1, 1, 0.8f, 0 };
+    params->materials[0].color = { 1, 1, 0.8f, 0 };
 
-    m_uniformsBuffer.Unmap(); 
+    m_paramsBuffer.Unmap(); 
 }
 
 
@@ -237,7 +249,7 @@ void Raytracer::Trace(VkSemaphore renderSem, const Camera* camera)
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
     
     // Update the uniform buffer
-    UpdateUniformBuffer(camera);
+    UpdateShaderParams(camera);
 
     // Reset the command pool (and its buffers).
     VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));

@@ -32,7 +32,7 @@ typedef struct {
     uint32_t dim;
     uint32_t nodeOfs;
     uint32_t childOfs;
-    uint32_t _padding_;
+    float cellSize;
 } ShaderLevelData;
 
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
 typedef struct {
     uint32_t lightCount;
     uint32_t materialCount;
-    uint32_t gridLevels;  
+    uint32_t levelCount;  
     uint32_t _padding_;
 
     // The camera world position (w unused).
@@ -70,7 +70,7 @@ typedef struct {
     glm::vec4 backgroundColor;
     ShaderLight lights[MAX_LIGHT_COUNT];
     ShaderMaterial materials[MAX_MATERIAL_COUNT];
-} ShaderUniforms;
+} ShaderParams;
 
 
 class Raytracer
@@ -112,7 +112,7 @@ private:
     } m_uploadCtxt;
 
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
-    vkw::Buffer m_uniformsBuffer;
+    vkw::Buffer m_paramsBuffer;
 
     void InitCommands();
     void InitSynchronization();
@@ -120,7 +120,7 @@ private:
     void InitBuffers();
     void InitUploadCtxt();
 
-    void UpdateUniformBuffer(const Camera* camera);
+    void UpdateShaderParams(const Camera* camera);
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);

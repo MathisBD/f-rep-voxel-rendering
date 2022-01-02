@@ -20,8 +20,11 @@ Voxel Buffer : voxel data
 
 Node structure :
     child list index : 4 bytes
+    coordinates      : 12 bytes (3 uints)
     cell mask        : res(L)^3 / 8 bytes
     cell mask PC     : res(L)^3 / 8 bytes    
+The coordinates of a node are given in the finest grid.
+
 
 Child list : contains the indices (in the node buffer) of the children. If the node is a leaf node, then the indices instead refer to the voxels of the node.
     An index is 4 bytes. 

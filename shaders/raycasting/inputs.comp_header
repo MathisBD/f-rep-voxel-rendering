@@ -19,64 +19,132 @@ struct Material {
 
 struct LevelData {
     uint dim;
-    // The offsets are given in uints rather than in bytes.
-    uint nodeOfs;
-    uint childOfs;
-    uint _padding_;
+    // These are offsets in the node and child buffers.
+    // They are given in uints rather than in bytes.
+    uint node_ofs;
+    uint child_ofs;
+    // The world size of a single child cell at this level.
+    // The cell_size of the last level (gridLevels-1) is the finest cell size.
+    // The cell_size of level 0 is world_size / 
+    float cell_size;
 };
 
 // Output image.
-layout (set = 0, binding = 0, rgba8) uniform image2D outImg;
+layout (set = 0, binding = 0, rgba8) uniform image2D out_img;
 
 // Shader basic data.
-layout (set = 0, binding = 1) uniform UniformBuffer {
-    uint lightCount;
-    uint materialCount;
-    // The valid levels range from 0 to gridLevels-1 included.
-    // Level 0 contains the unique root node.
-    uint gridLevels;
+layout (set = 0, binding = 1) uniform ParamsBuffer {
+    uint light_count;
+    uint material_count;
+    // The valid levels range from 0 to level_count-1 included.
+    // Level 0 contains the unique root node, and level_count-1 the leaf nodes,
+    // whose children are voxels.
+    uint level_count;
     uint _padding_;
 
-    vec4 cameraPosition;
-    vec4 cameraForward;
-    vec4 cameraUp;
-    vec4 cameraRight;
+    vec4 camera_pos;
+    vec4 camera_forward;
+    vec4 camera_up;
+    vec4 camera_right;
 
-    vec3 gridWorldCoords;
-    float gridWorldSize;
+    vec3 grid_world_pos;
+    float grid_world_size;
 
-    uvec2 screenResolution;
-    vec2 screenWorldSize;
+    uvec2 screen_res;
+    vec2 screen_world_size;
 
     LevelData levels[MAX_LEVEL_COUNT];
 
-    vec4 backgroundColor;
+    vec4 background_color;
     DirectionalLight lights[MAX_LIGHT_COUNT]; 
     Material materials[MAX_MATERIAL_COUNT];
-} uniformBuffer;
+} params_buf;
 
 // Nodes
 // We need the std430 layout here so that the array stride is 4 bytes.
 // The std140 layout would round it up to 16 bytes.
 layout (std430, set = 0, binding = 2) readonly buffer NodeBuffer {
     uint data[];
-} nodeBuffer;
+} node_buf;
 
 layout (std430, set = 0, binding = 3) readonly buffer ChildBuffer {
     uint data[];
-} childBuffer;
+} child_buf;
 
 layout (std430, set = 0, binding = 4) readonly buffer VoxelBuffer {
     VoxelData voxels[];
-} voxelBuffer;
+} voxel_buf;
 
 // Node structure.
 // Sizes are given in uints rather than bytes.
-#define NODE_SIZE(level) (1 + (CUBE(uniformBuffer.levels[(level)].dim)) >> 4)
+#define NODE_SIZE(level) (4 + (CUBE(params_buf.levels[(level)].dim)) >> 4)
 #define NODE_OFS_CL_IDX(level)  0
-#define NODE_OFS_MASK(level)    1
-#define NODE_OFS_MASK_PC(level) (1 + (CUBE(uniformBuffer.levels[(level)].dim) >> 5))
+#define NODE_OFS_COORDS(level)  1
+#define NODE_OFS_MASK(level)    4
+#define NODE_OFS_MASK_PC(level) (4 + (CUBE(params_buf.levels[(level)].dim) >> 5))
 
 // Child list structure.
 // Sizes are given in uints rather than bytes.
-#define CL_SIZE(level) CUBE(uniformBuffer.levels[(level)].dim)
+#define CL_SIZE(level) CUBE(params_buf.levels[(level)].dim)
+
+
+// child_index == INDEX(local position in the node)
+bool node_has_child(uint node_id, uint level, uint child_index)
+{
+    // get the node's mask position in the node buffer
+    uint mask_pos = 
+        params_buf.levels[level].node_ofs +
+        NODE_SIZE(level) * node_id +
+        NODE_OFS_MASK(level);
+    
+    uint q = child_index >> 5;
+    uint r = child_index & 0x1F;
+
+    uint mask = node_buf.data[mask_pos + q];
+    return bool(mask & (1 << r));
+}
+
+// child_index == INDEX(local position in the node)
+// Returns the node id / voxel id of the child.
+uint node_get_child(uint node_id, uint level, uint child_index)
+{
+    // The node's position in the node buffer.
+    uint node_pos = params_buf.levels[level].node_ofs +
+        NODE_SIZE(level) * node_id;
+    
+    uint q = child_index >> 5;
+    uint r = child_index & 0x1F;
+
+    // Compute the child's position in the child list
+    uint child_pos = 0;
+    if (q > 0) {
+        child_pos += node_buf.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
+    }
+    if (r > 0) {
+        uint mask = node_buf.data[node_pos + NODE_OFS_MASK(level) + q];
+        child_pos += bitCount(mask & ((1 << r) - 1));
+    }
+
+    // The node's child list position in the child buffer
+    uint cl_pos = params_buf.levels[level].child_ofs +
+        CL_SIZE(level) * node_id;
+
+    return child_buf.data[cl_pos + child_pos];
+}
+
+uvec3 node_get_coords(uint node_id, uint level)
+{
+    uint coords_pos = 
+        params_buf.levels[level].node_ofs +
+        NODE_SIZE(level) * node_id +
+        NODE_OFS_COORDS(level);
+    return uvec3(
+        node_buf.data[coords_pos],
+        node_buf.data[coords_pos + 1],
+        node_buf.data[coords_pos + 2]);
+}
+
+#define NODE_WORLD_POS(node_id, level)                  \
+    (params_buf.grid_world_pos +                        \
+    node_get_coords((node_id), (level)) *               \
+    params_buf.levels[params_buf.level_count - 1].cell_size)

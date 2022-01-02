@@ -10,38 +10,10 @@ layout (local_size_x = 16, local_size_y = 16) in;
 #include "raycasting/inputs.comp_header"
 
 
-
 struct Hit {
     float t;
     uint voxel_id;
 };
-
-
-/*bool has_voxel(uint index)
-{
-    // The voxels.mask is an array of uints,
-    // each 32 bits wide == (1 << 5) bits wide).
-    uint mask = nodeBuffer.data[NODE_OFS_MASK(0) + (index >> 5)];
-    return bool(IS_BIT_SET(mask, index & 0x1F));
-}*/
-
-
-/*uint voxel_position(uint index)
-{
-    // We have to count the number of 1s in the mask,
-    // strictly before the bit at 'index'.
-    uint q = index >> 5;
-    uint r = index & ((1 << 5) - 1);
-    
-    uint pos = 0;
-    if (q > 0) {
-        pos += nodeBuffer.data[NODE_OFS_MASK_PC(0) + (q-1)];
-    }
-    if (r > 0) {
-        pos += bitCount(nodeBuffer.data[NODE_OFS_MASK(0) + q] & ((1 << r) - 1));
-    }
-    return pos;
-}*/
 
 
 // A negative value means no intersection.
@@ -49,8 +21,8 @@ struct Hit {
 float raygrid_intersect(vec3 orig, vec3 dir)
 {
     vec3 invDir = 1.0f / dir;
-    vec3 t_0 = (uniformBuffer.gridWorldCoords - orig) * invDir; 
-    vec3 t_1 = (uniformBuffer.gridWorldCoords + uniformBuffer.gridWorldSize - orig) * invDir;
+    vec3 t_0 = (params_buf.grid_world_pos - orig) * invDir; 
+    vec3 t_1 = (params_buf.grid_world_pos + params_buf.grid_world_size - orig) * invDir;
     
 #define SWAP(a, b) { float tmp = a; a = b; b = tmp; }
     // We chech invDir.x < 0f rather than t_0.x > t_1.x (almost equivalent),
@@ -78,59 +50,14 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     }
 }
 
-// child_index == INDEX(local position in the node)
-bool node_has_child(uint node_id, uint level, uint child_index)
+
+/*bool dda(vec3 orig, vec3 dir, out Hit out_hit)
 {
-    // get the node's mask position in the node buffer
-    uint mask_pos = 
-        uniformBuffer.levels[level].nodeOfs +
-        NODE_SIZE(level) * node_id +
-        NODE_OFS_MASK(level);
-    
-    uint q = child_index >> 5;
-    uint r = child_index & 0x1F;
-
-    uint mask = nodeBuffer.data[mask_pos + q];
-    return bool(mask & (1 << r));
-}
-
-// child_index == INDEX(local position in the node)
-// Returns the node id / voxel id of the child.
-uint node_get_child(uint node_id, uint level, uint child_index)
-{
-    // The node's position in the node buffer.
-    uint node_pos = uniformBuffer.levels[level].nodeOfs +
-        NODE_SIZE(level) * node_id;
-    
-    uint q = child_index >> 5;
-    uint r = child_index & 0x1F;
-
-    // Compute the child's position in the child list
-    uint child_pos = 0;
-    if (q > 0) {
-        child_pos += nodeBuffer.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
-    }
-    if (r > 0) {
-        uint mask = nodeBuffer.data[node_pos + NODE_OFS_MASK(level) + q];
-        child_pos += bitCount(mask & ((1 << r) - 1));
-    }
-
-    // The node's child list position in the child buffer
-    uint cl_pos = uniformBuffer.levels[level].childOfs +
-        CL_SIZE(level) * node_id;
-
-    return childBuffer.data[cl_pos + child_pos];
-}
-
-
-bool dda(vec3 orig, vec3 dir, out Hit out_hit)
-{
-    float cellSize = uniformBuffer.gridWorldSize / uniformBuffer.levels[0].dim;
-    vec3 normOrig = (orig - uniformBuffer.gridWorldCoords) / cellSize;
+    vec3 normOrig = (orig - NODE_WORLD_POS(0, 0)) / CELL_SIZE(0);
     vec3 invDir = 1.0f / dir;
-
+  
     // Differential cell/time values.
-    vec3 d_t = cellSize * abs(invDir);
+    vec3 d_t = CELL_SIZE(0) * abs(invDir);
     ivec3 d_cell = ivec3(sign(dir));
     // make sure d_cell != 0, to avoid any infite loop.
     bvec3 mask = equal(d_cell, vec3(0, 0, 0));
@@ -148,7 +75,7 @@ bool dda(vec3 orig, vec3 dir, out Hit out_hit)
     if (invDir.x >= 0.0f) nextCross_t.x += 1.0f;
     if (invDir.y >= 0.0f) nextCross_t.y += 1.0f;
     if (invDir.z >= 0.0f) nextCross_t.z += 1.0f;
-    nextCross_t *= cellSize * invDir;
+    nextCross_t *= CELL_SIZE(0) * invDir;
 
     while (true) {
         // Out of grid
@@ -185,72 +112,137 @@ bool dda(vec3 orig, vec3 dir, out Hit out_hit)
             curr_cell.z += d_cell.z;
         }
     }
-}
+}*/
 
 
-vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
+
+bool dda(vec3 orig, vec3 dir, out Hit hit)
 {
-    VoxelData voxel = voxelBuffer.voxels[hit.voxel_id];
-    
-    vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint i = 0; i < uniformBuffer.lightCount; i++) {
-        DirectionalLight light = uniformBuffer.lights[i];
-        
-        // Check the light illuminates the voxel
-        vec3 shadow_ray_orig = ray_orig + (hit.t - 0.0001f) * ray_dir; 
-        Hit dummy_hit;
-        bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
-        if (!did_hit) {
-            // Add the light contribution
-            float intensity = max(dot(-light.direction.xyz, voxel.normal), 0.0f);
-            diffuse += intensity * light.color;
-        }
-    }
-
-    vec4 ambient = vec4(0.05f, 0.05f, 0.05f, 1.0f);
-
-    return uniformBuffer.materials[voxel.material_idx].color * (ambient + diffuse);
-    //float x = 1.0f - (hit.t / 30.0f);
-    //return vec4(x, x, x, 1.0f) * (ambient + diffuse);
-}
-
-
-/*bool dda(vec3 origin, vec3 dir, out Hit hit)
-{
+    vec3 invDir = 1.0f / dir;
     uint level = 0;
-    uint node_id[max_level];
-    uvec3 local_pos[max_level];
-    float curr_t[max_level];
 
+    // These are duplicated for each level.
+    uint node_id[MAX_LEVEL_COUNT];
+    float curr_t[MAX_LEVEL_COUNT];
+    
+    // These are recalculated each time we change level.
+    ivec3 local_cell;
+    vec3 next_t;
+    
     ivec3 d_cell = ivec3(sign(dir));
     // make sure d_cell != 0, to avoid any infite loop.
     bvec3 mask = equal(d_cell, vec3(0, 0, 0));
     d_cell += ivec3(mask);
 
+
+// Computes the local cell and the next crossing times.
+// Typically called when we change level.
+#define DDA_INIT() {                                        \
+    vec3 norm_pos = (orig + (curr_t[level] + 0.001f) * dir -\
+        NODE_WORLD_POS(node_id[level], level)) /            \
+        params_buf.levels[level].cell_size;                 \
+                                                            \
+    local_cell = ivec3(floor(norm_pos));                    \
+                                                            \
+    next_t = local_cell - norm_pos;                         \
+    if (invDir.x >= 0.0f) next_t.x += 1.0f;                 \
+    if (invDir.y >= 0.0f) next_t.y += 1.0f;                 \
+    if (invDir.z >= 0.0f) next_t.z += 1.0f;                 \
+    next_t *= params_buf.levels[level].cell_size * invDir;  \
+                                                            \
+    next_t += curr_t[level];                                \
+}
+
+#define DDA_STEP() {                                        \
+    if (next_t.x <= next_t.y &&                             \
+        next_t.x <= next_t.z) {                             \
+        curr_t[level] = next_t.x;                           \
+        next_t.x += abs(invDir.x) * params_buf.levels[level].cell_size;       \
+        local_cell.x += d_cell.x;                           \
+    }                                                       \
+    else if (next_t.y <= next_t.z) {                        \
+        curr_t[level] = next_t.y;                           \
+        next_t.y += abs(invDir.y) * params_buf.levels[level].cell_size;       \
+        local_cell.y += d_cell.y;                           \
+    }                                                       \
+    else {                                                  \
+        curr_t[level] = next_t.z;                           \
+        next_t.z += abs(invDir.z) * params_buf.levels[level].cell_size;       \
+        local_cell.z += d_cell.z;                           \
+    }                                                       \
+}
+
+    // Initialize for the root.
+    curr_t[0] = 0;
+    node_id[0] = 0;
+    DDA_INIT();
+
+    // Main loop.
     while (true) {
-        while (out_of_bounds(local_pos[level])) {
-            if (level == 0) {
-                return false;
+        while (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
+               local_cell.y < 0 || local_cell.y >= params_buf.levels[level].dim ||
+               local_cell.z < 0 || local_cell.z >= params_buf.levels[level].dim) 
+        {
+            return false;
+            /*if (level == params_buf.level_count - 1) {
+                hit.t = 0;
+                hit.voxel_id = 0;
+                return true;
             }
-            DDA_UP();
-            DDA_STEP();
+            hit.t = 0;
+            hit.voxel_id = 5;
+            return true;*/
+
+            //if (level == 0) return false;
+            //level--;
+            //DDA_INIT();
+            //DDA_STEP();
         }
 
-        uint child_index = INDEX3D(local_pos[level], uniformBuffer.levels[level].dim);
+        uint child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
         if (node_has_child(node_id[level], level, child_index)) {
             // We hit something : return.
-            if (level == max_level - 1) {
+            if (level == params_buf.level_count - 1) {
                 hit.t = curr_t[level];
                 hit.voxel_id = node_get_child(node_id[level], level, child_index);
                 return true;
             }
-            // Recurse on the child
-            DDA_DOWN();
+            // Otherwise recurse in the child node.
+            node_id[level + 1] = node_get_child(node_id[level], level, child_index);
+            curr_t[level + 1] = curr_t[level];
+            level++;
+            DDA_INIT();
         }
 
         DDA_STEP();
     }
-}*/
+}
+
+
+vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
+{
+    VoxelData voxel = voxel_buf.voxels[hit.voxel_id];
+    
+    vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < params_buf.light_count; i++) {
+        DirectionalLight light = params_buf.lights[i];
+        
+        // Check the light illuminates the voxel
+        //vec3 shadow_ray_orig = ray_orig + (hit.t - 0.0001f) * ray_dir; 
+        //Hit dummy_hit;
+        //bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
+        //if (!did_hit) {
+            // Add the light contribution
+            float intensity = max(dot(-light.direction.xyz, voxel.normal), 0.0f);
+            diffuse += intensity * light.color;
+        //}
+    }
+
+    vec4 ambient = vec4(0.2f, 0.2f, 0.2f, 1.0f);
+
+    return params_buf.materials[voxel.material_idx].color * (ambient + diffuse);
+}
+
 
 
 vec4 raytrace(vec3 orig, vec3 dir)
@@ -261,7 +253,7 @@ vec4 raytrace(vec3 orig, vec3 dir)
         return shade(orig, dir, hit);
     }
     else {
-        return uniformBuffer.backgroundColor;
+        return params_buf.background_color;
     }
 }
 
@@ -269,24 +261,24 @@ vec4 raytrace(vec3 orig, vec3 dir)
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
-    if (gid.x < uniformBuffer.screenResolution.x && 
-        gid.y < uniformBuffer.screenResolution.y) {
+    if (gid.x < params_buf.screen_res.x && 
+        gid.y < params_buf.screen_res.y) {
     
         // Compute the ray direction
-        float dx = 2.0f * (gid.x / float(uniformBuffer.screenResolution.x)) - 1.0f;
-        float dy = 2.0f * (gid.y / float(uniformBuffer.screenResolution.y)) - 1.0f;
+        float dx = 2.0f * (gid.x / float(params_buf.screen_res.x)) - 1.0f;
+        float dy = 2.0f * (gid.y / float(params_buf.screen_res.y)) - 1.0f;
         vec3 dir = normalize(
-            uniformBuffer.cameraForward.xyz +
-            dx * uniformBuffer.screenWorldSize.x * uniformBuffer.cameraRight.xyz +
-            dy * uniformBuffer.screenWorldSize.y * uniformBuffer.cameraUp.xyz);
+            params_buf.camera_forward.xyz +
+            dx * params_buf.screen_world_size.x * params_buf.camera_right.xyz +
+            dy * params_buf.screen_world_size.y * params_buf.camera_up.xyz);
 
-        float start_t = raygrid_intersect(uniformBuffer.cameraPosition.xyz, dir);
-        vec4 color = uniformBuffer.backgroundColor;
+        float start_t = raygrid_intersect(params_buf.camera_pos.xyz, dir);
+        vec4 color = params_buf.background_color;
         if (start_t >= 0.0f) {
             // Project the origin onto the grid, along the ray direction.
-            vec3 projected_orig = uniformBuffer.cameraPosition.xyz + start_t * dir + 0.001f * dir;
+            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + 0.001f) * dir;
             color = raytrace(projected_orig, dir);
         }
-        imageStore(outImg, ivec2(gid), color);
+        imageStore(out_img, ivec2(gid), color);
     }
 }

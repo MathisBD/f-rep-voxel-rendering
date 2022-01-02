@@ -22,7 +22,7 @@ public:
     // This is the dimension of the finest grid.
     // Example : for a 3-level grid (3, 4, 2), 
     // the fine grid dimension is 24. 
-    glm::uint32_t fineGridDim;
+    uint32_t fineGridDim;
 
     // The number of nodes in each level.
     // Leaf nodes are counted but not voxels.
@@ -57,16 +57,19 @@ public:
 
     // The sizes are in bytes.
     uint32_t NodeSize(uint32_t level) {
-        return 4 + glm::pow(gridDims[level], 3) / 4;
+        return 16 + glm::pow(gridDims[level], 3) / 4;
     }
     uint32_t NodeOfsCLIdx(uint32_t level) {
         return 0;
     }
-    uint32_t NodeOfsMask(uint32_t level) {
+    uint32_t NodeOfsCoords(uint32_t level) {
         return 4;
     }
+    uint32_t NodeOfsMask(uint32_t level) {
+        return 16;
+    }
     uint32_t NodeOfsMaskPC(uint32_t level) {
-        return 4 + glm::pow(gridDims[level], 3) / 8;
+        return 16 + glm::pow(gridDims[level], 3) / 8;
     }
 
     uint32_t ChildListSize(uint32_t level) {
