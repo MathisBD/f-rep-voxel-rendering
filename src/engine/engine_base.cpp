@@ -49,12 +49,10 @@ void EngineBase::InitVulkanCore(bool enableValidationLayers)
     builder.set_app_name("Vulkan Project")
            .require_api_version(1, 1, 0)
            .use_default_debug_messenger();
-
+           
     if (enableValidationLayers) {
         builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
-               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT)
-               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT)
-               //.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT)
+               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
                .enable_validation_layers(true);
     }
     vkb::Instance vkbInst = builder.build().value();
@@ -69,6 +67,7 @@ void EngineBase::InitVulkanCore(bool enableValidationLayers)
     vkb::PhysicalDevice vkbPhysDev = selector 
         .set_minimum_version(1, 1)
         .set_surface(m_surface)
+        .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
         .select()
         .value();
     m_device.physicalDevice = vkbPhysDev.physical_device;

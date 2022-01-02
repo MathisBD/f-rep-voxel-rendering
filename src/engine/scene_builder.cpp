@@ -289,7 +289,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
 
 
     // Print the node.
-    {
+    /*{
         uint32_t dim = m_voxels->gridDims[node->level];
 
         printf("%s: level=%d\tcoords=%u %u %u\n", 
@@ -315,7 +315,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
             printf("%u ", childList[i]);
         }
         printf("\n\n");
-    }
+    }*/
 
     return idx;
 }

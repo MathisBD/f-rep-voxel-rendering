@@ -4,8 +4,10 @@
 layout (local_size_x = 16, local_size_y = 16) in;
 
 
-// Include other files
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_debug_printf : enable
+
+// Include other files
 #include "raycasting/utils.comp_header"
 #include "raycasting/inputs.comp_header"
 
@@ -276,9 +278,10 @@ vec4 raytrace(vec3 orig, vec3 dir)
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
+
     if (gid.x < params_buf.screen_res.x && 
-        gid.y < params_buf.screen_res.y) {
-    
+        gid.y < params_buf.screen_res.y) 
+    {
         // Compute the ray direction
         float dx = 2.0f * (gid.x / float(params_buf.screen_res.x)) - 1.0f;
         float dy = 2.0f * (gid.y / float(params_buf.screen_res.y)) - 1.0f;
