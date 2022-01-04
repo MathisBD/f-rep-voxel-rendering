@@ -8,6 +8,7 @@ layout (local_size_x = 16, local_size_y = 16) in;
 #extension GL_EXT_debug_printf : enable
 
 // Include other files
+#define DEBUG_LOG
 #include "raycasting/utils.comp_header"
 #include "raycasting/inputs.comp_header"
 
@@ -18,13 +19,13 @@ struct Hit {
 };
 
 
-// A negative value means no intersection.
+// Returns true if there is an intersection.
 // A positive value t means the intersection point is at orig + t * dir.
-float raygrid_intersect(vec3 orig, vec3 dir)
+bool raygrid_intersect(vec3 orig, vec3 dir, out float t_enter, out float t_leave)
 {
     vec3 invDir = 1.0f / dir;
-    vec3 t_0 = (params_buf.grid_world_pos - orig) * invDir; 
-    vec3 t_1 = (params_buf.grid_world_pos + params_buf.grid_world_size - orig) * invDir;
+    vec3 t_0 = (params_buf.grid_world_pos + vec3(EPS, EPS, EPS) - orig) * invDir; 
+    vec3 t_1 = (params_buf.grid_world_pos + params_buf.grid_world_size - vec3(EPS, EPS, EPS) - orig) * invDir;
     
 #define SWAP(a, b) { float tmp = a; a = b; b = tmp; }
     // We chech invDir.x < 0f rather than t_0.x > t_1.x (almost equivalent),
@@ -35,101 +36,159 @@ float raygrid_intersect(vec3 orig, vec3 dir)
     if (invDir.z < 0.0f) SWAP(t_0.z, t_1.z)
 #undef SWAP
 
-    float t_enter = MAX_3(t_0.x, t_0.y, t_0.z);
-    float t_leave = MIN_3(t_1.x, t_1.y, t_1.z);
+    t_enter = MAX_3(t_0.x, t_0.y, t_0.z);
+    t_leave = MIN_3(t_1.x, t_1.y, t_1.z);
 
-    // no intersection
-    if (t_enter > t_leave || t_leave < 0.0f) {
-        return -1.0f;
-    }
-    // the origin is out of the grid.
-    if (t_enter > 0.0f) {
-        return t_enter;
-    }
-    // the origin is in the grid.
-    else {
-        return 0.0f;
-    }
+    return t_enter <= t_leave && t_leave >= 0.0f;
 }
-
 
 
 bool dda(vec3 orig, vec3 dir, out Hit hit)
 {
-    vec3 invDir = 1.0f / dir;
-    uint level = 0;
+    // Check the ray intersects the root node.
+    float grid_t_enter;
+    float grid_t_leave;
+    bool hit_grid = raygrid_intersect(orig, dir, grid_t_enter, grid_t_leave);
+    if (!hit_grid) {
+        return false;
+    }
 
-    // These are duplicated for each level.
+    // DDA parameters. 
+    vec3 invDir = 1.0f / dir;
+    uint lvl = 0;
+    uint node = 0;
+    float t_curr = max(grid_t_enter, 0.0f) + EPS; // the current time
+    float t_max = grid_t_leave;
+
+    LOG2("\nt_enter=%.3f t_leave=%.3f\n", grid_t_enter, grid_t_leave);
+   
+    while (t_curr < t_max - EPS) {
+        // Prepare
+        vec3 norm_pos = (orig + (t_curr + EPS) * dir - node_world_pos(node, lvl)) /
+            params_buf.levels[lvl].cell_size; 
+        ivec3 cell = ivec3(floor(norm_pos));
+        vec3 t_next = (t_curr + EPS) + (cell + SIGN_01(invDir) - norm_pos) * 
+            params_buf.levels[lvl].cell_size * invDir;
+          
+        LOG6("level=%u   node=%u   norm_pos=%.3v3f   cell=%v3d   t_curr=%.3f   t_next=%.3v3f\n", 
+            lvl, node, norm_pos, cell, t_curr, t_next);
+   
+        // We have a child
+        uint cell_index = INDEX3D(cell, params_buf.levels[lvl].dim);
+        if (node_has_child(node, lvl, cell_index)) {
+            // We hit a voxel
+            if (lvl >= params_buf.level_count - 1) {
+                hit.voxel_id = node_get_child(node, lvl, cell_index);
+                hit.t = t_curr;
+
+                LOG0("Hit a voxel\n");
+                return true;
+            }
+            // Recurse in the child node.
+            else {
+                LOG0("Recursing in child\n");
+                node = node_get_child(node, lvl, cell_index);
+                t_max = MIN_3(t_next.x, t_next.y, t_next.z);
+                lvl++;
+            }
+        }
+        // No child : step forward 
+        else {
+            LOG0("Stepping\n");
+            t_curr = MIN_3(t_next.x, t_next.y, t_next.z);
+        }
+    }
+    // We didn't hit anything
+    return false;
+}
+
+
+
+/*bool dda(vec3 orig, vec3 dir, out Hit hit)
+{
+    // Check the ray intersects the root node.
+    float grid_t_enter;
+    float grid_t_leave;
+    bool hit_grid = raygrid_intersect(orig, dir, grid_t_enter, grid_t_leave);
+    if (!hit_grid) {
+        return false;
+    }
+
+    // DDA parameters. Some are duplicated for each level,
+    // other are recalculated on the fly each time we change level.
+    vec3 invDir = 1.0f / dir;
+    uint level;
     uint node_id[MAX_LEVEL_COUNT];
-    float curr_t[MAX_LEVEL_COUNT];
-    
-    // These are recalculated each time we change level.
     ivec3 local_cell;
-    vec3 next_t;
+    float t_curr;
+    vec3 t_next;
+    float t_leave[MAX_LEVEL_COUNT];
     
-    ivec3 d_cell = ivec3(sign(dir));
     // make sure d_cell != 0, to avoid any infite loop.
+    ivec3 d_cell = ivec3(sign(dir));
     bvec3 mask = equal(d_cell, vec3(0, 0, 0));
     d_cell += ivec3(mask);
 
-
-// Computes the local cell and the next crossing times.
+// Computes the local cell and the next crossing/leaving times.
 // Typically called when we change level.
+// Assumes t_curr and t_leave[level] are correct.
 #define DDA_INIT() {                                            \
-    vec3 norm_pos = (orig + curr_t[level] * dir -               \
+    float t_middle = 0.5f * (t_curr[level] + t_leave);
+    vec3 norm_pos = (orig + 0.5f * t_middle * dir -\
         node_world_pos(node_id[level], level)) /                \
         params_buf.levels[level].cell_size;                     \
-    /*norm_pos.x = clamp(norm_pos.x, 0.0f, params_buf.levels[level].dim - EPSILON);   \
-    norm_pos.y = clamp(norm_pos.y, 0.0f, params_buf.levels[level].dim - EPSILON);   \
-    norm_pos.z = clamp(norm_pos.z, 0.0f, params_buf.levels[level].dim - EPSILON);*/   \
+    
     if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {             \
         debugPrintfEXT("norm_pos=%v3f   dir=%.3v3f\n", norm_pos, dir);              \
     }                                                       \
                                                             \
-    local_cell = ivec3(floor(norm_pos + EPSILON * dir));    \
+    local_cell = ivec3(floor(norm_pos));    \
                                                             \
-    next_t = local_cell - norm_pos;                         \
-    if (invDir.x >= 0.0f) next_t.x += 1.0f;                 \
-    if (invDir.y >= 0.0f) next_t.y += 1.0f;                 \
-    if (invDir.z >= 0.0f) next_t.z += 1.0f;                 \
-    next_t *= params_buf.levels[level].cell_size * invDir;  \
+    t_next = local_cell - norm_pos;                         \
+    if (invDir.x >= 0.0f) t_next.x += 1.0f;                 \
+    if (invDir.y >= 0.0f) t_next.y += 1.0f;                 \
+    if (invDir.z >= 0.0f) t_next.z += 1.0f;                 \
+    t_next *= params_buf.levels[level].cell_size * invDir;  \
                                                             \
-    next_t += curr_t[level];                                \
+    t_next += t_middle;                                     \
 }
 
 #define DDA_STEP() {                                        \
-    if (next_t.x <= next_t.y &&                             \
-        next_t.x <= next_t.z) {                             \
-        curr_t[level] = next_t.x;                           \
-        next_t.x += abs(invDir.x) * params_buf.levels[level].cell_size;       \
+    if (t_next.x <= t_next.y && t_next.x <= t_next.z) {     \
+        t_next.x += abs(invDir.x) * params_buf.levels[level].cell_size;       \
         local_cell.x += d_cell.x;                           \
     }                                                       \
-    else if (next_t.y <= next_t.z) {                        \
-        curr_t[level] = next_t.y;                           \
-        next_t.y += abs(invDir.y) * params_buf.levels[level].cell_size;       \
+    else if (t_next.y <= t_next.z) {                        \
+        t_next.y += abs(invDir.y) * params_buf.levels[level].cell_size;       \
         local_cell.y += d_cell.y;                           \
     }                                                       \
     else {                                                  \
-        curr_t[level] = next_t.z;                           \
-        next_t.z += abs(invDir.z) * params_buf.levels[level].cell_size;       \
+        t_next.z += abs(invDir.z) * params_buf.levels[level].cell_size;       \
         local_cell.z += d_cell.z;                           \
     }                                                       \
+    t_curr = t_leave[level];                                \
+    t_leave[level] = min(t_next);                           \
 }
 
     // Initialize for the root.
-    curr_t[0] = 0;
+    level = 0;
+    t_curr = max(grid_t_enter, 0.0f);
+    t_leave[0] = grid_t_leave;
     node_id[0] = 0;
     DDA_INIT();
   
+
+
+
     // Main loop.
-    for (uint i = 0; i < 20; i++) {
-    //while (true) {
+    /*while (t_curr )
         if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
             debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%f   next_t=%v3f  curr pos=%v3f\n", 
                 level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
         }   
 
-        while (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
+        node_id[level + 1] = node_get_child(node_id[level], level, child_index);
+            hile (local_cell.x < 0 || local_cell.x >= params_buf.levels[level].dim ||
                local_cell.y < 0 || local_cell.y >= params_buf.levels[level].dim ||
                local_cell.z < 0 || local_cell.z >= params_buf.levels[level].dim) 
         {
@@ -140,7 +199,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
                 return false;
             //}
 
-            /*if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+            /if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
                 debugPrintfEXT("out of bounds : going up\n");
             }
                 
@@ -155,7 +214,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
                 debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
                     level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
-            }*/
+            }/
         }
 
         uint child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
@@ -207,7 +266,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     }
     hit.t = -1;
     return true;
-}
+}*/
 
 
 vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
@@ -219,7 +278,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
         DirectionalLight light = params_buf.lights[i];
         
         // Check the light illuminates the voxel
-        //vec3 shadow_ray_orig = ray_orig + (hit.t - EPSILON) * ray_dir; 
+        //vec3 shadow_ray_orig = ray_orig + (hit.t - EPS) * ray_dir; 
         //Hit dummy_hit;
         //bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
         //if (!did_hit) {
@@ -273,13 +332,7 @@ void main()
             dx * params_buf.screen_world_size.x * params_buf.camera_right.xyz +
             dy * params_buf.screen_world_size.y * params_buf.camera_up.xyz);
 
-        float start_t = raygrid_intersect(params_buf.camera_pos.xyz, dir);
-        vec4 color = params_buf.background_color;
-        if (start_t >= 0.0f) {
-            // Project the origin onto the grid, along the ray direction.
-            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + 100*EPSILON) * dir;
-            color = raytrace(projected_orig, dir);
-        }
+        vec4 color = raytrace(params_buf.camera_pos.xyz, dir);
         imageStore(out_img, ivec2(gid), color);
     }
 }

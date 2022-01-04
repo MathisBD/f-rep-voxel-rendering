@@ -13,6 +13,8 @@ export DEBUG_PRINTF_TO_STDOUT=true
 "Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces"
 Matthew J. Keeter, ACM Transactions on Graphics (Proceedings of SIGGRAPH), 2020
 
+"Interactive k-D Tree GPU Raytracing"
+Daniel Reiter Horn, Jeremy Sugerman, Mike Houston, Pat Hanrahan
 # Tmp
 
 Sparse hierarchy of grids. The resolution res(L) of a level is the log_2 of the level's dimension.

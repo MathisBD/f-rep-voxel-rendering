@@ -9,4 +9,44 @@
 
 #define MIN_3(x, y, z) min((x), min((y), (z)))
 
-#define EPSILON 0.000001f
+#define EPS 0.0001f
+
+// for each component of v : 
+// returns 1.0f if it is >= 0, and 0.0f otherwise.
+#define SIGN_01(v) vec3(greaterThanEqual((v), vec3(0, 0, 0)))
+
+
+#ifdef DEBUG_LOG
+
+#define LOG0(fmt) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt)); }  
+
+#define LOG1(fmt, x1) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1)); }  
+
+#define LOG2(fmt, x1, x2) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1), (x2)); }  
+
+#define LOG3(fmt, x1, x2, x3) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1), (x2), (x3)); }  
+
+#define LOG4(fmt, x1, x2, x3, x4) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1), (x2), (x3), (x4)); }  
+
+#define LOG5(fmt, x1, x2, x3, x4, x5) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1), (x2), (x3), (x4), (x5)); }  
+
+#define LOG6(fmt, x1, x2, x3, x4, x5, x6) if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {\
+    debugPrintfEXT((fmt), (x1), (x2), (x3), (x4), (x5), (x6)); }  
+
+#else
+
+#define LOG0(fmt)                           do {} while(false)
+#define LOG1(fmt, x1)                       do {} while(false)
+#define LOG2(fmt, x1, x2)                   do {} while(false)
+#define LOG3(fmt, x1, x2, x3)               do {} while(false)
+#define LOG4(fmt, x1, x2, x3, x4)           do {} while(false)
+#define LOG5(fmt, x1, x2, x3, x4, x5)       do {} while(false)
+#define LOG6(fmt, x1, x2, x3, x4, x5, x6)   do {} while(false) 
+
+#endif
