@@ -75,18 +75,18 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
 // Computes the local cell and the next crossing times.
 // Typically called when we change level.
-#define DDA_INIT() {                                        \
-    vec3 norm_pos = (orig + curr_t[level] * dir -           \
-        node_world_pos(node_id[level], level)) /            \
-        params_buf.levels[level].cell_size;                 \
-    norm_pos.x = clamp(norm_pos.x, 0.0f, params_buf.levels[level].dim - EPSILON);   \
+#define DDA_INIT() {                                            \
+    vec3 norm_pos = (orig + curr_t[level] * dir -               \
+        node_world_pos(node_id[level], level)) /                \
+        params_buf.levels[level].cell_size;                     \
+    /*norm_pos.x = clamp(norm_pos.x, 0.0f, params_buf.levels[level].dim - EPSILON);   \
     norm_pos.y = clamp(norm_pos.y, 0.0f, params_buf.levels[level].dim - EPSILON);   \
-    norm_pos.z = clamp(norm_pos.z, 0.0f, params_buf.levels[level].dim - EPSILON);   \
-    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) { \
-        debugPrintfEXT("norm_pos=%v3f   dir=%.3v3f\n", norm_pos, dir);  \
+    norm_pos.z = clamp(norm_pos.z, 0.0f, params_buf.levels[level].dim - EPSILON);*/   \
+    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {             \
+        debugPrintfEXT("norm_pos=%v3f   dir=%.3v3f\n", norm_pos, dir);              \
     }                                                       \
                                                             \
-    local_cell = ivec3(floor(norm_pos));                    \
+    local_cell = ivec3(floor(norm_pos + EPSILON * dir));    \
                                                             \
     next_t = local_cell - norm_pos;                         \
     if (invDir.x >= 0.0f) next_t.x += 1.0f;                 \
@@ -122,9 +122,10 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     DDA_INIT();
   
     // Main loop.
-    while (true) {
+    for (uint i = 0; i < 20; i++) {
+    //while (true) {
         if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-            debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+            debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%f   next_t=%v3f  curr pos=%v3f\n", 
                 level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
         }   
 
@@ -146,21 +147,21 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             level--;
             DDA_INIT();
             if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
-                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
             }   
             DDA_STEP();
 
             if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f   node pos=%.2v3f\n", 
-                    level, node_id[level], local_cell, curr_t[level], next_t, node_world_pos(node_id[level], level));
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+                    level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
             }*/
         }
 
         uint child_index = INDEX3D(local_cell, params_buf.levels[level].dim);
         while (node_has_child(node_id[level], level, child_index)) {
             // We hit something : return.
-            if (level == params_buf.level_count - 1) {
+            if (level >= params_buf.level_count - 1) {
                 if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
                     debugPrintfEXT("hit a voxel : returning\n");
                 }
@@ -178,7 +179,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             DDA_INIT();
             
             if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%.2f   next_t=%.2v3f  curr pos=%v3f\n", 
+                debugPrintfEXT("level=%u   node_id=%u   local_cell=%v3d   curr_t=%f   next_t=%v3f  curr pos=%v3f\n", 
                     level, node_id[level], local_cell, curr_t[level], next_t, orig + curr_t[level] * dir);
             }
 
@@ -198,7 +199,14 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
         }
 
         DDA_STEP();
+    } 
+ 
+
+    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
+        debugPrintfEXT("error : too many iterations\n");
     }
+    hit.t = -1;
+    return true;
 }
 
 
@@ -269,7 +277,7 @@ void main()
         vec4 color = params_buf.background_color;
         if (start_t >= 0.0f) {
             // Project the origin onto the grid, along the ray direction.
-            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + EPSILON) * dir;
+            vec3 projected_orig = params_buf.camera_pos.xyz + (start_t + 100*EPSILON) * dir;
             color = raytrace(projected_orig, dir);
         }
         imageStore(out_img, ivec2(gid), color);
