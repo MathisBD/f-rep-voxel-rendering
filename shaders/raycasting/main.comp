@@ -55,47 +55,54 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
     // DDA parameters. 
     vec3 invDir = 1.0f / dir;
-    uint lvl = 0;
-    uint node = 0;
+    uint lvl;
+    uint node;
     float t_curr = max(grid_t_enter, 0.0f) + EPS; // the current time
-    float t_max = grid_t_leave;
+    float t_max = t_curr;
 
     LOG2("\nt_enter=%.3f t_leave=%.3f\n", grid_t_enter, grid_t_leave);
    
-    while (t_curr < t_max - EPS) {
-        // Prepare
-        vec3 norm_pos = (orig + (t_curr + EPS) * dir - node_world_pos(node, lvl)) /
-            params_buf.levels[lvl].cell_size; 
-        ivec3 cell = ivec3(floor(norm_pos));
-        vec3 t_next = (t_curr + EPS) + (cell + SIGN_01(invDir) - norm_pos) * 
-            params_buf.levels[lvl].cell_size * invDir;
-          
-        LOG6("level=%u   node=%u   norm_pos=%.3v3f   cell=%v3d   t_curr=%.3f   t_next=%.3v3f\n", 
-            lvl, node, norm_pos, cell, t_curr, t_next);
-   
-        // We have a child
-        uint cell_index = INDEX3D(cell, params_buf.levels[lvl].dim);
-        if (node_has_child(node, lvl, cell_index)) {
-            // We hit a voxel
-            if (lvl >= params_buf.level_count - 1) {
-                hit.voxel_id = node_get_child(node, lvl, cell_index);
-                hit.t = t_curr;
+    // We use the kd-restart algorithm.
+    while (t_max < grid_t_leave - EPS) {
+        lvl = 0;
+        node = 0;
+        t_curr = t_max + EPS;
+        t_max = grid_t_leave;
 
-                LOG0("Hit a voxel\n");
-                return true;
+        while (t_curr < t_max - EPS) {
+            // Prepare
+            vec3 norm_pos = (orig + (t_curr + EPS) * dir - node_world_pos(node, lvl)) /
+                params_buf.levels[lvl].cell_size; 
+            ivec3 cell = ivec3(floor(norm_pos));
+            vec3 t_next = (t_curr + EPS) + (cell + SIGN_01(invDir) - norm_pos) * 
+                params_buf.levels[lvl].cell_size * invDir;
+            uint cell_index = INDEX3D(cell, params_buf.levels[lvl].dim);
+
+            LOG8("level=%u   node=%u   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f   t_curr=%.3f   t_next=%.3v3f\n", 
+                lvl, node, norm_pos, cell, cell_index, node_world_pos(node, lvl), t_curr, t_next);
+    
+            // We have a child
+            if (node_has_child(node, lvl, cell_index)) {
+                // We hit a voxel  
+                if (lvl >= params_buf.level_count - 1) {
+                    hit.voxel_id = node_get_child(node, lvl, cell_index);
+                    hit.t = t_curr;  
+                    LOG1("Hit voxel: id=%u\n", hit.voxel_id);
+                    return true;
+                }
+                // Recurse in the child
+                else {
+                    LOG0("Recursing in child\n");
+                    node = node_get_child(node, lvl, cell_index);
+                    t_max = MIN_3(t_next.x, t_next.y, t_next.z);
+                    lvl++;
+                }
             }
-            // Recurse in the child node.
+            // No child : step forward 
             else {
-                LOG0("Recursing in child\n");
-                node = node_get_child(node, lvl, cell_index);
-                t_max = MIN_3(t_next.x, t_next.y, t_next.z);
-                lvl++;
+                LOG0("Stepping\n");
+                t_curr = MIN_3(t_next.x, t_next.y, t_next.z);
             }
-        }
-        // No child : step forward 
-        else {
-            LOG0("Stepping\n");
-            t_curr = MIN_3(t_next.x, t_next.y, t_next.z);
         }
     }
     // We didn't hit anything

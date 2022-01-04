@@ -138,6 +138,10 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
     // Allocate the node
     TreeNode* node = new TreeNode();
     node->level = level;
+    // Check there is at least one uint in the mask.
+    // We could treat this as a special case but it would make
+    // calculating the node size/offsets more complex for no real benefit.
+    assert((dim*dim*dim) / 32 > 0);
     node->mask = std::vector<uint32_t>((dim*dim*dim) / 32);
     node->maskPC = std::vector<uint32_t>((dim*dim*dim) / 32);
     node->childList = std::vector<size_t>(dim*dim*dim);
@@ -267,7 +271,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
     // Compute the address of the node's child list in the child buffer.
     size_t childAddr = (size_t)m_bufferContents.child;
     for (uint32_t i = 0; i < node->level; i++) {
-        childAddr += m_voxels->nodeCount[i] * (dim * dim * dim) * sizeof(uint32_t);
+        childAddr += m_voxels->nodeCount[i] * glm::pow(m_voxels->gridDims[i], 3) * sizeof(uint32_t);
     }
     childAddr += idx * (dim * dim * dim) * sizeof(uint32_t);
     uint32_t* childList = (uint32_t*)childAddr;
@@ -295,8 +299,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
         printf("%s:%u level=%d\tcoords=%u %u %u\n", 
             node->level == m_voxels->gridLevels - 1 ? "LEAF" : "INTERIOR",
             idx, node->level, coords[0], coords[1], coords[2]);
-        printf("coords offset (in bytes)=%lu\n", (size_t)coords - (size_t)m_bufferContents.node);
-        /*printf("\tmask = ");
+        printf("\tmask = ");
         assert(node->mask.size() == (dim*dim*dim) / 32);
         for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
             printf("%x ", node->mask[i]);
@@ -308,7 +311,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
         for (size_t i = 0; i < (dim*dim*dim) / 32; i++) {
             printf("%u ", node->maskPC[i]);
         }
-        printf("\n");*/
+        printf("\n");
 
         printf("\tchildren = ");
         for (size_t i = 0; i < node->maskPC.back(); i++) {

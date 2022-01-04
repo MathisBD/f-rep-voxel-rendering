@@ -179,26 +179,25 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
     uint32_t childOfs = 0;
     float cellSize = m_voxels->worldSize;
     for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        uint32_t dim = m_voxels->gridDims[i];    
-        cellSize /= dim;
+        cellSize /= m_voxels->gridDims[i];
 
-        params->levels[i].dim = dim;
+        params->levels[i].dim = m_voxels->gridDims[i];
         params->levels[i].nodeOfs = nodeOfs;
         params->levels[i].childOfs = childOfs;
         params->levels[i].cellSize = cellSize;
 
         // Remember : the offsets are in uints (not in bytes).
         nodeOfs += m_voxels->nodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
-        childOfs += m_voxels->nodeCount[i] * (dim * dim * dim);
+        childOfs += m_voxels->nodeCount[i] * glm::pow(m_voxels->gridDims[i], 3);
     }
     
-    /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
         printf("\n");
         printf("node count[%u] = %u\n", i, m_voxels->nodeCount[i]);
         printf("node ofs[%u] = %u\n", i, params->levels[i].nodeOfs);
         printf("child ofs[%u] = %u\n", i, params->levels[i].childOfs);
-        printf("cell size[%u] = %.2f\n", i, params->levels[i].cellSize);
-    }*/
+        printf("node size(%u)=%u\n", i, m_voxels->NodeSize(i));
+    }
 
     // Background color
     params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);

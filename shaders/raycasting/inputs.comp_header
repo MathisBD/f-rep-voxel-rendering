@@ -111,23 +111,34 @@ uint node_get_child(uint node_id, uint level, uint child_index)
     // The node's position in the node buffer.
     uint node_pos = params_buf.levels[level].node_ofs +
         NODE_SIZE(level) * node_id;
-    
+
     uint q = child_index >> 5;
     uint r = child_index & 0x1F;
 
+    LOG2("q=%u   r=%u\n", q, r);
+
     // Compute the child's position in the child list
     uint child_pos = 0;
+    LOG1("child_pos=%u\n", child_pos);
     if (q > 0) {
         child_pos += node_buf.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
     }
+    LOG1("child_pos=%u\n", child_pos);
     if (r > 0) {
         uint mask = node_buf.data[node_pos + NODE_OFS_MASK(level) + q];
         child_pos += bitCount(mask & ((1 << r) - 1));
     }
+    LOG1("child_pos=%u\n", child_pos);
 
     // The node's child list position in the child buffer
     uint cl_pos = params_buf.levels[level].child_ofs +
         CL_SIZE(level) * node_id;
+
+    LOG2("child_ofs=%u   cl_size(level)=%u\n",
+        params_buf.levels[level].child_ofs, CL_SIZE(level));
+
+    LOG4("node=%u   level=%u   child_index=%u   cl_idx=%u\n",
+        node_id, level, child_index, node_buf.data[node_pos]);
 
     return child_buf.data[cl_pos + child_pos];
 }
@@ -143,7 +154,7 @@ vec3 node_world_pos(uint node_id, uint level)
         node_buf.data[coords_pos],
         node_buf.data[coords_pos + 1],
         node_buf.data[coords_pos + 2]);
-    
+
     return params_buf.grid_world_pos +
         vec3(coords) * params_buf.levels[params_buf.level_count - 1].cell_size;
 }

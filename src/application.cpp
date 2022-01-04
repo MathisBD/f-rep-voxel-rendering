@@ -51,7 +51,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 4, 4 };
+    m_voxels.gridDims = { 8, 4 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -115,8 +115,8 @@ void Application::InitRenderTarget()
 void Application::Draw() 
 {
     m_frameTime.AddSample(Timer::s_dt);
-    printf("Frame time : %.1fms (%.1ffps)\n", 
-        1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
+    //printf("Frame time : %.1fms (%.1ffps)\n", 
+    //    1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
 
     m_camera.Update(m_inputManager);
     m_raytracer.Trace(m_renderer.GetRenderSemaphore(), &m_camera);
