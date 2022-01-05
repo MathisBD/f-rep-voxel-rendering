@@ -16,6 +16,8 @@ void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
 
 void SceneBuilder::Cleanup() 
 {
+
+
     m_stagingBuffers.node.Cleanup();
     m_stagingBuffers.child.Cleanup();
     m_stagingBuffers.voxel.Cleanup();
@@ -40,6 +42,27 @@ void SceneBuilder::BuildScene()
     m_stagingBuffers.node.Unmap();
     m_stagingBuffers.child.Unmap();
     m_stagingBuffers.voxel.Unmap();
+
+    // Print some stats before we cleanup.
+    PrintVoxelStats();
+
+    // We can already delete the nodes and voxel vector.
+    std::vector<VoxelStorage::Voxel> empty;
+    m_voxelData.swap(empty);
+
+    DeleteNode(m_rootNode);
+    m_rootNode = nullptr;
+}
+
+void SceneBuilder::DeleteNode(TreeNode* node) 
+{
+    if (node->level < m_voxels->gridLevels - 1) {
+        uint32_t childCount = node->maskPC.back();
+        for (uint32_t i = 0; i < childCount; i++) {
+            DeleteNode((TreeNode*)node->childList[i]);
+        }
+    }
+    delete node;    
 }
 
 void SceneBuilder::UploadSceneToGPU(VkCommandBuffer cmd) 
@@ -180,7 +203,7 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
     ComputeMaskPC(node);
     // The node is empty
     if (node->maskPC.back() == 0) {
-        free(node);
+        delete node;
         return nullptr;
     }
     CompactifyChildList(node);
@@ -294,7 +317,7 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
     {
         //uint32_t dim = m_voxels->gridDims[node->level];
 
-        printf("%s:%u level=%d\tcoords=%u %u %u\n", 
+        /*printf("%s:%u level=%d\tcoords=%u %u %u\n", 
             node->level == m_voxels->gridLevels - 1 ? "LEAF" : "INTERIOR",
             idx, node->level, coords[0], coords[1], coords[2]);
         printf("\tmask = ");
@@ -315,8 +338,33 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
         for (size_t i = 0; i < node->maskPC.back(); i++) {
             printf("%u ", childList[i]);
         }
-        printf("\n\n");
+        printf("\n\n");*/
     }
 
     return idx;
+}
+
+
+void SceneBuilder::PrintVoxelStats()
+{
+    printf("[+] Total voxels :\n\tcount=%lu\tvoxel buf bytes=%lu\n", 
+        m_stagingBuffers.voxel.size / sizeof(VoxelStorage::Voxel),
+        m_stagingBuffers.voxel.size);
+
+    uint32_t totalNodeCount = 0;
+    for (uint32_t count : m_voxels->nodeCount) {
+        totalNodeCount += count;
+    }
+    printf("[+] Total nodes :\n\tcount=%u\tnode buf bytes=%lu\tchild buf bytes=%lu\n",
+        totalNodeCount, m_stagingBuffers.node.size, m_stagingBuffers.child.size);
+
+    printf("[+] Nodes per level :\n");
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        uint32_t nodes = m_voxels->nodeCount[i];
+        printf("\tlevel %u:\tcount=%5u(%2.1f%%)\tnode buf bytes=%8u(%2.1f%%)\tchild buf bytes=%8u(%2.1f%%)\n", 
+            i, 
+            nodes, 100.0f * nodes / (float)totalNodeCount,
+            nodes * m_voxels->NodeSize(i), 100.0f * nodes * m_voxels->NodeSize(i) / (float)m_stagingBuffers.node.size,
+            nodes * m_voxels->ChildListSize(i), 100.0f * nodes * m_voxels->ChildListSize(i) / (float)m_stagingBuffers.child.size);
+    }
 }

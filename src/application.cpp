@@ -19,15 +19,18 @@ void Application::Init(bool enableValidationLayers)
 
     InitRenderTarget();
     InitVoxels();
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::TangleCube({0, 0, 0}, 4));
-    m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::Sphere({ 0, 0, 0 }, 15));
-    m_cleanupQueue.AddFunction([=] { m_builder.Cleanup(); });
+    m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::TangleCube({0, 0, 0}, 4));
+    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::Sphere({ 0, 0, 0 }, 15));
+    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::BarthSextic({0, 0, 0}, 5));
     
     // Create the voxels
     m_builder.BuildScene();
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
         m_builder.UploadSceneToGPU(cmd);
     });
+
+    // We can now cleanup the scene builder (and delete its staging buffers)
+    m_builder.Cleanup();
 
     m_renderer.Init(
         &m_device, &m_descAllocator, &m_descCache,
@@ -51,7 +54,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 4, 8 };
+    m_voxels.gridDims = { 4, 16 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -125,4 +128,3 @@ void Application::Draw()
     m_renderer.Render(m_raytracer.GetComputeSemaphore());
     m_renderer.EndFrame();
 }
-

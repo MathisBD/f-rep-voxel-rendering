@@ -56,6 +56,8 @@ private:
     void ComputeCoords(TreeNode* node, const glm::u32vec3& coords);
     // The coordinates are in the finest grid AT THE NODE's level.
     TreeNode* BuildNode(uint32_t level, const glm::u32vec3& coords);
+    void DeleteNode(TreeNode* node);
+    
     void BuildTrees();
 
     void CountNodes(TreeNode* node);
@@ -64,4 +66,6 @@ private:
     uint32_t LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNodeIdx);    
 
     void AllocateGPUBuffers();    
+
+    void PrintVoxelStats();
 };
