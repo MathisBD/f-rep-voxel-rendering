@@ -68,4 +68,6 @@ private:
     void AllocateGPUBuffers();    
 
     void PrintVoxelStats();
+    void ForEachTreeNode(std::function<void(TreeNode*)> f);
+    void ForEachTreeNodeHelper(TreeNode* node, std::function<void(TreeNode*)> f);
 };

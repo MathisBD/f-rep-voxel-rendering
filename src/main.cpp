@@ -4,7 +4,7 @@
 int main()
 {
     Application app;
-    app.Init(true);
+    app.Init(false);
     app.Run();
     app.Cleanup();
     return 0;

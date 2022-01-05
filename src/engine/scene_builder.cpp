@@ -359,12 +359,62 @@ void SceneBuilder::PrintVoxelStats()
         totalNodeCount, m_stagingBuffers.node.size, m_stagingBuffers.child.size);
 
     printf("[+] Nodes per level :\n");
-    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        uint32_t nodes = m_voxels->nodeCount[i];
+    for (uint32_t lvl = 0; lvl < m_voxels->gridLevels; lvl++) {
+        uint32_t nodes = m_voxels->nodeCount[lvl];
         printf("\tlevel %u:\tcount=%5u(%2.1f%%)\tnode buf bytes=%8u(%2.1f%%)\tchild buf bytes=%8u(%2.1f%%)\n", 
-            i, 
+            lvl, 
             nodes, 100.0f * nodes / (float)totalNodeCount,
-            nodes * m_voxels->NodeSize(i), 100.0f * nodes * m_voxels->NodeSize(i) / (float)m_stagingBuffers.node.size,
-            nodes * m_voxels->ChildListSize(i), 100.0f * nodes * m_voxels->ChildListSize(i) / (float)m_stagingBuffers.child.size);
+            nodes * m_voxels->NodeSize(lvl), 100.0f * nodes * m_voxels->NodeSize(lvl) / (float)m_stagingBuffers.node.size,
+            nodes * m_voxels->ChildListSize(lvl), 100.0f * nodes * m_voxels->ChildListSize(lvl) / (float)m_stagingBuffers.child.size);
     }
+
+    // childListFullness[lvl][i] contains the number of nodes on lvl
+    // whose child count is smaller than ((i+1) / buckets) times the max count.
+    uint32_t buckets = 10;
+    std::vector<std::vector<uint32_t>> childListFullness(m_voxels->gridLevels);
+    for (uint32_t lvl = 0; lvl < m_voxels->gridLevels; lvl++) {
+        childListFullness[lvl] = std::vector<uint32_t>(buckets);
+    }
+    std::vector<uint32_t> fullNodes(m_voxels->gridLevels, 0); 
+    
+    ForEachTreeNode([&] (TreeNode* node) {
+        uint32_t childCount = node->maskPC.back();
+        uint32_t maxChildCount = glm::pow(m_voxels->gridDims[node->level], 3);
+        assert(childCount <= maxChildCount);
+        if (childCount == maxChildCount) {
+            fullNodes[node->level]++;
+        }
+        for (uint32_t i = 0; i < buckets; i++) {
+            if (childCount / (float)maxChildCount <= (i+1) / (float)buckets) {
+                childListFullness[node->level][i]++;
+            }
+        }
+    });
+    
+    printf("[+] Node stats per level :\n");
+    for (uint32_t lvl = 0; lvl < m_voxels->gridLevels; lvl++) {
+        printf("\tlevel=%u: full nodes=%2.1f%%\t", 
+            lvl, 100.0f * fullNodes[lvl] / (float)m_voxels->nodeCount[lvl]);
+        printf("child list fullness=");
+        for (uint32_t i = 0; i < buckets; i++) {
+            printf("%2.1f%%  ", 100.0f * childListFullness[lvl][i] / (float)m_voxels->nodeCount[lvl]);
+        }
+        printf("\n");
+    }
+}
+
+void SceneBuilder::ForEachTreeNode(std::function<void(TreeNode*)> f) 
+{
+    ForEachTreeNodeHelper(m_rootNode, f);    
+}
+
+void SceneBuilder::ForEachTreeNodeHelper(TreeNode* node, std::function<void(TreeNode*)> f) 
+{
+    if (node->level < m_voxels->gridLevels - 1) {
+        uint32_t childCount = node->maskPC.back();
+        for (uint32_t i = 0; i < childCount; i++) {
+            ForEachTreeNodeHelper((TreeNode*)node->childList[i], f);
+        }
+    }
+    f(node);
 }
