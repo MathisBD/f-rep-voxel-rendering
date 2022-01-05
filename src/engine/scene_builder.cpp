@@ -152,9 +152,7 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
             for (uint32_t z = 0; z < dim; z++) {
                 uint32_t index = Index3D(x, y, z, dim);
                 glm::u32vec3 childCoords = { x, y, z };
-                if (level > 0) {
-                    childCoords += coords * m_voxels->gridDims[level-1];    
-                }
+                childCoords += coords * m_voxels->gridDims[level];
 
                 bool hasChild;
                 // Voxel.

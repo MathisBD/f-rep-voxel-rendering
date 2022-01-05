@@ -51,7 +51,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 8, 4 };
+    m_voxels.gridDims = { 4, 8 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 

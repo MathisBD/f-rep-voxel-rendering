@@ -78,8 +78,8 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
                 params_buf.levels[lvl].cell_size * invDir;
             uint cell_index = INDEX3D(cell, params_buf.levels[lvl].dim);
 
-            LOG8("level=%u   node=%u   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f   t_curr=%.3f   t_next=%.3v3f\n", 
-                lvl, node, norm_pos, cell, cell_index, node_world_pos(node, lvl), t_curr, t_next);
+            LOG8("level=%u   node=%u   pos=%.3v3f   cell_size=%.4f   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f\n", 
+                lvl, node, orig + (t_curr + EPS) * dir, params_buf.levels[lvl].cell_size, norm_pos, cell, cell_index, node_world_pos(node, lvl));
     
             // We have a child
             if (node_has_child(node, lvl, cell_index)) {
