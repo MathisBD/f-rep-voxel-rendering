@@ -30,5 +30,6 @@ private:
 
     void InitVoxels();
     void InitRenderTarget();
+    void SetupScene();
     void Draw() override;
 };

@@ -4,6 +4,7 @@
 #include "utils/running_average.h"
 #include "utils/timer.h"
 #include "shapes.h"
+#include "engine/csg_expression.h"
 
 
 Application::Application() : m_frameTime(32) {}
@@ -19,18 +20,7 @@ void Application::Init(bool enableValidationLayers)
 
     InitRenderTarget();
     InitVoxels();
-    m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::TangleCube({0, 0, 0}, 4));
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::Sphere({ 0, 0, 0 }, 15));
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::BarthSextic({0, 0, 0}, 5));
-    
-    // Create the voxels
-    m_builder.BuildScene();
-    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
-        m_builder.UploadSceneToGPU(cmd);
-    });
-
-    // We can now cleanup the scene builder (and delete its staging buffers)
-    m_builder.Cleanup();
+    SetupScene();
 
     m_renderer.Init(
         &m_device, &m_descAllocator, &m_descCache,
@@ -112,6 +102,29 @@ void Application::InitRenderTarget()
     m_cleanupQueue.AddFunction([=] {
         vkDestroySampler(m_device.logicalDevice, m_target.sampler, nullptr);
     });
+}
+
+void Application::SetupScene() 
+{
+    auto radius = csg::Constant(10.0f);
+    auto sphere = radius * radius - (csg::X()*csg::X() + csg::Y()*csg::Y() + csg::Z()*csg::Z());
+
+    m_builder.Init(m_vmaAllocator, &m_voxels, [=] (float x, float y, float z) {
+        return sphere.Eval(x, y, z);
+    });
+
+    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::TangleCube({0, 0, 0}, 4));
+    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::Sphere({ 0, 0, 0 }, 15));
+    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::BarthSextic({0, 0, 0}, 5));
+    
+    // Create the voxels
+    m_builder.BuildScene();
+    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
+        m_builder.UploadSceneToGPU(cmd);
+    });
+
+    // We can now cleanup the scene builder (and delete its staging buffers)
+    m_builder.Cleanup();
 }
 
 
