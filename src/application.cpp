@@ -45,7 +45,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 4, 4, 4, 4 };
+    m_voxels.gridDims = { 4, 4, 4 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -112,6 +112,7 @@ void Application::SetupScene()
     //csg::Expr sphere = Shapes::Sphere({10, 0, 0}, 20.0f);
     csg::Expr shape = Shapes::TangleCube({0, 0, 0}, 4);
     m_builder.Init(m_vmaAllocator, &m_voxels, shape);
+    m_voxels.tape.Print();
 
     auto start = std::chrono::high_resolution_clock::now();
     // Create the voxels

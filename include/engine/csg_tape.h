@@ -15,25 +15,21 @@ namespace csg
         enum Op {
             LOAD_CONST = 0,
             SIN, COS,
-            ADD, SUB, MUL, DIV  
+            ADD, SUB, MUL, DIV,
+            _OP_COUNT_
         };
 
         // A single tape instruction.
         struct Instr 
         {
-            uint16_t op;
-            uint16_t outSlot;
-
-            union {
-                // LOAD_CONST
-                float constant;
-                // slot ops
-                struct { uint16_t inSlotA; uint16_t inSlotB; };
-            };
+            uint8_t op;
+            uint8_t outSlot;
+            uint8_t inSlotA;
+            uint8_t inSlotB;
         };
 
         std::vector<Instr> instructions;
-    
+        std::vector<float> constantPool;
 
         Tape();
         Tape(Expr e);
@@ -57,6 +53,9 @@ namespace csg
         // The liveliness can be -1, which indicates the node's output is never used.
         std::vector<int> m_liveliness;
 
+        // The index of each constant in the constant pool.
+        std::unordered_map<float, uint32_t> m_constantIdx;
+
         std::vector<Expr> m_slots;
 
         // Applies f to every expression in the DAG of e,
@@ -65,6 +64,7 @@ namespace csg
         void TopoMap(Expr e, const std::function<void(Expr)>& f);
 
         Expr MergeAxesNodes(Expr e);
+        void BuildConstantPool();
         void TopoSort();
 
         void ComputeLiveliness();

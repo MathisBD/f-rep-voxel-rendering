@@ -169,7 +169,7 @@ vec3 node_world_pos(uint node_id, uint level)
 }
 
 
-float eval_tape(vec3 pos)
+/*float eval_tape(vec3 pos)
 {
     float slots[MAX_SLOT_COUNT];
     slots[0] = pos.x;
@@ -186,5 +186,6 @@ float eval_tape(vec3 pos)
         case OP_CONSTANT:
             float       
         } 
+        i++;
     }   
-}
+}*/

@@ -13,6 +13,7 @@ csg::Tape::Tape(csg::Expr e)
 {
     m_result = MergeAxesNodes(e);
     TopoSort();
+    BuildConstantPool();
     ComputeLiveliness();
     BuildInstrs();
 }
@@ -89,6 +90,19 @@ void csg::Tape::TopoMap(csg::Expr root, const std::function<void(csg::Expr)>& f)
     dfs(root);
 }
 
+void csg::Tape::BuildConstantPool() 
+{
+    for (auto e : m_exprs) {
+        if (e.IsConstantOp()) {
+            float c = e.node->constant;
+            if (m_constantIdx.find(c) == m_constantIdx.end()) {
+                constantPool.push_back(c);
+                m_constantIdx[c] = constantPool.size() - 1;
+            }
+        }
+    }
+}
+
 
 static int max(int a, int b)
 {
@@ -121,6 +135,7 @@ uint32_t csg::Tape::GetFreeSlot()
         }
     }
     // No free slot : add a new one
+    assert(m_slots.size() < 256);
     m_slots.push_back(csg::Expr());
     return m_slots.size() - 1;
 }
@@ -199,7 +214,7 @@ void csg::Tape::BuildInstrs()
             continue;
         }
         else if (e.IsConstantOp()) {
-            inst.constant = e.node->constant;
+            inst.inSlotA = m_constantIdx[e.node->constant];
         }
         else if (e.IsInputOp() && e.node->inputs.size() == 1) {
             csg::Expr inpA = e.node->inputs[0];
@@ -238,6 +253,10 @@ void csg::Tape::BuildInstrs()
         inst.op = TapeOpFromExprOp(e.node->op);
         instructions.push_back(inst);
     }
+    // Check we didn't overflow the 8bit quantities
+    assert(m_slots.size() <= 256);
+    assert(Op::_OP_COUNT_ <= 256);
+    assert(constantPool.size() <= 256);
 }
 
 std::string csg::Tape::OpName(uint16_t op)
@@ -262,24 +281,25 @@ void csg::Tape::Print() const
         Instr inst = instructions[i];
         switch (inst.op) {
         case LOAD_CONST: 
-            printf("\t%10s  out=%u   const=%.3f\n", 
-                OpName(inst.op).c_str(), inst.outSlot, inst.constant);
-            break;
         case SIN:
         case COS:
-            printf("\t%10s  out=%u   in=%u\n", 
-                OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA);
+            printf("\t%2u   %10s  out=%u   in=%u\n", 
+                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA);
             break;
         case ADD:
         case SUB:
         case MUL:
         case DIV:
-            printf("\t%10s  out=%u   inA=%u   inB=%u\n", 
-                OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
+            printf("\t%2u   %10s  out=%u   inA=%u   inB=%u\n", 
+                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
             break;
         default:
             assert(false);
         }
+    }
+    printf("[+] Constant Pool:\n");
+    for (uint32_t i = 0; i < constantPool.size(); i++) {
+        printf("\t%2u   %4.2f\n", i, constantPool[i]);
     }
 }
 
@@ -292,7 +312,7 @@ float csg::Tape::Eval(float x, float y, float z) const
 
     for (auto i : instructions) {
         switch (i.op) {
-        case Op::LOAD_CONST: slots[i.outSlot] = i.constant; break;
+        case Op::LOAD_CONST: slots[i.outSlot] = constantPool[i.inSlotA]; break;
         case Op::SIN:        slots[i.outSlot] = glm::sin(slots[i.inSlotA]); break;
         case Op::COS:        slots[i.outSlot] = glm::cos(slots[i.inSlotA]); break;
         case Op::ADD:        slots[i.outSlot] = slots[i.inSlotA] + slots[i.inSlotB]; break;
