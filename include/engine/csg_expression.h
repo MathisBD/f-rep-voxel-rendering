@@ -15,30 +15,37 @@ namespace csg
     // An expression is just a wrapper around a node.
     // It is designed to be passed by value, and handles the deletion
     // of its node.
-    class Expression 
+    class Expr 
     {
     public:
-        std::shared_ptr<Node> node;
+        std::shared_ptr<Node> node = nullptr;
 
-        Expression operator+(const Expression other) const;
-        Expression operator-(const Expression other) const;
-        Expression operator*(const Expression other) const;
-        Expression operator/(const Expression other) const;
+        bool IsAxisOp() const;
+        bool IsConstantOp() const;
+        bool IsInputOp() const;
+        
+        Expr operator+(const Expr other) const;
+        Expr operator-(const Expr other) const;
+        Expr operator*(const Expr other) const;
+        Expr operator/(const Expr other) const;
+    
         float Eval(float x, float y, float z) const;
+        void Print() const;
     };
 
-    csg::Expression X();
-    csg::Expression Y();
-    csg::Expression Z();
-    csg::Expression Constant(float x);
-    csg::Expression Sin(csg::Expression e);
-    csg::Expression Cos(csg::Expression e);
+
+    csg::Expr X();
+    csg::Expr Y();
+    csg::Expr Z();
+    csg::Expr Constant(float x);
+    csg::Expr Sin(csg::Expr e);
+    csg::Expr Cos(csg::Expr e);
 
 
     enum class Operator
     {
         // Nullary operators (no inputs)
-        X, Y, Z, CONSTANT,
+        X, Y, Z, CONST,
         // Unary operators
         SIN, COS, //EXP, NEG
         // Binary operators
@@ -53,19 +60,19 @@ namespace csg
         // A node that contains a constant doesn't have any inputs,
         // so we can use a union here.
         union {
-            std::vector<Expression> inputs;
+            std::vector<Expr> inputs;
             float constant;
         };
 
         Node(float constant) 
         {
-            this->op = Operator::CONSTANT;
+            this->op = Operator::CONST;
             this->constant = constant;
         }
 
-        Node(Operator op, std::vector<Expression>&& inputs) 
+        Node(Operator op, std::vector<Expr>&& inputs) 
         {
-            assert(op != Operator::CONSTANT);
+            assert(op != Operator::CONST);
             this->op = op;
             this->inputs = inputs;
         }

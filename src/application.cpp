@@ -5,6 +5,7 @@
 #include "utils/timer.h"
 #include "shapes.h"
 #include "engine/csg_expression.h"
+#include "engine/csg_tape.h"
 
 
 Application::Application() : m_frameTime(32) {}
@@ -109,6 +110,10 @@ void Application::SetupScene()
     auto radius = csg::Constant(10.0f);
     auto sphere = radius * radius - (csg::X()*csg::X() + csg::Y()*csg::Y() + csg::Z()*csg::Z());
 
+    // Build the tape
+    auto tape = csg::Tape(sphere);
+    tape.Print();
+    
     m_builder.Init(m_vmaAllocator, &m_voxels, [=] (float x, float y, float z) {
         return sphere.Eval(x, y, z);
     });
