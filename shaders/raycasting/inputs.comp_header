@@ -92,6 +92,10 @@ layout (std430, set = 0, binding = 5) readonly buffer TapeBuffer {
 // Sizes are given in uints rather than bytes.
 #define CL_SIZE(level) CUBE(params_buf.levels[(level)].dim)
 
+// Tape instruction structure.
+// Sizes are in uints.
+#define TAPE_INSTR_SIZE   2
+
 
 // child_index == INDEX(local position in the node)
 bool node_has_child(uint node_id, uint level, uint child_index)
@@ -162,4 +166,25 @@ vec3 node_world_pos(uint node_id, uint level)
 
     return params_buf.grid_world_pos +
         vec3(coords) * params_buf.levels[params_buf.level_count - 1].cell_size;
+}
+
+
+float eval_tape(vec3 pos)
+{
+    float slots[MAX_SLOT_COUNT];
+    slots[0] = pos.x;
+    slots[1] = pos.y;
+    slots[2] = pos.z;
+
+    uint i = 0;
+    while (i < params_buf.tape_instr_count) {
+        uint low = tape_buf[2*i];
+        uint high = tape_buf[2*i+1];
+        uint op = low & 0xFFFF;
+        uint outSlot = (low >> 16) & 0xFFFF;
+        switch (op) {
+        case OP_CONSTANT:
+            float       
+        } 
+    }   
 }
