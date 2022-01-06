@@ -43,7 +43,7 @@ typedef struct {
     uint32_t lightCount;
     uint32_t materialCount;
     uint32_t levelCount;  
-    uint32_t _padding_;
+    uint32_t tapeInstrCount;
 
     // The camera world position (w unused).
     glm::vec4 cameraPosition;

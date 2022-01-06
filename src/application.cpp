@@ -45,7 +45,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 8, 8, 4, 4 };
+    m_voxels.gridDims = { 4, 4, 4, 4 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -55,6 +55,7 @@ void Application::InitVoxels()
         m_voxels.nodeBuffer.Cleanup();
         m_voxels.childBuffer.Cleanup();
         m_voxels.voxelBuffer.Cleanup();
+        m_voxels.tapeBuffer.Cleanup();
     });
 }
 
@@ -110,12 +111,7 @@ void Application::SetupScene()
     // Build the shape expression and tape
     //csg::Expr sphere = Shapes::Sphere({10, 0, 0}, 20.0f);
     csg::Expr shape = Shapes::TangleCube({0, 0, 0}, 4);
-    csg::Tape tape = csg::Tape(shape);
-    tape.Print();
-
-    m_builder.Init(m_vmaAllocator, &m_voxels, [=] (float x, float y, float z) {
-        return tape.Eval(x, y, z);
-    });
+    m_builder.Init(m_vmaAllocator, &m_voxels, shape);
 
     auto start = std::chrono::high_resolution_clock::now();
     // Create the voxels

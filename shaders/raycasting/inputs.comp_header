@@ -40,7 +40,7 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
     // Level 0 contains the unique root node, and level_count-1 the leaf nodes,
     // whose children are voxels.
     uint level_count;
-    uint _padding_;
+    uint tape_instr_count;
 
     vec4 camera_pos;
     vec4 camera_forward;
@@ -62,7 +62,8 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
 
 // Nodes
 // We need the std430 layout here so that the array stride is 4 bytes.
-// The std140 layout would round it up to 16 bytes.
+// The std14
+    uint _padding_;0 layout would round it up to 16 bytes.
 layout (std430, set = 0, binding = 2) readonly buffer NodeBuffer {
     uint data[];
 } node_buf;
@@ -74,6 +75,10 @@ layout (std430, set = 0, binding = 3) readonly buffer ChildBuffer {
 layout (std430, set = 0, binding = 4) readonly buffer VoxelBuffer {
     VoxelData voxels[];
 } voxel_buf;
+
+layout (std430, set = 0, binding = 5) readonly buffer TapeBuffer {
+    uint data[];
+} tape_buf;
 
 // Node structure.
 // Sizes are given in uints rather than bytes.

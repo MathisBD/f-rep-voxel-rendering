@@ -1,13 +1,14 @@
 #pragma once
 #include "engine/voxel_storage.h"
-#include <functional>
+#include "engine/csg_expression.h"
+#include "engine/csg_tape.h"
 
 
 class SceneBuilder
 {
 public:
     void Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
-        std::function<float(float, float, float)>&& density);
+        csg::Expr shape);
     void Cleanup();
     void BuildScene();
     void UploadSceneToGPU(VkCommandBuffer cmd);
@@ -27,7 +28,7 @@ private:
 
     VmaAllocator m_allocator;
     VoxelStorage* m_voxels;
-    std::function<float(float, float, float)> m_density;
+    csg::Expr m_shape;
 
     TreeNode* m_rootNode;
     std::vector<VoxelStorage::Voxel> m_voxelData;
@@ -37,6 +38,7 @@ private:
         vkw::Buffer node;
         vkw::Buffer child;
         vkw::Buffer voxel;
+        vkw::Buffer tape;
     } m_stagingBuffers;
 
     // The memory mapped contents of the staging buffers.
@@ -44,6 +46,7 @@ private:
         void* node;
         void* child;
         void* voxel;
+        void* tape;
     } m_bufferContents;
 
     uint32_t Index3D(uint32_t x, uint32_t y, uint32_t z, uint32_t dim);

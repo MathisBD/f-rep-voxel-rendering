@@ -95,12 +95,15 @@ void Raytracer::InitPipeline()
         m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
     auto voxelsInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->voxelBuffer.buffer, 0, m_voxels->voxelBuffer.size);
+    auto tapeInfo = vkw::init::DescriptorBufferInfo(
+        m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
-        .BindImage(0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindImage( 0, &outImageInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,  VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &uniformsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(2, &nodeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(3, &childInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(4, &voxelsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &nodeInfo,     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &childInfo,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(4, &voxelsInfo,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(5, &tapeInfo,     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -154,6 +157,7 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
     params->lightCount = 2;
     params->materialCount = 1;
     params->levelCount = m_voxels->gridLevels;
+    params->tapeInstrCount = m_voxels->tape.instructions.size(); 
 
     // Grid positions
     params->gridWorldCoords = m_voxels->lowVertex;

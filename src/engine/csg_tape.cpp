@@ -14,14 +14,6 @@ csg::Tape::Tape(csg::Expr e)
     m_result = MergeAxesNodes(e);
     TopoSort();
     ComputeLiveliness();
-
-    printf("[+] Topological sort\n");
-    for (uint32_t i = 0; i < m_exprs.size(); i++) {
-        printf("\t%2u   (liveliness=%2d)   ", i, m_liveliness[i]); 
-        m_exprs[i].Print(); 
-        printf("\n");
-    }
-
     BuildInstrs();
 }
 

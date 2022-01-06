@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "vk_wrapper/buffer.h"
 #include <glm/glm.hpp>
+#include "engine/csg_tape.h"
 
 
 class VoxelStorage
@@ -31,10 +32,13 @@ public:
     // Leaf nodes are counted but not voxels.
     std::vector<uint32_t> nodeCount;
 
+    csg::Tape tape;
+
     // These are GPU buffers.
     vkw::Buffer nodeBuffer;
     vkw::Buffer childBuffer;
     vkw::Buffer voxelBuffer;
+    vkw::Buffer tapeBuffer;
 
     void Init(VmaAllocator allocator) 
     {
@@ -50,6 +54,7 @@ public:
         nodeBuffer.Init(allocator);
         childBuffer.Init(allocator);
         voxelBuffer.Init(allocator);
+        tapeBuffer.Init(allocator);
     }
 
     // The coordinates are given in the finest grid dimensions.
