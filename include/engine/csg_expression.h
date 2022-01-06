@@ -28,10 +28,23 @@ namespace csg
         Expr operator-(const Expr other) const;
         Expr operator*(const Expr other) const;
         Expr operator/(const Expr other) const;
-    
+
         float Eval(float x, float y, float z) const;
         void Print() const;
     };
+
+    // These avoid the need for writing e + csg::Constant(1.0f).
+    // We can just write e + 10.0f and the float will be automatically
+    // wrapped in an expression.
+    Expr operator+(float constant, const Expr e);
+    Expr operator-(float constant, const Expr e);
+    Expr operator*(float constant, const Expr e);
+    Expr operator/(float constant, const Expr e);
+
+    Expr operator+(const Expr e, float constant);
+    Expr operator-(const Expr e, float constant);
+    Expr operator*(const Expr e, float constant);
+    Expr operator/(const Expr e, float constant);
 
 
     csg::Expr X();
@@ -57,12 +70,8 @@ namespace csg
     {
     public:
         Operator op;
-        // A node that contains a constant doesn't have any inputs,
-        // so we can use a union here.
-        union {
-            std::vector<Expr> inputs;
-            float constant;
-        };
+        std::vector<Expr> inputs;
+        float constant;
 
         Node(float constant) 
         {

@@ -16,8 +16,6 @@ void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
 
 void SceneBuilder::Cleanup() 
 {
-
-
     m_stagingBuffers.node.Cleanup();
     m_stagingBuffers.child.Cleanup();
     m_stagingBuffers.voxel.Cleanup();
@@ -26,6 +24,9 @@ void SceneBuilder::Cleanup()
 void SceneBuilder::BuildScene() 
 {
     m_rootNode = BuildNode(0, { 0, 0, 0 });
+    // The scene shouldn't be empty.
+    assert(m_rootNode);
+
     CountNodes(m_rootNode);
     AllocateStagingBuffers();
 

@@ -45,7 +45,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 16, 4, 4 };
+    m_voxels.gridDims = { 8, 8, 4, 4 };
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -107,26 +107,30 @@ void Application::InitRenderTarget()
 
 void Application::SetupScene() 
 {
-    auto radius = csg::Constant(10.0f);
-    auto sphere = radius * radius - (csg::X()*csg::X() + csg::Y()*csg::Y() + csg::Z()*csg::Z());
-
-    // Build the tape
-    auto tape = csg::Tape(sphere);
+    // Build the shape expression and tape
+    //csg::Expr sphere = Shapes::Sphere({10, 0, 0}, 20.0f);
+    csg::Expr shape = Shapes::TangleCube({0, 0, 0}, 4);
+    csg::Tape tape = csg::Tape(shape);
     tape.Print();
-    
+
     m_builder.Init(m_vmaAllocator, &m_voxels, [=] (float x, float y, float z) {
-        return sphere.Eval(x, y, z);
+        return tape.Eval(x, y, z);
     });
 
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::TangleCube({0, 0, 0}, 4));
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::Sphere({ 0, 0, 0 }, 15));
-    //m_builder.Init(m_vmaAllocator, &m_voxels, Shapes::BarthSextic({0, 0, 0}, 5));
-    
+    auto start = std::chrono::high_resolution_clock::now();
     // Create the voxels
     m_builder.BuildScene();
+
+    auto build = std::chrono::high_resolution_clock::now();
+    printf("[+] Build time = %ldms\n", 
+        std::chrono::duration_cast<std::chrono::milliseconds>(build - start).count());
+
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
         m_builder.UploadSceneToGPU(cmd);
     });
+    auto upload = std::chrono::high_resolution_clock::now();
+    printf("[+] Upload time = %ldms\n", 
+        std::chrono::duration_cast<std::chrono::milliseconds>(upload - build).count());
 
     // We can now cleanup the scene builder (and delete its staging buffers)
     m_builder.Cleanup();

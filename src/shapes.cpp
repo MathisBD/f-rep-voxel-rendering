@@ -1,25 +1,37 @@
 #include "shapes.h"
-#include <glm/gtx/norm.hpp>
 
 
-Shapes::density_t Shapes::Sphere(const glm::vec3& center, float radius) 
+csg::Expr Shapes::Sphere(const glm::vec3& center, float radius) 
 {
-    return [=] (float x, float y, float z) {
-        glm::vec3 pos(x, y, z);
-        return radius*radius - glm::distance2(center, pos);
-    };
+    auto x = csg::X();
+    auto y = csg::Y();
+    auto z = csg::Z();
+
+    auto px = x - center.x;
+    auto py = y - center.y;
+    auto pz = z - center.z;
+
+    return radius * radius - (px*px + py*py + pz*pz);
 }
 
-Shapes::density_t Shapes::TangleCube(const glm::vec3& center, float scale) 
+csg::Expr Shapes::TangleCube(const glm::vec3& center, float scale) 
 {
-    return [=] (float x, float y, float z) {
-        glm::vec3 pos(x, y, z);
-        pos = (pos - center) / scale;
-        return -(glm::length2(pos * pos) - 8 * glm::length2(pos) + 25);
-    };  
+    auto x = csg::X();
+    auto y = csg::Y();
+    auto z = csg::Z();
+    
+    auto px = (x - center.x) / scale;
+    auto py = (y - center.y) / scale;
+    auto pz = (z - center.z) / scale;
+    
+    auto px2 = px*px;
+    auto py2 = py*py;
+    auto pz2 = pz*pz;
+
+    return -1 * ((px2*px2 + py2*py2 + pz2*pz2) - 8 * (px2 + py2 + pz2) + 25);
 }
 
-Shapes::density_t Shapes::BarthSextic(const glm::vec3& center, float scale) {
+/*Shapes::density_t Shapes::BarthSextic(const glm::vec3& center, float scale) {
     float t = (1 + glm::sqrt(5)) / 2;
 
     return [=] (float x, float y, float z) {
@@ -32,4 +44,4 @@ Shapes::density_t Shapes::BarthSextic(const glm::vec3& center, float scale) {
             (1 + 2*t) * (p2.x + p2.y + p2.z - 1) * (p2.x + p2.y + p2.z - 1);
         return res;    
     };
-}
+}*/

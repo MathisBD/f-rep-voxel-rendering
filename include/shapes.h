@@ -1,14 +1,12 @@
 #pragma once
-#include <functional>
 #include <glm/glm.hpp>
+#include "engine/csg_expression.h"
 
 
 class Shapes
 {
 public:
-    typedef std::function<float(float, float, float)> density_t;
-
-    static density_t Sphere(const glm::vec3& center, float radius);
-    static density_t TangleCube(const glm::vec3& center, float scale);
-    static density_t BarthSextic(const glm::vec3& center, float scale);
+    static csg::Expr Sphere(const glm::vec3& center, float radius);
+    static csg::Expr TangleCube(const glm::vec3& center, float scale);
+    static csg::Expr BarthSextic(const glm::vec3& center, float scale);
 };

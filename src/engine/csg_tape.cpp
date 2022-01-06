@@ -4,6 +4,7 @@
 #include <functional>
 #include <algorithm>
 #include <stdio.h>
+#include <glm/glm.hpp>
 
 
 csg::Tape::Tape() {}
@@ -157,7 +158,7 @@ void csg::Tape::ReleaseSlot(csg::Expr e)
     }
     // It is okay to call ReleaseSlot() even if e
     // doesn't occupy a slot anymore.
-    // This is to handle easily instructions that have
+    // This is to handle gracefully instructions that have
     // both inputs in the same slot.
 }
 
@@ -170,13 +171,13 @@ uint16_t csg::Tape::TapeOpFromExprOp(csg::Operator op)
         // These expressions don't build any instruction.
         assert(false);
         return 0;
-    case csg::Operator::CONST:   return csg::Tape::Op::LOAD_CONST;
-    case csg::Operator::SIN:        return csg::Tape::Op::SIN;
-    case csg::Operator::COS:        return csg::Tape::Op::COS;
-    case csg::Operator::ADD:        return csg::Tape::Op::ADD;
-    case csg::Operator::SUB:        return csg::Tape::Op::SUB;
-    case csg::Operator::MUL:        return csg::Tape::Op::MUL;
-    case csg::Operator::DIV:        return csg::Tape::Op::DIV;
+    case csg::Operator::CONST:  return csg::Tape::Op::LOAD_CONST;
+    case csg::Operator::SIN:    return csg::Tape::Op::SIN;
+    case csg::Operator::COS:    return csg::Tape::Op::COS;
+    case csg::Operator::ADD:    return csg::Tape::Op::ADD;
+    case csg::Operator::SUB:    return csg::Tape::Op::SUB;
+    case csg::Operator::MUL:    return csg::Tape::Op::MUL;
+    case csg::Operator::DIV:    return csg::Tape::Op::DIV;
     }    
     assert(false);
     return 0;
@@ -257,7 +258,7 @@ std::string csg::Tape::OpName(uint16_t op)
     case SUB: return "SUB";
     case MUL: return "MUL";
     case DIV: return "DIV";
-    default: assert(false);
+    default: assert(false); return "";
     }
 }
 
@@ -288,4 +289,26 @@ void csg::Tape::Print() const
             assert(false);
         }
     }
+}
+
+float csg::Tape::Eval(float x, float y, float z) const 
+{
+    std::vector<float> slots(m_slots.size());
+    slots[0] = x;
+    slots[1] = y;
+    slots[2] = z;
+
+    for (auto i : instructions) {
+        switch (i.op) {
+        case Op::LOAD_CONST: slots[i.outSlot] = i.constant; break;
+        case Op::SIN:        slots[i.outSlot] = glm::sin(slots[i.inSlotA]); break;
+        case Op::COS:        slots[i.outSlot] = glm::cos(slots[i.inSlotA]); break;
+        case Op::ADD:        slots[i.outSlot] = slots[i.inSlotA] + slots[i.inSlotB]; break;
+        case Op::SUB:        slots[i.outSlot] = slots[i.inSlotA] - slots[i.inSlotB]; break;
+        case Op::MUL:        slots[i.outSlot] = slots[i.inSlotA] * slots[i.inSlotB]; break;
+        case Op::DIV:        slots[i.outSlot] = slots[i.inSlotA] / slots[i.inSlotB]; break;
+        default: assert(false);
+        }
+    }
+    return slots[instructions.back().outSlot];
 }

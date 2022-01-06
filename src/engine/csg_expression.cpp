@@ -50,6 +50,54 @@ csg::Expr csg::Expr::operator/(const csg::Expr other) const
     return { .node = std::make_shared<csg::Node>(csg::Operator::DIV, std::move(inputs)) };
 }
 
+csg::Expr csg::operator+(float constant, const csg::Expr e2)
+{
+    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 + e2;
+}
+
+csg::Expr csg::operator-(float constant, const csg::Expr e2)
+{
+    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 - e2;
+}
+
+csg::Expr csg::operator*(float constant, const csg::Expr e2)
+{
+    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 * e2;
+}
+
+csg::Expr csg::operator/(float constant, const csg::Expr e2)
+{
+    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 / e2;
+}
+
+csg::Expr csg::operator+(const csg::Expr e1, float constant)
+{
+    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 + e2;
+}
+
+csg::Expr csg::operator-(const csg::Expr e1, float constant)
+{
+    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 - e2;
+}
+
+csg::Expr csg::operator*(const csg::Expr e1, float constant)
+{
+    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 * e2;
+}
+
+csg::Expr csg::operator/(const csg::Expr e1, float constant)
+{
+    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
+    return e1 / e2;
+}
+
 float csg::Expr::Eval(float x, float y, float z) const
 {
     switch (node->op) {
@@ -57,14 +105,28 @@ float csg::Expr::Eval(float x, float y, float z) const
     case csg::Operator::Y:      return y;
     case csg::Operator::Z:      return z;
     case csg::Operator::CONST:  return node->constant;
-    case csg::Operator::SIN:    return glm::sin(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::COS:    return glm::cos(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::ADD:    return node->inputs[0].Eval(x, y, z) + node->inputs[1].Eval(x, y, z);
-    case csg::Operator::SUB:    return node->inputs[0].Eval(x, y, z) - node->inputs[1].Eval(x, y, z);
-    case csg::Operator::MUL:    return node->inputs[0].Eval(x, y, z) * node->inputs[1].Eval(x, y, z);
-    case csg::Operator::DIV:    return node->inputs[0].Eval(x, y, z) / node->inputs[1].Eval(x, y, z);
-    default: assert(false); return 0.0f;
+    case csg::Operator::SIN:    
+        assert(node->inputs.size() == 1);
+        return glm::sin(node->inputs[0].Eval(x, y, z));
+    case csg::Operator::COS:    
+        assert(node->inputs.size() == 1);
+        return glm::cos(node->inputs[0].Eval(x, y, z));
+    case csg::Operator::ADD:    
+        assert(node->inputs.size() == 2);
+        return node->inputs[0].Eval(x, y, z) + node->inputs[1].Eval(x, y, z);
+    case csg::Operator::SUB:    
+        assert(node->inputs.size() == 2);
+        return node->inputs[0].Eval(x, y, z) - node->inputs[1].Eval(x, y, z);
+    case csg::Operator::MUL:    
+        assert(node->inputs.size() == 2);
+        return node->inputs[0].Eval(x, y, z) * node->inputs[1].Eval(x, y, z);
+    case csg::Operator::DIV:    
+        assert(node->inputs.size() == 2);
+        float denom = node->inputs[1].Eval(x, y, z);
+        assert(denom != 0.0f);
+        return node->inputs[0].Eval(x, y, z) / denom;
     }
+    assert(false); return 0.0f;
 }
 
 static std::string OpName(csg::Operator op)
