@@ -2,6 +2,7 @@
 #define MAX_LIGHT_COUNT     8
 #define MAX_MATERIAL_COUNT  8
 #define MAX_LEVEL_COUNT     8
+#define MAX_SLOT_COUNT      16
 
 struct VoxelData {
     vec3 normal;
@@ -62,8 +63,7 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
 
 // Nodes
 // We need the std430 layout here so that the array stride is 4 bytes.
-// The std14
-    uint _padding_;0 layout would round it up to 16 bytes.
+// The std140 layout would round it up to 16 bytes.
 layout (std430, set = 0, binding = 2) readonly buffer NodeBuffer {
     uint data[];
 } node_buf;
@@ -77,8 +77,12 @@ layout (std430, set = 0, binding = 4) readonly buffer VoxelBuffer {
 } voxel_buf;
 
 layout (std430, set = 0, binding = 5) readonly buffer TapeBuffer {
-    uint data[];
+    uint instrs[];
 } tape_buf;
+
+layout (std430, set = 0, binding = 6) readonly buffer ConstPoolBuffer {
+    float consts[];
+} const_pool_buf;
 
 // Node structure.
 // Sizes are given in uints rather than bytes.
@@ -124,30 +128,19 @@ uint node_get_child(uint node_id, uint level, uint child_index)
     uint q = child_index >> 5;
     uint r = child_index & 0x1F;
 
-    LOG2("q=%u   r=%u\n", q, r);
-
     // Compute the child's position in the child list
     uint child_pos = 0;
-    LOG1("child_pos=%u\n", child_pos);
     if (q > 0) {
         child_pos += node_buf.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
     }
-    LOG1("child_pos=%u\n", child_pos);
     if (r > 0) {
         uint mask = node_buf.data[node_pos + NODE_OFS_MASK(level) + q];
         child_pos += bitCount(mask & ((1 << r) - 1));
     }
-    LOG1("child_pos=%u\n", child_pos);
-
+   
     // The node's child list position in the child buffer
     uint cl_pos = params_buf.levels[level].child_ofs +
         CL_SIZE(level) * node_id;
-
-    LOG2("child_ofs=%u   cl_size(level)=%u\n",
-        params_buf.levels[level].child_ofs, CL_SIZE(level));
-
-    LOG4("node=%u   level=%u   child_index=%u   cl_idx=%u\n",
-        node_id, level, child_index, node_buf.data[node_pos]);
 
     return child_buf.data[cl_pos + child_pos];
 }
@@ -169,7 +162,15 @@ vec3 node_world_pos(uint node_id, uint level)
 }
 
 
-/*float eval_tape(vec3 pos)
+#define OP_CONSTANT 0
+#define OP_SIN      1
+#define OP_COS      2
+#define OP_ADD      3
+#define OP_SUB      4
+#define OP_MUL      5
+#define OP_DIV      6
+
+float eval_tape(vec3 pos)
 {
     float slots[MAX_SLOT_COUNT];
     slots[0] = pos.x;
@@ -178,14 +179,38 @@ vec3 node_world_pos(uint node_id, uint level)
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
-        uint low = tape_buf[2*i];
-        uint high = tape_buf[2*i+1];
-        uint op = low & 0xFFFF;
-        uint outSlot = (low >> 16) & 0xFFFF;
+        // Decode the instruction
+        uint inst = tape_buf.instrs[i];
+        uint op      = (inst >> 0)  & 0xFF;
+        uint outSlot = (inst >> 8)  & 0xFF;
+        uint inSlotA = (inst >> 16) & 0xFF;
+        uint inSlotB = (inst >> 24) & 0xFF;
+
+        // Dispatch        
         switch (op) {
         case OP_CONSTANT:
-            float       
+            slots[outSlot] = const_pool_buf.consts[inSlotA];
+            break;
+        case OP_SIN:
+            slots[outSlot] = sin(slots[inSlotA]);
+            break;
+        case OP_COS:
+            slots[outSlot] = cos(slots[inSlotA]);       
+            break;
+        case OP_ADD:
+            slots[outSlot] = slots[inSlotA] + slots[inSlotB];
+            break;
+        case OP_SUB:
+            slots[outSlot] = slots[inSlotA] - slots[inSlotB];
+            break;
+        case OP_MUL:
+            slots[outSlot] = slots[inSlotA] * slots[inSlotB];
+            break;
+        case OP_DIV:
+            slots[outSlot] = slots[inSlotA] / slots[inSlotB];
+            break;
         } 
         i++;
     }   
-}*/
+    return slots[0];
+}

@@ -253,6 +253,8 @@ void csg::Tape::BuildInstrs()
         inst.op = TapeOpFromExprOp(e.node->op);
         instructions.push_back(inst);
     }
+    // Check the output slot is slot 0
+    assert(instructions.back().outSlot == 0);
     // Check we didn't overflow the 8bit quantities
     assert(m_slots.size() <= 256);
     assert(Op::_OP_COUNT_ <= 256);
@@ -322,5 +324,6 @@ float csg::Tape::Eval(float x, float y, float z) const
         default: assert(false);
         }
     }
-    return slots[instructions.back().outSlot];
+    assert(instructions.back().outSlot == 0);
+    return slots[0];
 }

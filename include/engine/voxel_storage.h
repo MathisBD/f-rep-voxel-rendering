@@ -39,6 +39,8 @@ public:
     vkw::Buffer childBuffer;
     vkw::Buffer voxelBuffer;
     vkw::Buffer tapeBuffer;
+    vkw::Buffer constPoolBuffer;
+
 
     void Init(VmaAllocator allocator) 
     {
@@ -55,6 +57,16 @@ public:
         childBuffer.Init(allocator);
         voxelBuffer.Init(allocator);
         tapeBuffer.Init(allocator);
+        constPoolBuffer.Init(allocator);
+    }
+
+    void Cleanup()
+    {
+        nodeBuffer.Cleanup();
+        childBuffer.Cleanup();
+        voxelBuffer.Cleanup();
+        tapeBuffer.Cleanup();
+        constPoolBuffer.Cleanup();
     }
 
     // The coordinates are given in the finest grid dimensions.

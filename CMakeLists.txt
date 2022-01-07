@@ -36,10 +36,10 @@ target_link_libraries(proj ${GLM_LIBRARIES})
 set(GLSL_VALIDATOR "glslangValidator")
 set(SHADER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/shaders")
 
-file(GLOB_RECURSE SHADER_SOURCES
-    "${CMAKE_SOURCE_DIR}/shaders/*.frag"
-    "${CMAKE_SOURCE_DIR}/shaders/*.vert"
-    "${CMAKE_SOURCE_DIR}/shaders/*.comp")
+set(SHADER_SOURCES 
+    "${CMAKE_SOURCE_DIR}/shaders/raycasting/main.comp"
+    "${CMAKE_SOURCE_DIR}/shaders/rendering/triangle.vert"
+    "${CMAKE_SOURCE_DIR}/shaders/rendering/triangle.frag")
 
 foreach(SHADER ${SHADER_SOURCES})
     message("Compiling shader: ${SHADER}")

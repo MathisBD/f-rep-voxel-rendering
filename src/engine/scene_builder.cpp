@@ -14,6 +14,7 @@ void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
     m_stagingBuffers.child.Init(m_allocator);
     m_stagingBuffers.voxel.Init(m_allocator);
     m_stagingBuffers.tape.Init(m_allocator);
+    m_stagingBuffers.constants.Init(m_allocator);
 }
 
 void SceneBuilder::Cleanup() 
@@ -22,6 +23,7 @@ void SceneBuilder::Cleanup()
     m_stagingBuffers.child.Cleanup();
     m_stagingBuffers.voxel.Cleanup();
     m_stagingBuffers.tape.Cleanup();
+    m_stagingBuffers.constants.Cleanup();
 }
 
 void SceneBuilder::BuildScene() 
@@ -37,6 +39,7 @@ void SceneBuilder::BuildScene()
     m_bufferContents.child = m_stagingBuffers.child.Map(); 
     m_bufferContents.voxel = m_stagingBuffers.voxel.Map(); 
     m_bufferContents.tape = m_stagingBuffers.tape.Map();
+    m_bufferContents.constants = m_stagingBuffers.constants.Map();
 
     std::vector<uint32_t> nextNodeIdx(m_voxels->gridLevels, 0);
     LayoutNode(m_rootNode, nextNodeIdx);
@@ -46,11 +49,15 @@ void SceneBuilder::BuildScene()
     // layout the tape
     memcpy(m_bufferContents.tape, m_voxels->tape.instructions.data(), 
         m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr));
+    // layout the tape constants
+    memcpy(m_bufferContents.constants, m_voxels->tape.constantPool.data(),
+        m_voxels->tape.constantPool.size() * sizeof(float));
 
     m_stagingBuffers.node.Unmap();
     m_stagingBuffers.child.Unmap();
     m_stagingBuffers.voxel.Unmap();
     m_stagingBuffers.tape.Unmap();
+    m_stagingBuffers.constants.Unmap();
 
     // Print some stats before we cleanup.
     PrintVoxelStats();
@@ -102,6 +109,12 @@ void SceneBuilder::UploadSceneToGPU(VkCommandBuffer cmd)
     tapeRegion.dstOffset = 0;
     tapeRegion.size = m_stagingBuffers.tape.size;
     vkCmdCopyBuffer(cmd, m_stagingBuffers.tape.buffer, m_voxels->tapeBuffer.buffer, 1, &tapeRegion);
+    
+    VkBufferCopy constantsRegion;
+    constantsRegion.srcOffset = 0;
+    constantsRegion.dstOffset = 0;
+    constantsRegion.size = m_stagingBuffers.constants.size;
+    vkCmdCopyBuffer(cmd, m_stagingBuffers.constants.buffer, m_voxels->constPoolBuffer.buffer, 1, &constantsRegion);
 }
 
 
@@ -144,11 +157,11 @@ size_t SceneBuilder::BuildVoxel(const glm::u32vec3& coords)
     }
 
     VoxelStorage::Voxel voxel;
-    float eps = 0.0001f;
+    /*float eps = 0.0001f;
     voxel.normal = -glm::normalize(glm::vec3(
         (m_voxels->tape.Eval(pos.x + eps, pos.y, pos.z) - d) / eps,
         (m_voxels->tape.Eval(pos.x, pos.y + eps, pos.z) - d) / eps,
-        (m_voxels->tape.Eval(pos.x, pos.y, pos.z + eps) - d) / eps ));
+        (m_voxels->tape.Eval(pos.x, pos.y, pos.z + eps) - d) / eps ));*/
     voxel.materialIndex = 0;    
 
     // The real voxel will live in the vector.
@@ -247,6 +260,7 @@ void SceneBuilder::AllocateStagingBuffers()
 {
     uint32_t voxelSize = m_voxelData.size() * sizeof(VoxelStorage::Voxel);
     uint32_t tapeSize = m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
+    uint32_t constantsSize = m_voxels->tape.constantPool.size() * sizeof(float);
     uint32_t nodeSize = 0;
     uint32_t childSize = 0;
     for (uint32_t level = 0; level < m_voxels->gridLevels; level++) {
@@ -259,7 +273,9 @@ void SceneBuilder::AllocateStagingBuffers()
     m_stagingBuffers.child.Allocate(childSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
     m_stagingBuffers.voxel.Allocate(voxelSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);    
     m_stagingBuffers.tape.Allocate(tapeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    m_stagingBuffers.constants.Allocate(constantsSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 }
+
 
 
 void SceneBuilder::AllocateGPUBuffers() 
@@ -272,6 +288,7 @@ void SceneBuilder::AllocateGPUBuffers()
     m_voxels->childBuffer.Allocate(m_stagingBuffers.child.size, bufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
     m_voxels->voxelBuffer.Allocate(m_stagingBuffers.voxel.size, bufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);    
     m_voxels->tapeBuffer.Allocate(m_stagingBuffers.tape.size, bufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
+    m_voxels->constPoolBuffer.Allocate(m_stagingBuffers.constants.size, bufferUsage, VMA_MEMORY_USAGE_GPU_ONLY);
 }
 
 uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNodeIdx) 

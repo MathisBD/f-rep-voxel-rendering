@@ -14,8 +14,12 @@ namespace csg
     public:
         enum Op {
             LOAD_CONST = 0,
-            SIN, COS,
-            ADD, SUB, MUL, DIV,
+            SIN = 1, 
+            COS = 2,
+            ADD = 3, 
+            SUB = 4, 
+            MUL = 5, 
+            DIV = 6,
             _OP_COUNT_
         };
 

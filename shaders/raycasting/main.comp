@@ -9,8 +9,8 @@ layout (local_size_x = 16, local_size_y = 16) in;
 
 // Include other files
 //#define DEBUG_LOG
-#include "raycasting/utils.comp_header"
-#include "raycasting/inputs.comp_header"
+#include "raycasting/utils.comp"
+#include "raycasting/inputs.comp"
 
 
 struct Hit {
@@ -60,7 +60,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     float t_curr = max(grid_t_enter, 0.0f) + EPS; // the current time
     float t_max = t_curr;
 
-    LOG2("\nt_enter=%.3f t_leave=%.3f\n", grid_t_enter, grid_t_leave);
+    //LOG2("\nt_enter=%.3f t_leave=%.3f\n", grid_t_enter, grid_t_leave);
    
     // We use the kd-restart algorithm.
     while (t_max < grid_t_leave - EPS) {
@@ -78,21 +78,21 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
                 params_buf.levels[lvl].cell_size * invDir;
             uint cell_index = INDEX3D(cell, params_buf.levels[lvl].dim);
 
-            LOG8("level=%u   node=%u   pos=%.3v3f   cell_size=%.4f   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f\n", 
-                lvl, node, orig + (t_curr + EPS) * dir, params_buf.levels[lvl].cell_size, norm_pos, cell, cell_index, node_world_pos(node, lvl));
+            //LOG8("level=%u   node=%u   pos=%.3v3f   cell_size=%.4f   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f\n", 
+            //    lvl, node, orig + (t_curr + EPS) * dir, params_buf.levels[lvl].cell_size, norm_pos, cell, cell_index, node_world_pos(node, lvl));
     
-            // We have a child
+            // We have a child 
             if (node_has_child(node, lvl, cell_index)) {
                 // We hit a voxel  
                 if (lvl >= params_buf.level_count - 1) {
                     hit.voxel_id = node_get_child(node, lvl, cell_index);
                     hit.t = t_curr;  
-                    LOG1("Hit voxel: id=%u\n", hit.voxel_id);
+                    //LOG1("Hit voxel: id=%u\n", hit.voxel_id);
                     return true;
                 }
                 // Recurse in the child
                 else {
-                    LOG0("Recursing in child\n");
+                    //LOG0("Recursing in child\n");
                     node = node_get_child(node, lvl, cell_index);
                     t_max = MIN_3(t_next.x, t_next.y, t_next.z);
                     lvl++;
@@ -100,7 +100,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             }
             // No child : step forward 
             else {
-                LOG0("Stepping\n");
+                //LOG0("Stepping\n");
                 t_curr = MIN_3(t_next.x, t_next.y, t_next.z);
             }
         }
@@ -109,10 +109,21 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     return false;
 }
 
+vec3 tape_normal(vec3 pos)
+{
+    float d = eval_tape(pos);
+    float dx = eval_tape(pos + vec3(EPS, 0, 0));
+    float dy = eval_tape(pos + vec3(0, EPS, 0));
+    float dz = eval_tape(pos + vec3(0, 0, EPS));
+
+    return -normalize(vec3((dx - d) / EPS, (dy - d) / EPS, (dz - d) / EPS));
+}
+
 
 vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 {
     VoxelData voxel = voxel_buf.voxels[hit.voxel_id];
+    vec3 normal = tape_normal(ray_orig + hit.t * ray_dir);
     
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < params_buf.light_count; i++) {
@@ -124,7 +135,8 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
         //bool did_hit = dda(shadow_ray_orig, -light.direction.xyz, dummy_hit);
         //if (!did_hit) {
             // Add the light contribution
-            float intensity = max(dot(-light.direction.xyz, voxel.normal), 0.0f);
+
+            float intensity = max(dot(-light.direction.xyz, normal), 0.0f);
             diffuse += intensity * light.color;
         //}
     }
