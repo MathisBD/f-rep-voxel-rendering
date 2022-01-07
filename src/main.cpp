@@ -1,10 +1,18 @@
 #include "application.h"
+#include "shapes.h"
 
 
 int main()
 {
-    Application app;
-    app.Init(true);
+    Application::Params params;
+    params.enableValidationLayers = true;
+    params.enableShaderDebugPrintf = false;
+    params.printFPS = false;
+    params.gridDims = { 4, 4, 4 };
+    params.shape = Shapes::Sphere({0, 0, 0}, 15);
+
+    Application app(params);
+    app.Init();
     app.Run();
     app.Cleanup();
     return 0;

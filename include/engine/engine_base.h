@@ -14,10 +14,14 @@
 class EngineBase
 {
 public:
-    virtual void Init(bool enableValidationLayers);
+    virtual void Init();
     void Run();
     virtual void Cleanup();
 protected:
+    // These should be set by the derived classes.
+    bool m_enableValidationLayers = true;
+    bool m_enableShaderDebugPrintf = false;
+
     // Window
     VkExtent2D m_windowExtent { 1700, 900 };
     struct SDL_Window* m_window { nullptr };
@@ -42,7 +46,7 @@ protected:
     
 
     void InitSDL();
-    void InitVulkanCore(bool enableValidationLayers);
+    void InitVulkanCore();
     void InitVma();
     void InitImmUploadCtxt();
     

@@ -8,11 +8,15 @@
 #include "engine/csg_tape.h"
 
 
-Application::Application() : m_frameTime(32) {}
-
-void Application::Init(bool enableValidationLayers)
+Application::Application(Params params) : m_params(params), m_frameTime(32) 
 {
-    EngineBase::Init(enableValidationLayers);
+    m_enableValidationLayers = params.enableValidationLayers;
+    m_enableShaderDebugPrintf = params.enableShaderDebugPrintf;
+}
+
+void Application::Init()
+{
+    EngineBase::Init();
 
     printf("[+] Queue families :\n\tgraphics=%u\n\tcompute=%u\n\ttransfer=%u\n",
         m_device.queueFamilies.graphics, 
@@ -45,7 +49,7 @@ void Application::Init(bool enableValidationLayers)
 
 void Application::InitVoxels() 
 {
-    m_voxels.gridDims = { 4, 4, 4 };
+    m_voxels.gridDims = m_params.gridDims;
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
@@ -103,9 +107,7 @@ void Application::InitRenderTarget()
 void Application::SetupScene() 
 {
     // Build the shape expression and tape
-    //csg::Expr shape = Shapes::Sphere({0, 0, 0}, 20.0f);
-    csg::Expr shape = Shapes::TangleCube({0, 0, 0}, 4);
-    m_builder.Init(m_vmaAllocator, &m_voxels, shape);
+    m_builder.Init(m_vmaAllocator, &m_voxels, m_params.shape);
     m_voxels.tape.Print();
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -131,9 +133,11 @@ void Application::SetupScene()
 void Application::Draw() 
 {
     m_frameTime.AddSample(Timer::s_dt);
-    //printf("Frame time : %.1fms (%.1ffps)\n", 
-    //    1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
-
+    if (m_params.printFPS) {
+        printf("Frame time : %.1fms (%.1ffps)\n", 
+            1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
+    }
+    
     m_camera.Update(m_inputManager);
     m_raytracer.Trace(m_renderer.GetRenderSemaphore(), &m_camera);
     

@@ -8,10 +8,10 @@
 
 
 
-void EngineBase::Init(bool enableValidationLayers) 
+void EngineBase::Init() 
 {
     InitSDL();
-    InitVulkanCore(enableValidationLayers);
+    InitVulkanCore();
     InitVma();
     InitImmUploadCtxt();
 
@@ -42,7 +42,7 @@ void EngineBase::InitSDL()
     m_cleanupQueue.AddFunction([=] { SDL_DestroyWindow(m_window); });
 }
 
-void EngineBase::InitVulkanCore(bool enableValidationLayers) 
+void EngineBase::InitVulkanCore() 
 {
     // Vulkan instance
     vkb::InstanceBuilder builder;
@@ -50,9 +50,12 @@ void EngineBase::InitVulkanCore(bool enableValidationLayers)
            .require_api_version(1, 1, 0)
            .use_default_debug_messenger();
            
-    if (enableValidationLayers) {
+    if (m_enableShaderDebugPrintf) {
+        assert(m_enableValidationLayers);
+        builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
+    }
+    if (m_enableValidationLayers) {
         builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
-               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
                .enable_validation_layers(true);
     }
     vkb::Instance vkbInst = builder.build().value();

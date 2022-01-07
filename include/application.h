@@ -15,9 +15,19 @@
 class Application : public EngineBase
 {
 public:
-    Application();
-    virtual void Init(bool enableValidationLayers) override;
+    struct Params
+    {
+        bool enableValidationLayers = true;
+        bool enableShaderDebugPrintf = false;
+        bool printFPS = false;
+        std::vector<uint32_t> gridDims;
+        csg::Expr shape;
+    };
+
+    Application(Params params);
+    virtual void Init() override;
 private:
+    Params m_params;
     VoxelStorage m_voxels;
     RenderTarget m_target;
     Camera m_camera;
