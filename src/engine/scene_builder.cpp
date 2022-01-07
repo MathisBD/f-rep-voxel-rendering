@@ -127,6 +127,17 @@ void SceneBuilder::ComputeCoords(TreeNode* node, const glm::u32vec3& coords)
     node->coords = coords * dim;    
 }
 
+bool SceneBuilder::HasAllLeafChildren(TreeNode* node) 
+{
+    uint32_t dim = m_voxels->gridDims[node->level];
+    for (uint32_t i = 0; i < (dim*dim*dim) / 32; i++) {
+        if (node->leafMask[i] != 0xFFFFFFFF) {
+            return false;
+        }
+    }    
+    return true;
+}
+
 SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32vec3& coords) 
 {
     assert(level < m_voxels->gridLevels);
@@ -171,9 +182,15 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
                 // Recurse on the child
                 else {
                     TreeNode* childPtr = BuildNode(level + 1, childCoords); 
-                    node->childList[index] = childPtr;
-                    // Update the interior mask
-                    if (childPtr != nullptr) {
+                    // Add a leaf node child
+                    if (childPtr != nullptr && HasAllLeafChildren(childPtr)) {
+                        delete childPtr;
+                        node->leafMask[q] |= (1 << r);
+                        hasChild = true;
+                    }   
+                    // Add an interior node child
+                    else if (childPtr != nullptr) {
+                        node->childList[index] = childPtr;
                         node->interiorMask[q] |= (1 << r);
                         hasChild = true;
                     }

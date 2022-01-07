@@ -52,6 +52,7 @@ private:
     void CompactifyChildList(TreeNode* node);
     // The coordinates are in the finest grid AT THE NODE's level.
     void ComputeCoords(TreeNode* node, const glm::u32vec3& coords);
+    bool HasAllLeafChildren(TreeNode* node);
     // The coordinates are in the finest grid AT THE NODE's level.
     TreeNode* BuildNode(uint32_t level, const glm::u32vec3& coords);
     void DeleteNode(TreeNode* node);
