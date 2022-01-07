@@ -18,12 +18,12 @@ private:
     public:
         uint32_t level;
         glm::u32vec3 coords;
-        std::vector<uint32_t> mask;
-        std::vector<uint32_t> maskPC;
-        // Entries in childList are either :
-        // -> pointers to TreeNodes (non-leaf node).
-        // -> indices of Voxels in the voxel data vector (leaf node).
-        std::vector<size_t> childList;
+        std::vector<uint32_t> interiorMask;
+        std::vector<uint32_t> interiorMaskPC;
+        std::vector<uint32_t> leafMask;
+        // The child list only contains the interior node children,
+        // no the leaf node children.
+        std::vector<TreeNode*> childList;
     };
 
     VmaAllocator m_allocator;
@@ -31,13 +31,11 @@ private:
     csg::Expr m_shape;
 
     TreeNode* m_rootNode;
-    std::vector<VoxelStorage::Voxel> m_voxelData;
 
     // These are CPU buffers, that will then get copied to the GPU buffers.
     struct {
         vkw::Buffer node;
         vkw::Buffer child;
-        vkw::Buffer voxel;
         vkw::Buffer tape;
         vkw::Buffer constants;
     } m_stagingBuffers;
@@ -46,26 +44,21 @@ private:
     struct {
         void* node;
         void* child;
-        void* voxel;
         void* tape;
         void* constants;
     } m_bufferContents;
 
     uint32_t Index3D(uint32_t x, uint32_t y, uint32_t z, uint32_t dim);
 
-    // The coordinates are in the finest grid.
-    size_t BuildVoxel(const glm::u32vec3& coords);
-    void ComputeMaskPC(TreeNode* node);
+    void ComputeInteriorMaskPC(TreeNode* node);
     void CompactifyChildList(TreeNode* node);
     // The coordinates are in the finest grid AT THE NODE's level.
     void ComputeCoords(TreeNode* node, const glm::u32vec3& coords);
     // The coordinates are in the finest grid AT THE NODE's level.
     TreeNode* BuildNode(uint32_t level, const glm::u32vec3& coords);
     void DeleteNode(TreeNode* node);
-    
-    void BuildTrees();
 
-    void CountNodes(TreeNode* node);
+    void CountInteriorNodes(TreeNode* node);
 
     void AllocateStagingBuffers();
     uint32_t LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNodeIdx);    

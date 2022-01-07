@@ -72,43 +72,36 @@ layout (std430, set = 0, binding = 3) readonly buffer ChildBuffer {
     uint data[];
 } child_buf;
 
-layout (std430, set = 0, binding = 4) readonly buffer VoxelBuffer {
-    VoxelData voxels[];
-} voxel_buf;
-
-layout (std430, set = 0, binding = 5) readonly buffer TapeBuffer {
+layout (std430, set = 0, binding = 4) readonly buffer TapeBuffer {
     uint instrs[];
 } tape_buf;
 
-layout (std430, set = 0, binding = 6) readonly buffer ConstPoolBuffer {
+layout (std430, set = 0, binding = 5) readonly buffer ConstPoolBuffer {
     float consts[];
 } const_pool_buf;
 
 // Node structure.
 // Sizes are given in uints rather than bytes.
-#define NODE_SIZE(level) (4 + (CUBE(params_buf.levels[(level)].dim) >> 4))
-#define NODE_OFS_CL_IDX(level)  0
-#define NODE_OFS_COORDS(level)  1
-#define NODE_OFS_MASK(level)    4
-#define NODE_OFS_MASK_PC(level) (4 + (CUBE(params_buf.levels[(level)].dim) >> 5))
-
+#define NODE_SIZE(level)                 (5 + 3 * (CUBE(params_buf.levels[(level)].dim) >> 5))
+#define NODE_OFS_CL_IDX(level)           0
+#define NODE_OFS_TAPE_IDX(level)         1
+#define NODE_OFS_COORDS(level)           2
+#define NODE_OFS_INTERIOR_MASK(level)    5
+#define NODE_OFS_INTERIOR_MASK_PC(level) (5 + (CUBE(params_buf.levels[(level)].dim) >> 5))
+#define NODE_OFS_LEAF_MASK(level)        (5 + (CUBE(params_buf.levels[(level)].dim) >> 4))
 // Child list structure.
 // Sizes are given in uints rather than bytes.
 #define CL_SIZE(level) CUBE(params_buf.levels[(level)].dim)
 
-// Tape instruction structure.
-// Sizes are in uints.
-#define TAPE_INSTR_SIZE   2
-
 
 // child_index == INDEX(local position in the node)
-bool node_has_child(uint node_id, uint level, uint child_index)
+bool node_has_leaf_child(uint node_id, uint level, uint child_index)
 {
-    // get the node's mask position in the node buffer
+    // get the leaf mask position in the node buffer
     uint mask_pos = 
         params_buf.levels[level].node_ofs +
         NODE_SIZE(level) * node_id +
-        NODE_OFS_MASK(level);
+        NODE_OFS_LEAF_MASK(level);
     
     uint q = child_index >> 5;
     uint r = child_index & 0x1F;
@@ -118,8 +111,29 @@ bool node_has_child(uint node_id, uint level, uint child_index)
 }
 
 // child_index == INDEX(local position in the node)
-// Returns the node id / voxel id of the child.
-uint node_get_child(uint node_id, uint level, uint child_index)
+bool node_has_interior_child(uint node_id, uint level, uint child_index)
+{
+    // Make sure we don't read from a non-existant child list.
+    if (level >= params_buf.level_count - 1) {
+        return false;
+    }
+
+    // get the interior mask position in the node buffer
+    uint mask_pos = 
+        params_buf.levels[level].node_ofs +
+        NODE_SIZE(level) * node_id +
+        NODE_OFS_INTERIOR_MASK(level);
+    
+    uint q = child_index >> 5;
+    uint r = child_index & 0x1F;
+
+    uint mask = node_buf.data[mask_pos + q];
+    return bool(mask & (1 << r));
+}
+
+// child_index == INDEX(local position in the node)
+// Returns the node id of the child.
+uint node_get_interior_child(uint node_id, uint level, uint child_index)
 {
     // The node's position in the node buffer.
     uint node_pos = params_buf.levels[level].node_ofs +
@@ -131,10 +145,10 @@ uint node_get_child(uint node_id, uint level, uint child_index)
     // Compute the child's position in the child list
     uint child_pos = 0;
     if (q > 0) {
-        child_pos += node_buf.data[node_pos + NODE_OFS_MASK_PC(level) + (q-1)];
+        child_pos += node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK_PC(level) + (q-1)];
     }
     if (r > 0) {
-        uint mask = node_buf.data[node_pos + NODE_OFS_MASK(level) + q];
+        uint mask = node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(level) + q];
         child_pos += bitCount(mask & ((1 << r) - 1));
     }
    

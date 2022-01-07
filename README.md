@@ -54,6 +54,7 @@ Interior Node Buffer : all interior nodes at level 0, then all at level 1, etc.
 Child Buffer : child lists for all interior nodes
     -> all lists at level 0, then all at level 1, etc.
 Tape buffer : the list of all tapes 
+Constant pool buffer
 
 Interior Node structure :
     child list index  : 4 bytes (1 uint)

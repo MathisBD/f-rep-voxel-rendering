@@ -11,7 +11,7 @@ csg::Expr Shapes::Sphere(const glm::vec3& center, float radius)
     auto py = y - center.y;
     auto pz = z - center.z;
 
-    return radius * radius - (px*px + py*py + pz*pz);
+    return (px*px + py*py + pz*pz) - radius*radius;
 }
 
 csg::Expr Shapes::TangleCube(const glm::vec3& center, float scale) 
@@ -28,7 +28,7 @@ csg::Expr Shapes::TangleCube(const glm::vec3& center, float scale)
     auto py2 = py*py;
     auto pz2 = pz*pz;
 
-    return -1 * ((px2*px2 + py2*py2 + pz2*pz2) - 8 * (px2 + py2 + pz2) + 25);
+    return (px2*px2 + py2*py2 + pz2*pz2) - 8 * (px2 + py2 + pz2) + 25;
 }
 
 /*Shapes::density_t Shapes::BarthSextic(const glm::vec3& center, float scale) {

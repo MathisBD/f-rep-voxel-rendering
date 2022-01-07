@@ -28,16 +28,14 @@ public:
     // the fine grid dimension is 24. 
     uint32_t fineGridDim;
 
-    // The number of nodes in each level.
-    // Leaf nodes are counted but not voxels.
-    std::vector<uint32_t> nodeCount;
+    // The number of interior nodes in each level.
+    std::vector<uint32_t> interiorNodeCount;
 
     csg::Tape tape;
 
     // These are GPU buffers.
     vkw::Buffer nodeBuffer;
     vkw::Buffer childBuffer;
-    vkw::Buffer voxelBuffer;
     vkw::Buffer tapeBuffer;
     vkw::Buffer constPoolBuffer;
 
@@ -51,11 +49,10 @@ public:
             fineGridDim *= dim;
         }
 
-        nodeCount = std::vector<uint32_t>(gridLevels, 0);
+        interiorNodeCount = std::vector<uint32_t>(gridLevels, 0);
 
         nodeBuffer.Init(allocator);
         childBuffer.Init(allocator);
-        voxelBuffer.Init(allocator);
         tapeBuffer.Init(allocator);
         constPoolBuffer.Init(allocator);
     }
@@ -64,7 +61,6 @@ public:
     {
         nodeBuffer.Cleanup();
         childBuffer.Cleanup();
-        voxelBuffer.Cleanup();
         tapeBuffer.Cleanup();
         constPoolBuffer.Cleanup();
     }
@@ -77,22 +73,31 @@ public:
 
     // The sizes are in bytes.
     uint32_t NodeSize(uint32_t level) {
-        return 16 + glm::pow(gridDims[level], 3) / 4;
+        return 20 + 3 * (glm::pow(gridDims[level], 3) / 8);
     }
     uint32_t NodeOfsCLIdx(uint32_t level) {
         return 0;
     }
-    uint32_t NodeOfsCoords(uint32_t level) {
+    uint32_t NodeOfsTapeIdx(uint32_t level) {
         return 4;
     }
-    uint32_t NodeOfsMask(uint32_t level) {
-        return 16;
+    uint32_t NodeOfsCoords(uint32_t level) {
+        return 8;
     }
-    uint32_t NodeOfsMaskPC(uint32_t level) {
-        return 16 + glm::pow(gridDims[level], 3) / 8;
+    uint32_t NodeOfsInteriorMask(uint32_t level) {
+        return 20;
+    }
+    uint32_t NodeOfsInteriorMaskPC(uint32_t level) {
+        return 20 + glm::pow(gridDims[level], 3) / 8;
+    }
+    uint32_t NodeOfsLeafMask(uint32_t level) {
+        return 20 + 2 * (glm::pow(gridDims[level], 3) / 8);
     }
 
+
     uint32_t ChildListSize(uint32_t level) {
+        // The last level doesn't have child lists.
+        assert(level < gridLevels - 1);
         return 4 * glm::pow(gridDims[level], 3);
     }
 };  

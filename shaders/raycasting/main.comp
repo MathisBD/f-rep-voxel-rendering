@@ -15,7 +15,6 @@ layout (local_size_x = 16, local_size_y = 16) in;
 
 struct Hit {
     float t;
-    uint voxel_id;
 };
 
 
@@ -80,23 +79,18 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
             //LOG8("level=%u   node=%u   pos=%.3v3f   cell_size=%.4f   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f\n", 
             //    lvl, node, orig + (t_curr + EPS) * dir, params_buf.levels[lvl].cell_size, norm_pos, cell, cell_index, node_world_pos(node, lvl));
-    
-            // We have a child 
-            if (node_has_child(node, lvl, cell_index)) {
-                // We hit a voxel  
-                if (lvl >= params_buf.level_count - 1) {
-                    hit.voxel_id = node_get_child(node, lvl, cell_index);
-                    hit.t = t_curr;  
-                    //LOG1("Hit voxel: id=%u\n", hit.voxel_id);
-                    return true;
-                }
-                // Recurse in the child
-                else {
-                    //LOG0("Recursing in child\n");
-                    node = node_get_child(node, lvl, cell_index);
-                    t_max = MIN_3(t_next.x, t_next.y, t_next.z);
-                    lvl++;
-                }
+     
+            if (node_has_leaf_child(node, lvl, cell_index)) {
+                hit.t = t_curr;  
+                //LOG0("Hit voxel\n");
+                return true;
+            }
+            // Recurse in the child
+            else if (node_has_interior_child(node, lvl, cell_index)) {
+                //LOG0("Recursing in child\n");
+                node = node_get_interior_child(node, lvl, cell_index);
+                t_max = MIN_3(t_next.x, t_next.y, t_next.z);
+                lvl++;
             }
             // No child : step forward 
             else {
@@ -116,13 +110,12 @@ vec3 tape_normal(vec3 pos)
     float dy = eval_tape(pos + vec3(0, EPS, 0));
     float dz = eval_tape(pos + vec3(0, 0, EPS));
 
-    return -normalize(vec3((dx - d) / EPS, (dy - d) / EPS, (dz - d) / EPS));
+    return normalize(vec3((dx - d) / EPS, (dy - d) / EPS, (dz - d) / EPS));
 }
 
 
 vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 {
-    VoxelData voxel = voxel_buf.voxels[hit.voxel_id];
     vec3 normal = tape_normal(ray_orig + hit.t * ray_dir);
     
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -143,7 +136,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 
     vec4 ambient = vec4(0.2f, 0.2f, 0.2f, 1.0f);
 
-    return params_buf.materials[voxel.material_idx].color * (ambient + diffuse);
+    return params_buf.materials[0].color * (ambient + diffuse);
 }
 
 

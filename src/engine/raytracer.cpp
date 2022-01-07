@@ -93,8 +93,6 @@ void Raytracer::InitPipeline()
         m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
     auto childInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
-    auto voxelsInfo = vkw::init::DescriptorBufferInfo(
-        m_voxels->voxelBuffer.buffer, 0, m_voxels->voxelBuffer.size);
     auto tapeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
     auto constantsInfo = vkw::init::DescriptorBufferInfo(
@@ -104,9 +102,8 @@ void Raytracer::InitPipeline()
         .BindBuffer(1, &uniformsInfo,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &nodeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &childInfo,     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(4, &voxelsInfo,    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(5, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(6, &constantsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(4, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(5, &constantsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -194,8 +191,10 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
         params->levels[i].cellSize = cellSize;
 
         // Remember : the offsets are in uints (not in bytes).
-        nodeOfs += m_voxels->nodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
-        childOfs += m_voxels->nodeCount[i] * glm::pow(m_voxels->gridDims[i], 3);
+        nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
+        if (i < m_voxels->gridLevels - 1) {
+            childOfs += m_voxels->interiorNodeCount[i] * glm::pow(m_voxels->gridDims[i], 3);
+        }
     }
     
     /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
