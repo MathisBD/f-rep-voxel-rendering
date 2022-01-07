@@ -95,15 +95,12 @@ void Raytracer::InitPipeline()
         m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
     auto tapeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
-    auto constantsInfo = vkw::init::DescriptorBufferInfo(
-        m_voxels->constPoolBuffer.buffer, 0, m_voxels->constPoolBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage( 0, &outImageInfo,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,  VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &uniformsInfo,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &nodeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &childInfo,     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(4, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(5, &constantsInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -217,6 +214,11 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
 
     // Materials
     params->materials[0].color = { 1, 1, 0.8f, 0 };
+
+    // Tape constant pool
+    assert(m_voxels->tape.constantPool.size() <= MAX_CONSTANT_POOL_SIZE);
+    memcpy(params->constantPool, m_voxels->tape.constantPool.data(), 
+        m_voxels->tape.constantPool.size() * sizeof(float));
 
     m_paramsBuffer.Unmap(); 
 }

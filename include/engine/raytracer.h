@@ -11,9 +11,10 @@
 
 
 
-#define MAX_LIGHT_COUNT     8
-#define MAX_MATERIAL_COUNT  8
-#define MAX_LEVEL_COUNT     8
+#define MAX_LIGHT_COUNT        8
+#define MAX_MATERIAL_COUNT     8
+#define MAX_LEVEL_COUNT        8
+#define MAX_CONSTANT_POOL_SIZE 256
 
 typedef struct {
     // The normal vector at the center of the voxel (w unused).
@@ -70,6 +71,8 @@ typedef struct {
     glm::vec4 backgroundColor;
     ShaderLight lights[MAX_LIGHT_COUNT];
     ShaderMaterial materials[MAX_MATERIAL_COUNT];
+    // The tape's constant pool.
+    float constantPool[MAX_CONSTANT_POOL_SIZE];
 } ShaderParams;
 
 

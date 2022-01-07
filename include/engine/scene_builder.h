@@ -37,7 +37,6 @@ private:
         vkw::Buffer node;
         vkw::Buffer child;
         vkw::Buffer tape;
-        vkw::Buffer constants;
     } m_stagingBuffers;
 
     // The memory mapped contents of the staging buffers.
@@ -45,7 +44,6 @@ private:
         void* node;
         void* child;
         void* tape;
-        void* constants;
     } m_bufferContents;
 
     uint32_t Index3D(uint32_t x, uint32_t y, uint32_t z, uint32_t dim);

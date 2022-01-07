@@ -64,7 +64,7 @@ void EngineBase::InitVulkanCore()
 
     // SDL Surface
     SDL_Vulkan_CreateSurface(m_window, m_instance, &m_surface);
-
+    
     // Choose a GPU
     vkb::PhysicalDeviceSelector selector(vkbInst);
     vkb::PhysicalDevice vkbPhysDev = selector 

@@ -2,15 +2,16 @@
 
 // Kernel group size.
 layout (local_size_x = 16, local_size_y = 16) in;
+ 
 
-
-#extension GL_GOOGLE_include_directive : enable
+#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
 
-// Include other files
+// Include other files  
 //#define DEBUG_LOG
 #include "raycasting/utils.comp"
 #include "raycasting/inputs.comp"
+#include "raycasting/tape.comp"
 
 
 struct Hit {

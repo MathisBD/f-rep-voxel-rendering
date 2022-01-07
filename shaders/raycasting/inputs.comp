@@ -3,6 +3,8 @@
 #define MAX_MATERIAL_COUNT  8
 #define MAX_LEVEL_COUNT     8
 #define MAX_SLOT_COUNT      16
+#define MAX_CONST_POOL_SIZE 256
+
 
 struct VoxelData {
     vec3 normal;
@@ -59,6 +61,9 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
     vec4 background_color;
     DirectionalLight lights[MAX_LIGHT_COUNT]; 
     Material materials[MAX_MATERIAL_COUNT];
+
+    // The tape constant pool.
+    vec4 const_pool[MAX_CONST_POOL_SIZE / 4];
 } params_buf;
 
 // Nodes
@@ -75,10 +80,6 @@ layout (std430, set = 0, binding = 3) readonly buffer ChildBuffer {
 layout (std430, set = 0, binding = 4) readonly buffer TapeBuffer {
     uint instrs[];
 } tape_buf;
-
-layout (std430, set = 0, binding = 5) readonly buffer ConstPoolBuffer {
-    float consts[];
-} const_pool_buf;
 
 // Node structure.
 // Sizes are given in uints rather than bytes.
@@ -175,56 +176,3 @@ vec3 node_world_pos(uint node_id, uint level)
         vec3(coords) * params_buf.levels[params_buf.level_count - 1].cell_size;
 }
 
-
-#define OP_CONSTANT 0
-#define OP_SIN      1
-#define OP_COS      2
-#define OP_ADD      3
-#define OP_SUB      4
-#define OP_MUL      5
-#define OP_DIV      6
-
-float eval_tape(vec3 pos)
-{
-    float slots[MAX_SLOT_COUNT];
-    slots[0] = pos.x;
-    slots[1] = pos.y;
-    slots[2] = pos.z;
-
-    uint i = 0;
-    while (i < params_buf.tape_instr_count) {
-        // Decode the instruction
-        uint inst = tape_buf.instrs[i];
-        uint op      = (inst >> 0)  & 0xFF;
-        uint outSlot = (inst >> 8)  & 0xFF;
-        uint inSlotA = (inst >> 16) & 0xFF;
-        uint inSlotB = (inst >> 24) & 0xFF;
-
-        // Dispatch        
-        switch (op) {
-        case OP_CONSTANT:
-            slots[outSlot] = const_pool_buf.consts[inSlotA];
-            break;
-        case OP_SIN:
-            slots[outSlot] = sin(slots[inSlotA]);
-            break;
-        case OP_COS:
-            slots[outSlot] = cos(slots[inSlotA]);       
-            break;
-        case OP_ADD:
-            slots[outSlot] = slots[inSlotA] + slots[inSlotB];
-            break;
-        case OP_SUB:
-            slots[outSlot] = slots[inSlotA] - slots[inSlotB];
-            break;
-        case OP_MUL:
-            slots[outSlot] = slots[inSlotA] * slots[inSlotB];
-            break;
-        case OP_DIV:
-            slots[outSlot] = slots[inSlotA] / slots[inSlotB];
-            break;
-        } 
-        i++;
-    }   
-    return slots[0];
-}
