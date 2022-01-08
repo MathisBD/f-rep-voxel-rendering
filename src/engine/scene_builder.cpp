@@ -9,6 +9,7 @@ void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
     m_voxels = voxels;
     m_shape = shape;
     m_voxels->tape = csg::Tape(shape);
+    
 
     m_stagingBuffers.node.Init(m_allocator);
     m_stagingBuffers.child.Init(m_allocator);
@@ -20,6 +21,7 @@ void SceneBuilder::Cleanup()
     m_stagingBuffers.node.Cleanup();
     m_stagingBuffers.child.Cleanup();
     m_stagingBuffers.tape.Cleanup();
+    m_threadPool.Stop();
 }
 
 void SceneBuilder::BuildScene() 
@@ -326,7 +328,7 @@ void SceneBuilder::PrintVoxelStats()
     for (uint32_t dim : m_voxels->gridDims) {
         printf("%u ", dim);
     }
-    printf("\n");
+    printf("  total = %u\n", m_voxels->fineGridDim);
 
     uint32_t totalNodeCount = 0;
     for (uint32_t count : m_voxels->interiorNodeCount) {

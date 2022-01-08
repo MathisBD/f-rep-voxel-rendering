@@ -32,6 +32,9 @@ find_package(glm REQUIRED)
 target_include_directories(proj PUBLIC ${GLM_INCLUDE_DIRS})
 target_link_libraries(proj ${GLM_LIBRARIES})
 
+# pthreads (for std::thread)
+target_link_libraries(proj pthread)
+
 # Compile shaders
 set(GLSL_VALIDATOR "glslangValidator")
 set(SHADER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/shaders")

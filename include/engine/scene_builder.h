@@ -2,6 +2,7 @@
 #include "engine/voxel_storage.h"
 #include "engine/csg_expression.h"
 #include "engine/csg_tape.h"
+#include "utils/thread_pool.h"
 
 
 class SceneBuilder
@@ -30,6 +31,7 @@ private:
     VoxelStorage* m_voxels;
     csg::Expr m_shape;
 
+    ThreadPool m_threadPool = { std::thread::hardware_concurrency() };
     TreeNode* m_rootNode;
 
     // These are CPU buffers, that will then get copied to the GPU buffers.
