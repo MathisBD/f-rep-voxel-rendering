@@ -89,7 +89,7 @@ public:
     VkSemaphore GetComputeSemaphore() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
-    CleanupQueue m_cleanupQueue;
+    FunctionQueue m_cleanupQueue;
     vkw::Device* m_device;
     RenderTarget* m_target;
     VoxelStorage* m_voxels;

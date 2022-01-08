@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "engine/renderer.h"
-#include "engine/cleanup_queue.h"
+#include "utils/function_queue.h"
 #include "vk_wrapper/device.h"
 #include "vk_wrapper/shader.h"
 #include "vk_wrapper/descriptor.h"
@@ -33,7 +33,7 @@ protected:
     vkw::Device m_device;
     
     // Engine components
-    CleanupQueue m_cleanupQueue;
+    FunctionQueue m_cleanupQueue;
     InputManager m_inputManager;
     vkw::DescriptorLayoutCache m_descCache;
     vkw::DescriptorAllocator m_descAllocator;

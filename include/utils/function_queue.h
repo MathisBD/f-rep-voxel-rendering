@@ -3,7 +3,7 @@
 #include <deque>
 
 
-class CleanupQueue
+class FunctionQueue
 {
 public:
     void AddFunction(std::function<void()>&& func) 

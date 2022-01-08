@@ -1,0 +1,25 @@
+#version 450
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : enable
+
+// Include other files  
+//#define DEBUG_LOG
+#include "utils.comp"
+#include "voxelizer/inputs.comp"
+
+
+void main()
+{
+    uint node = 0;
+    uvec3 cell = gl_GlobalInvocationID.xyz;
+    uint cell_index = INDEX3D(cell, params_buf.levels[0].dim);
+
+    float density = eval_tape(node_world_pos(node, 0));
+    if (density < 0.0f) {
+        uint leaf_mask_pos = NODE_OFS_LEAF_MASK(0);
+        uint q = cell_index >> 5;
+        uint r = cell_index & ((1 << 5) - 1);
+        atomicOr(node_buf.data[leaf_mask_pos + q], 1 << r);
+    }
+}

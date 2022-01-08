@@ -1,17 +1,14 @@
 #version 450
 
-// Kernel group size.
-layout (local_size_x = 16, local_size_y = 16) in;
- 
 
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
 
 // Include other files  
 //#define DEBUG_LOG
-#include "raycasting/utils.comp"
-#include "raycasting/inputs.comp"
-#include "raycasting/tape.comp"
+#include "utils.comp"
+#include "raycaster/inputs.comp"
+#include "raycaster/tape.comp"
 
 
 struct Hit {
@@ -163,10 +160,6 @@ vec4 raytrace(vec3 orig, vec3 dir)
 void main()
 {
     uvec2 gid = gl_GlobalInvocationID.xy;
-
-    if (gl_GlobalInvocationID.x == 0 && gl_GlobalInvocationID.y == 0) {
-        debugPrintfEXT("\n");
-    }
 
     if (gid.x < params_buf.screen_res.x && 
         gid.y < params_buf.screen_res.y) 

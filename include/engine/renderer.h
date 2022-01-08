@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "vk_wrapper/swapchain.h"
-#include "engine/cleanup_queue.h"
+#include "utils/function_queue.h"
 #include "vk_wrapper/descriptor.h"
 #include "vk_wrapper/image.h"
 #include "engine/render_target.h"
@@ -34,7 +34,7 @@ private:
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
-    CleanupQueue m_cleanupQueue;
+    FunctionQueue m_cleanupQueue;
 
     RenderTarget* m_target;
     VkExtent2D m_windowExtent;

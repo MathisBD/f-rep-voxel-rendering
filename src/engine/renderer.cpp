@@ -130,8 +130,8 @@ void Renderer::InitPipeline()
 {    
     // Load the shaders
     vkw::Shader vertexShader, fragmentShader;
-    vertexShader.Init(m_device->logicalDevice, "../shaders/rendering/triangle.vert.spv");
-    fragmentShader.Init(m_device->logicalDevice, "../shaders/rendering/triangle.frag.spv");
+    vertexShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.vert.spv");
+    fragmentShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.frag.spv");
 
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);

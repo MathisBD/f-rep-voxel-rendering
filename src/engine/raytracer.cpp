@@ -78,7 +78,7 @@ void Raytracer::InitPipeline()
 {
     // Load the shader
     vkw::Shader shader;
-    shader.Init(m_device->logicalDevice, "../shaders/raycasting/main.comp.spv");
+    shader.Init(m_device->logicalDevice, "../shaders/raycaster/main.comp.spv");
     
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
