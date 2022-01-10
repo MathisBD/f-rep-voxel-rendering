@@ -231,7 +231,10 @@ void Raytracer::RecordComputeCmd(VkCommandBuffer cmd)
         m_pipelineLayout, 
         0, m_descSets.size(), m_descSets.data(), 
         0, nullptr);
-    vkCmdDispatch(cmd, (m_target->image.extent.width / 16) + 1, (m_target->image.extent.height / 16) + 1, 1);   
+    vkCmdDispatch(cmd, 
+        (m_target->image.extent.width / THREAD_GROUP_SIZE_X) + 1, 
+        (m_target->image.extent.height / THREAD_GROUP_SIZE_Y) + 1, 
+        1);   
 }
 
 void Raytracer::SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem) 

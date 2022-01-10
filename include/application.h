@@ -7,6 +7,7 @@
 #include "engine/camera.h"
 #include "engine/renderer.h"
 #include "engine/raytracer.h"
+#include "engine/voxelizer.h"
 #include "utils/running_average.h"
 #include "engine/scene_builder.h"
 #include "engine/voxel_storage.h"
@@ -33,6 +34,7 @@ private:
     Camera m_camera;
 
     SceneBuilder m_builder;
+    Voxelizer m_voxelizer;
     Raytracer m_raytracer;
     Renderer m_renderer;
     

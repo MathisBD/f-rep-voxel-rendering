@@ -8,8 +8,7 @@
 class SceneBuilder
 {
 public:
-    void Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
-        csg::Expr shape);
+    void Init(VmaAllocator vmaAllocator, VoxelStorage* voxels);
     void Cleanup();
     void BuildScene();
     void UploadSceneToGPU(VkCommandBuffer cmd);
@@ -29,7 +28,6 @@ private:
 
     VmaAllocator m_allocator;
     VoxelStorage* m_voxels;
-    csg::Expr m_shape;
 
     ThreadPool m_threadPool = { std::thread::hardware_concurrency() };
     TreeNode* m_rootNode;

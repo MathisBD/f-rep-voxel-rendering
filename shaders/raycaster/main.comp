@@ -8,7 +8,7 @@
 //#define DEBUG_LOG
 #include "utils.comp"
 #include "raycaster/inputs.comp"
-#include "raycaster/tape.comp"
+#include "tape.comp"
 
 
 struct Hit {

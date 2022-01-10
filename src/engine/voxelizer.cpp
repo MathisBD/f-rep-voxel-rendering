@@ -2,6 +2,7 @@
 #include "vk_wrapper/initializers.h"
 #include "vk_wrapper/vk_check.h"
 #include "vk_wrapper/shader.h"
+#include <cstring>
 
 
 void Voxelizer::Init(
@@ -21,8 +22,9 @@ void Voxelizer::Init(
 
     AllocateGPUBuffers();
     ZeroOutNodeBuffer();
+    UploadTape();
 
-    InitPipeline();
+    InitPipelines();
 }
 
 void Voxelizer::Cleanup() 
@@ -77,11 +79,11 @@ void Voxelizer::InitBuffers()
     m_cleanupQueue.AddFunction([=] { m_paramsBuffer.Cleanup(); });
 }
 
-void Voxelizer::InitPipeline() 
+void Voxelizer::InitPipelines() 
 {
     // Load the shader
     vkw::Shader shader;
-    shader.Init(m_device->logicalDevice, "../shaders/voxelizing/main.comp.spv");
+    shader.Init(m_device->logicalDevice, "../shaders/voxelizer/main.comp.spv");
 
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
@@ -101,14 +103,14 @@ void Voxelizer::InitPipeline()
         .BindBuffer(1, &nodeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &childInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &tapeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .Build(nullptr, &dSetLayouts[0]);
+        .Build(&m_descSets[0], &dSetLayouts[0]);
     
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
     layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
     layoutInfo.pSetLayouts = dSetLayouts.data();
     VK_CHECK(vkCreatePipelineLayout(m_device->logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
- 
+
     // Pipeline
     VkComputePipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -116,9 +118,10 @@ void Voxelizer::InitPipeline()
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
         VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
+
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
-
+    
     // We can destroy the shader right away.
     shader.Cleanup();
     m_cleanupQueue.AddFunction([=] {
@@ -131,31 +134,19 @@ void Voxelizer::UpdateShaderParams(uint32_t level)
 {
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
     params->levelCount = m_voxels->gridLevels;
-    params->currLevel = level;
+    params->level = level;
     params->tapeInstrCount = m_voxels->tape.instructions.size();
-    
-    // Level data
-    /*uint32_t nodeOfs = 0;
-    uint32_t childOfs = 0;
-    float cellSize = m_voxels->worldSize;
-    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        cellSize /= m_voxels->gridDims[i];
 
-        params->levels[i].dim = m_voxels->gridDims[i];
-        params->levels[i].nodeOfs = nodeOfs;
-        params->levels[i].childOfs = childOfs;
-        params->levels[i].cellSize = cellSize;
+    params->gridWorldCoords = m_voxels->lowVertex;
+    params->gridWorldSize = m_voxels->worldSize;
 
-        // Remember : the offsets are in uints (not in bytes).
-        nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
-        if (i < m_voxels->gridLevels - 1) {
-            childOfs += m_voxels->interiorNodeCount[i] * glm::pow(m_voxels->gridDims[i], 3);
-        }
-    }*/
     params->levels[0].dim = m_voxels->gridDims[0];
     params->levels[0].nodeOfs = 0;
     params->levels[0].childOfs = 0;
     params->levels[0].cellSize = m_voxels->worldSize / m_voxels->gridDims[0];
+
+    memcpy(params->constantPool, m_voxels->tape.constantPool.data(),
+        m_voxels->tape.constantPool.size() * sizeof(csg::Tape::Instr));
 
     m_paramsBuffer.Unmap();
 }
@@ -167,7 +158,15 @@ void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level)
         m_pipelineLayout, 
         0, m_descSets.size(), m_descSets.data(), 
         0, nullptr);
-    vkCmdDispatch(cmd, m_voxels->interiorNodeCount[level], 1, 1);   
+    //vkCmdDispatch(cmd, m_voxels->interiorNodeCount[level], 1, 1);   
+    uint32_t dim = m_voxels->gridDims[level];
+    assert(dim % THREAD_GROUP_SIZE_X == 0);
+    assert(dim % THREAD_GROUP_SIZE_Y == 0);
+    assert(dim % THREAD_GROUP_SIZE_Z == 0);
+    vkCmdDispatch(cmd, 
+        dim / THREAD_GROUP_SIZE_X, 
+        dim / THREAD_GROUP_SIZE_Y, 
+        dim / THREAD_GROUP_SIZE_Z);
 }
 
 void Voxelizer::SubmitCmd(VkCommandBuffer cmd, uint32_t level) 
@@ -189,10 +188,6 @@ void Voxelizer::SubmitCmd(VkCommandBuffer cmd, uint32_t level)
 
 void Voxelizer::VoxelizeLevel(uint32_t level) 
 {
-    // Wait for the previous command to finish.
-    VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
-    VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
-    
     // Update the uniform buffer
     UpdateShaderParams(level);
 
@@ -212,6 +207,10 @@ void Voxelizer::VoxelizeLevel(uint32_t level)
     VK_CHECK(vkEndCommandBuffer(cmd));
     // Submit.
     SubmitCmd(cmd, level);
+    
+    // Wait for the command to finish.
+    VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
 }
 
 void Voxelizer::AllocateGPUBuffers() 
@@ -238,6 +237,7 @@ void Voxelizer::ZeroOutNodeBuffer()
     vkw::Buffer nodeStagingBuf;
     nodeStagingBuf.Init(m_vmaAllocator);
     nodeStagingBuf.Allocate(m_voxels->nodeBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
     void* nodeContents = nodeStagingBuf.Map();
     memset(nodeContents, 0, nodeStagingBuf.size);
     nodeStagingBuf.Unmap();
@@ -263,15 +263,59 @@ void Voxelizer::ZeroOutNodeBuffer()
     // Submit.
     auto submitInfo = vkw::init::SubmitInfo(&cmd);
     VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, m_fence));
+
+    // Wait for the command to finish.
+    VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
+
+    nodeStagingBuf.Cleanup();
 }
 
-VkSemaphore Voxelizer::Voxelize() 
+void Voxelizer::UploadTape() 
 {
-    AllocateGPUBuffers();
+    vkw::Buffer tapeStagingBuf;
+    tapeStagingBuf.Init(m_vmaAllocator);
+    tapeStagingBuf.Allocate(m_voxels->tapeBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void* tapeContents = tapeStagingBuf.Map();
+    memcpy(tapeContents, m_voxels->tape.instructions.data(),
+        m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr));
+    tapeStagingBuf.Unmap();  
+
+    // Allocate the command buffer.
+    VkCommandBuffer cmd;
+    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
+    VK_CHECK(vkAllocateCommandBuffers(m_device->logicalDevice, &allocInfo, &cmd));
+    // Begin the command.
+    auto beginInfo = vkw::init::CommandBufferBeginInfo(
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+    
+    // Record the command 
+    VkBufferCopy region;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+    region.size = tapeStagingBuf.size;
+    vkCmdCopyBuffer(cmd, tapeStagingBuf.buffer, m_voxels->tapeBuffer.buffer, 1, &region);
+    
+    // End the command
+    VK_CHECK(vkEndCommandBuffer(cmd));
+    // Submit.
+    auto submitInfo = vkw::init::SubmitInfo(&cmd);
+    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, m_fence));
+
+    // Wait for the command to finish.
+    VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
+    VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
+
+    tapeStagingBuf.Cleanup();
+}
+
+void Voxelizer::Voxelize() 
+{
     // No need to actually create the root node,
     // as 0 initialized fields are correct.
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
         VoxelizeLevel(i);
     }
-    return m_voxelizeLevelSems.back();
 }

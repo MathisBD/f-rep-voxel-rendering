@@ -7,8 +7,6 @@
 #include "vk_wrapper/buffer.h"
 
 
-#define MAX_LEVEL_COUNT        8
-#define MAX_CONSTANT_POOL_SIZE 256
 
 
 class Voxelizer
@@ -20,10 +18,15 @@ public:
         VoxelStorage* voxels, VmaAllocator vmaAllocator);
     void Cleanup();
 
-    // The returned semaphore is signaled when we are finished 
-    // voxelizing everything.
-    VkSemaphore Voxelize();
+    void Voxelize();
 private:
+    static const uint32_t THREAD_GROUP_SIZE_X    = 4;
+    static const uint32_t THREAD_GROUP_SIZE_Y    = 4;
+    static const uint32_t THREAD_GROUP_SIZE_Z    = 4;
+    static const uint32_t MAX_LEVEL_COUNT        = 8;
+    static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
+
+
     typedef struct {
         uint32_t dim;
         uint32_t nodeOfs;
@@ -33,7 +36,7 @@ private:
 
     typedef struct {
         uint32_t levelCount;
-        uint32_t currLevel;    
+        uint32_t level;    
         uint32_t tapeInstrCount;
         uint32_t _padding_;
 
@@ -71,10 +74,11 @@ private:
     void InitCommands();
     void InitSynchronization();
     void InitBuffers();
-    void InitPipeline();
+    void InitPipelines();
 
     void AllocateGPUBuffers();
     void ZeroOutNodeBuffer();
+    void UploadTape();
 
     void UpdateShaderParams(uint32_t level);
     void RecordCmd(VkCommandBuffer cmd, uint32_t level);

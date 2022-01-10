@@ -7,9 +7,9 @@ int main()
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.printFPS = false;
-    params.gridDims = { 16, 8, 8, 4 };
-    params.shape = Shapes::TangleCube({0, 0, 0}, 4);
+    params.printFPS = true;
+    params.gridDims = { 64 };
+    params.shape = Shapes::Sphere({0, 0, 0}, 20);
 
     Application app(params);
     app.Init();

@@ -5,7 +5,6 @@ layout (local_size_x = 16, local_size_y = 16) in;
 #define MAX_LIGHT_COUNT     8
 #define MAX_MATERIAL_COUNT  8
 #define MAX_LEVEL_COUNT     8
-#define MAX_SLOT_COUNT      16
 #define MAX_CONST_POOL_SIZE 256
 
 

@@ -285,8 +285,9 @@ void csg::Tape::Print() const
         case LOAD_CONST: 
         case SIN:
         case COS:
-            printf("\t%2u   %10s  out=%u   in=%u\n", 
-                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA);
+            printf("\t%2u   %10s  out=%u   in=%u(%.3f)\n", 
+                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA,
+                constantPool[inst.inSlotA]);
             break;
         case ADD:
         case SUB:

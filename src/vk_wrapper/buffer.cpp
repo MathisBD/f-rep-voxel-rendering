@@ -14,6 +14,7 @@ void vkw::Buffer::Cleanup()
 
 void vkw::Buffer::Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memUsage) 
 {
+    assert(size > 0);
     this->size = size;
 
     VkBufferCreateInfo info = {};

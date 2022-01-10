@@ -39,7 +39,7 @@ public:
     vkw::Buffer tapeBuffer;
 
 
-    void Init(VmaAllocator allocator) 
+    void Init(VmaAllocator allocator, csg::Expr shape) 
     {
         gridLevels = gridDims.size();
 
@@ -49,6 +49,7 @@ public:
         }
 
         interiorNodeCount = std::vector<uint32_t>(gridLevels, 0);
+        tape = csg::Tape(shape);
 
         nodeBuffer.Init(allocator);
         childBuffer.Init(allocator);

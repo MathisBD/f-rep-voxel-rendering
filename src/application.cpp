@@ -22,6 +22,16 @@ void Application::Init()
         m_device.queueFamilies.graphics, 
         m_device.queueFamilies.compute,
         m_device.queueFamilies.transfer);
+    printf("[+] Shader invocation limits :\n");
+    printf("\tmax work group size=(%u %u %u)\n", 
+        m_device.properties.limits.maxComputeWorkGroupSize[0],
+        m_device.properties.limits.maxComputeWorkGroupSize[1],
+        m_device.properties.limits.maxComputeWorkGroupSize[2]);
+    printf("\tmax work group count=(%u %u %u)\n", 
+        m_device.properties.limits.maxComputeWorkGroupCount[0],
+        m_device.properties.limits.maxComputeWorkGroupCount[1],
+        m_device.properties.limits.maxComputeWorkGroupCount[2]);
+    printf("\tmax invocation count=%u\n", m_device.properties.limits.maxComputeWorkGroupInvocations);
 
     InitRenderTarget();
     InitVoxels();
@@ -53,8 +63,10 @@ void Application::InitVoxels()
     m_voxels.lowVertex = { -20, -20, -20 };
     m_voxels.worldSize = 40;
 
-    m_voxels.Init(m_vmaAllocator);
+    m_voxels.Init(m_vmaAllocator, m_params.shape);
     m_cleanupQueue.AddFunction([=] { m_voxels.Cleanup(); });
+
+    m_voxels.tape.Print();
 }
 
 void Application::InitRenderTarget() 
@@ -106,9 +118,15 @@ void Application::InitRenderTarget()
 
 void Application::SetupScene() 
 {
-    // Build the shape expression and tape
-    m_builder.Init(m_vmaAllocator, &m_voxels, m_params.shape);
-    m_voxels.tape.Print();
+    m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
+        &m_voxels, m_vmaAllocator);
+
+    m_voxelizer.Voxelize();
+
+    m_voxelizer.Cleanup();
+
+
+    /*m_builder.Init(m_vmaAllocator, &m_voxels);
 
     auto start = std::chrono::high_resolution_clock::now();
     // Create the voxels
@@ -126,7 +144,7 @@ void Application::SetupScene()
         std::chrono::duration_cast<std::chrono::milliseconds>(upload - build).count());
 
     // We can now cleanup the scene builder (and delete its staging buffers)
-    m_builder.Cleanup();
+    m_builder.Cleanup();*/
 }
 
 

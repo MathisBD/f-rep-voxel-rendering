@@ -2,13 +2,10 @@
 #include <string.h>
 
 
-void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels,
-    csg::Expr shape) 
+void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels) 
 {
     m_allocator = vmaAllocator;
     m_voxels = voxels;
-    m_shape = shape;
-    m_voxels->tape = csg::Tape(shape);
     
 
     m_stagingBuffers.node.Init(m_allocator);
@@ -244,6 +241,9 @@ void SceneBuilder::AllocateStagingBuffers()
         if (level < m_voxels->gridLevels - 1) {
             childSize += m_voxels->interiorNodeCount[level] * (dim * dim * dim) * sizeof(uint32_t);
         }
+    }
+    if (childSize == 0) {
+        childSize = 1;
     }
 
     m_stagingBuffers.node.Allocate(nodeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);

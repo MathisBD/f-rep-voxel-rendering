@@ -6,74 +6,10 @@
 #include "engine/render_target.h"
 #include "engine/camera.h"
 #include "engine/voxel_storage.h"
-#include "engine/cleanup_queue.h"
+#include "utils/function_queue.h"
 #include "vk_wrapper/descriptor.h"
 
 
-
-#define MAX_LIGHT_COUNT        8
-#define MAX_MATERIAL_COUNT     8
-#define MAX_LEVEL_COUNT        8
-#define MAX_CONSTANT_POOL_SIZE 256
-
-typedef struct {
-    // The normal vector at the center of the voxel (w unused).
-    glm::vec3 normal;
-    uint32_t materialIndex;
-} ShaderVoxel;
-
-// A single point light.
-typedef struct {
-    glm::vec4 color;
-    // The direction the light is pointing (w unused).
-    glm::vec4 direction;
-} ShaderLight;
-
-typedef struct {
-    uint32_t dim;
-    uint32_t nodeOfs;
-    uint32_t childOfs;
-    float cellSize;
-} ShaderLevelData;
-
-typedef struct {
-    glm::vec4 color;
-} ShaderMaterial;
-
-typedef struct {
-    uint32_t lightCount;
-    uint32_t materialCount;
-    uint32_t levelCount;  
-    uint32_t tapeInstrCount;
-
-    // The camera world position (w unused).
-    glm::vec4 cameraPosition;
-    // The direction the camera is looking in (w unused).
-    // The camera forward, up and right vectors are normalized
-    // and orthogonal.
-    glm::vec4 cameraForward;
-    glm::vec4 cameraUp;
-    glm::vec4 cameraRight;
-    
-    // The world positions of the grid bottom left corner.
-    glm::vec3 gridWorldCoords;
-    float gridWorldSize;
-
-    // The screen resolution in pixels.
-    glm::uvec2 screenResolution;
-    // The world size of the screen boundaries
-    // at one unit away from the camera position.
-    glm::vec2 screenWorldSize;
-
-    ShaderLevelData levels[MAX_LEVEL_COUNT];
-
-    // The color we use for rays that don't intersect any voxel (w unused).
-    glm::vec4 backgroundColor;
-    ShaderLight lights[MAX_LIGHT_COUNT];
-    ShaderMaterial materials[MAX_MATERIAL_COUNT];
-    // The tape's constant pool.
-    float constantPool[MAX_CONSTANT_POOL_SIZE];
-} ShaderParams;
 
 
 class Raytracer
@@ -89,6 +25,67 @@ public:
     VkSemaphore GetComputeSemaphore() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
+    static const uint32_t THREAD_GROUP_SIZE_X    = 16;
+    static const uint32_t THREAD_GROUP_SIZE_Y    = 16;
+    static const uint32_t MAX_LIGHT_COUNT        = 8;
+    static const uint32_t MAX_MATERIAL_COUNT     = 8;
+    static const uint32_t MAX_LEVEL_COUNT        = 8;
+    static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
+
+    // A single point light.
+    typedef struct {
+        glm::vec4 color;
+        // The direction the light is pointing (w unused).
+        glm::vec4 direction;
+    } ShaderLight;
+
+    typedef struct {
+        uint32_t dim;
+        uint32_t nodeOfs;
+        uint32_t childOfs;
+        float cellSize;
+    } ShaderLevelData;
+
+    typedef struct {
+        glm::vec4 color;
+    } ShaderMaterial;
+
+    typedef struct {
+        uint32_t lightCount;
+        uint32_t materialCount;
+        uint32_t levelCount;  
+        uint32_t tapeInstrCount;
+
+        // The camera world position (w unused).
+        glm::vec4 cameraPosition;
+        // The direction the camera is looking in (w unused).
+        // The camera forward, up and right vectors are normalized
+        // and orthogonal.
+        glm::vec4 cameraForward;
+        glm::vec4 cameraUp;
+        glm::vec4 cameraRight;
+        
+        // The world positions of the grid bottom left corner.
+        glm::vec3 gridWorldCoords;
+        float gridWorldSize;
+
+        // The screen resolution in pixels.
+        glm::uvec2 screenResolution;
+        // The world size of the screen boundaries
+        // at one unit away from the camera position.
+        glm::vec2 screenWorldSize;
+
+        ShaderLevelData levels[MAX_LEVEL_COUNT];
+
+        // The color we use for rays that don't intersect any voxel (w unused).
+        glm::vec4 backgroundColor;
+        ShaderLight lights[MAX_LIGHT_COUNT];
+        ShaderMaterial materials[MAX_MATERIAL_COUNT];
+        // The tape's constant pool.
+        float constantPool[MAX_CONSTANT_POOL_SIZE];
+    } ShaderParams;
+
+
     FunctionQueue m_cleanupQueue;
     vkw::Device* m_device;
     RenderTarget* m_target;
