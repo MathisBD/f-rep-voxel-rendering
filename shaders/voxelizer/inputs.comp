@@ -12,11 +12,11 @@ struct LevelData {
     // These are offsets in the node and child buffers.
     // They are given in uints rather than in bytes.
     uint node_ofs;
-    uint child_ofs;
     // The world size of a single child cell at this level.
     // The cell_size of the last level (level_count-1) is the voxel size.
     // The cell_size of level 0 is world_size / dim[0].
     float cell_size;
+    uint _padding_;
 };
 
 
@@ -25,7 +25,7 @@ layout (set = 0, binding = 0) uniform ParamsBuffer {
     uint level_count;
     uint level;
     uint tape_instr_count;
-    uint _padding_;
+    uint child_id_counter;
 
     vec3 grid_world_pos;
     float grid_world_size;
@@ -42,11 +42,7 @@ layout (std430, set = 0, binding = 1) buffer NodeBuffer {
     uint data[];
 } node_buf;
 
-layout (std430, set = 0, binding = 2) buffer ChildBuffer {
-    uint data[];
-} child_buf;
-
-layout (std430, set = 0, binding = 3) readonly buffer TapeBuffer {
+layout (std430, set = 0, binding = 2) readonly buffer TapeBuffer {
     uint instrs[];
 } tape_buf;
 

@@ -7,16 +7,13 @@ void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels)
     m_allocator = vmaAllocator;
     m_voxels = voxels;
     
-
     m_stagingBuffers.node.Init(m_allocator);
-    m_stagingBuffers.child.Init(m_allocator);
     m_stagingBuffers.tape.Init(m_allocator);
 }
 
 void SceneBuilder::Cleanup() 
 {
     m_stagingBuffers.node.Cleanup();
-    m_stagingBuffers.child.Cleanup();
     m_stagingBuffers.tape.Cleanup();
     m_threadPool.Stop();
 }
@@ -31,7 +28,6 @@ void SceneBuilder::BuildScene()
     AllocateStagingBuffers();
 
     m_bufferContents.node = m_stagingBuffers.node.Map(); 
-    m_bufferContents.child = m_stagingBuffers.child.Map(); 
     m_bufferContents.tape = m_stagingBuffers.tape.Map();
 
     std::vector<uint32_t> nextNodeIdx(m_voxels->gridLevels, 0);
@@ -41,7 +37,6 @@ void SceneBuilder::BuildScene()
         m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr));
     
     m_stagingBuffers.node.Unmap();
-    m_stagingBuffers.child.Unmap();
     m_stagingBuffers.tape.Unmap();
 
     // Print some stats before we cleanup.
@@ -55,9 +50,10 @@ void SceneBuilder::BuildScene()
 void SceneBuilder::DeleteNode(TreeNode* node) 
 {
     if (node->level < m_voxels->gridLevels - 1) {
-        uint32_t childCount = node->interiorMaskPC.back();
-        for (uint32_t i = 0; i < childCount; i++) {
-            DeleteNode(node->childList[i]);
+        for (TreeNode* child : node->childList) {
+            if (child != nullptr) {
+                DeleteNode(child);
+            }
         }
     }
     delete node;    
@@ -74,56 +70,11 @@ void SceneBuilder::UploadSceneToGPU(VkCommandBuffer cmd)
     nodeRegion.size = m_stagingBuffers.node.size;
     vkCmdCopyBuffer(cmd, m_stagingBuffers.node.buffer, m_voxels->nodeBuffer.buffer, 1, &nodeRegion);
 
-    VkBufferCopy childRegion;
-    childRegion.srcOffset = 0;
-    childRegion.dstOffset = 0;
-    childRegion.size = m_stagingBuffers.child.size;
-    vkCmdCopyBuffer(cmd, m_stagingBuffers.child.buffer, m_voxels->childBuffer.buffer, 1, &childRegion);
-
     VkBufferCopy tapeRegion;
     tapeRegion.srcOffset = 0;
     tapeRegion.dstOffset = 0;
     tapeRegion.size = m_stagingBuffers.tape.size;
     vkCmdCopyBuffer(cmd, m_stagingBuffers.tape.buffer, m_voxels->tapeBuffer.buffer, 1, &tapeRegion);
-}
-
-
-void SceneBuilder::ComputeInteriorMaskPC(TreeNode* node) 
-{
-    uint32_t dim = m_voxels->gridDims[node->level];
-
-    uint32_t partialCount = 0;
-    for (uint32_t q = 0; q < ((dim*dim*dim) / 32); q++) {
-        partialCount += __builtin_popcount(node->interiorMask[q]);
-        node->interiorMaskPC[q] = partialCount;
-    }
-}
-
-void SceneBuilder::CompactifyChildList(TreeNode* node) 
-{
-    uint32_t dim = m_voxels->gridDims[node->level];
-
-    uint32_t pos = 0;    
-    for (uint32_t index = 0; index < dim*dim*dim; index++) {
-        uint32_t q = index >> 5;
-        uint32_t r = index & ((1 << 5) - 1);
-        if (node->interiorMask[q] & (1 << r)) {
-            node->childList[pos] = node->childList[index];
-            pos++;
-        }
-    }
-}
-
-
-void SceneBuilder::ComputeCoords(TreeNode* node, const glm::u32vec3& coords) 
-{
-    // Compute the total dimension of the child nodes.
-    uint32_t dim = 1;
-    for (uint32_t level = node->level; level < m_voxels->gridLevels; level++) 
-    {
-        dim *= m_voxels->gridDims[level];
-    }
-    node->coords = coords * dim;    
 }
 
 bool SceneBuilder::HasAllLeafChildren(TreeNode* node) 
@@ -152,7 +103,6 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
     node->leafMask = std::vector<uint32_t>((dim*dim*dim) / 32, 0);
     if (node->level < m_voxels->gridLevels - 1) {
         node->interiorMask = std::vector<uint32_t>((dim*dim*dim) / 32, 0);
-        node->interiorMaskPC = std::vector<uint32_t>((dim*dim*dim) / 32, 0);
         node->childList = std::vector<TreeNode*>(dim*dim*dim, nullptr);
     }
 
@@ -202,12 +152,6 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
         delete node;
         return nullptr;
     }
-
-    ComputeCoords(node, coords);    
-    if (node->level < m_voxels->gridLevels - 1) {
-        ComputeInteriorMaskPC(node);
-        CompactifyChildList(node);
-    }
     return node;
 }
 
@@ -220,10 +164,11 @@ void SceneBuilder::CountInteriorNodes(TreeNode* node)
 {
     m_voxels->interiorNodeCount[node->level]++;
  
-    if (node->level < m_voxels->gridLevels - 1) {   
-        uint32_t childCount = node->interiorMaskPC.back();
-        for (uint32_t pos = 0; pos < childCount; pos++) {
-            CountInteriorNodes(node->childList[pos]);
+    if (node->level < m_voxels->gridLevels - 1) {
+        for (TreeNode* child : node->childList) {
+            if (child != nullptr) {
+                CountInteriorNodes(child);
+            }
         }
     }
 }
@@ -232,22 +177,10 @@ void SceneBuilder::AllocateStagingBuffers()
 {
     uint32_t tapeSize = m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
     uint32_t nodeSize = 0;
-    uint32_t childSize = 0;
     for (uint32_t level = 0; level < m_voxels->gridLevels; level++) {
-        uint32_t dim = m_voxels->gridDims[level];
         nodeSize += m_voxels->interiorNodeCount[level] * m_voxels->NodeSize(level);
-        // The last level nodes don't have any interior children :
-        // they don't need any child list.
-        if (level < m_voxels->gridLevels - 1) {
-            childSize += m_voxels->interiorNodeCount[level] * (dim * dim * dim) * sizeof(uint32_t);
-        }
     }
-    if (childSize == 0) {
-        childSize = 1;
-    }
-
     m_stagingBuffers.node.Allocate(nodeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-    m_stagingBuffers.child.Allocate(childSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
     m_stagingBuffers.tape.Allocate(tapeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 }
 
@@ -257,9 +190,6 @@ void SceneBuilder::AllocateGPUBuffers()
 {
     // We assume the staging buffers were already allocated.
     m_voxels->nodeBuffer.Allocate(m_stagingBuffers.node.size,   
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_voxels->childBuffer.Allocate(m_stagingBuffers.child.size, 
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY);
     m_voxels->tapeBuffer.Allocate(m_stagingBuffers.tape.size,   
@@ -280,44 +210,31 @@ uint32_t SceneBuilder::LayoutNode(TreeNode* node, std::vector<uint32_t>& nextNod
     }
     nodeAddr += idx * m_voxels->NodeSize(node->level);
 
-    // Set the node's child list index.
-    // This is for now the same as the node index.
-    uint32_t* clIdx = (uint32_t*)(nodeAddr + m_voxels->NodeOfsCLIdx(node->level));
-    *clIdx = idx;
-    // Copy the coordinates.
-    uint32_t* coords = (uint32_t*)(nodeAddr + m_voxels->NodeOfsCoords(node->level));
-    coords[0] = node->coords.x;
-    coords[1] = node->coords.y;
-    coords[2] = node->coords.z;
-    // Copy the mask
-    memcpy((void*)(nodeAddr + m_voxels->NodeOfsInteriorMask(node->level)), 
-        node->interiorMask.data(), 
-        node->interiorMask.size() * sizeof(uint32_t));
-    // Copy the mask PC
-    memcpy((void*)(nodeAddr + m_voxels->NodeOfsInteriorMaskPC(node->level)),
-        node->interiorMaskPC.data(),
-        node->interiorMaskPC.size() * sizeof(uint32_t));
     // Copy the leaf mask
     memcpy((void*)(nodeAddr + m_voxels->NodeOfsLeafMask(node->level)),
         node->leafMask.data(),
         node->leafMask.size() * sizeof(uint32_t));
-
+    
     if (node->level < m_voxels->gridLevels - 1) {
-        // Compute the address of the node's child list in the child buffer.
-        size_t childAddr = (size_t)m_bufferContents.child;
-        for (uint32_t i = 0; i < node->level; i++) {
-            childAddr += m_voxels->interiorNodeCount[i] * m_voxels->ChildListSize(i);
+        // Copy the interior mask
+        memcpy((void*)(nodeAddr + m_voxels->NodeOfsInteriorMask(node->level)), 
+            node->interiorMask.data(), 
+            node->interiorMask.size() * sizeof(uint32_t));
+        
+        // Create the child list
+        std::vector<uint32_t> childList;
+        for (TreeNode* child : node->childList) {
+            if (child != nullptr) {
+                childList.push_back(LayoutNode(child, nextNodeIdx));
+            }
+            else {
+                childList.push_back(0);
+            }
         }
-        childAddr += idx * m_voxels->ChildListSize(node->level);
-        uint32_t* childList = (uint32_t*)childAddr;
-
-        // Recurse on children
-        uint32_t childCount = node->interiorMaskPC.back();
-        for (uint32_t pos = 0; pos < childCount; pos++) {
-            childList[pos] = LayoutNode(node->childList[pos], nextNodeIdx);
-        }
+        // Copy the child list
+        memcpy((void*)(nodeAddr + m_voxels->NodeOfsChildList(node->level)),
+            childList.data(), childList.size() * sizeof(uint32_t));
     }
-
     return idx;
 }
 
@@ -334,21 +251,51 @@ void SceneBuilder::PrintVoxelStats()
     for (uint32_t count : m_voxels->interiorNodeCount) {
         totalNodeCount += count;
     }
-    printf("[+] Total interior nodes :\n\tcount=%u\tnode buf bytes=%lu\tchild buf bytes=%lu\n",
-        totalNodeCount, m_stagingBuffers.node.size, m_stagingBuffers.child.size);
+    printf("[+] Total interior nodes :\n\tcount=%u\tnode buf bytes=%lu\n",
+        totalNodeCount, m_stagingBuffers.node.size);
 
     printf("[+] Interior nodes per level :\n");
     for (uint32_t lvl = 0; lvl < m_voxels->gridLevels; lvl++) {
         uint32_t nodes = m_voxels->interiorNodeCount[lvl];
-        uint32_t clBytes = (lvl < m_voxels->gridLevels - 1) ? 
-            (nodes * m_voxels->ChildListSize(lvl)) : 0;
-
-        printf("\tlevel %u:\tcount=%5u(%2.1f%%)\tnode buf bytes=%8u(%2.1f%%)\tchild buf bytes=%8u(%2.1f%%)\n", 
+        
+        printf("\tlevel %u:\tcount=%5u(%2.1f%%)\tnode buf bytes=%8u(%2.1f%%)\n", 
             lvl, 
             nodes, 100.0f * nodes / (float)totalNodeCount,
-            nodes * m_voxels->NodeSize(lvl), 100.0f * nodes * m_voxels->NodeSize(lvl) / (float)m_stagingBuffers.node.size,
-            clBytes, 100.0f * clBytes / (float)m_stagingBuffers.child.size);
+            nodes * m_voxels->NodeSize(lvl), 100.0f * nodes * m_voxels->NodeSize(lvl) / (float)m_stagingBuffers.node.size);
     }
+
+    uint32_t buckets = 10;
+    std::vector<uint32_t> childListFullness(buckets, 0);
+    uint32_t clNodes = 0;
+
+    ForEachTreeNode([&] (TreeNode* node) {
+        if (node->level < m_voxels->gridLevels - 1) {
+            uint32_t childCount = 0;
+            uint32_t maxChildCount = 0;
+            for (TreeNode* child : node->childList) {
+                if (child != nullptr) {
+                    childCount++;
+                }
+                maxChildCount++;
+            }
+            assert(maxChildCount == glm::pow(m_voxels->gridDims[node->level], 3));
+            
+            for (uint32_t i = 0; i < buckets; i++) {
+                if (childCount / (float)maxChildCount <= (i+1) / (float)buckets) {
+                    childListFullness[i]++;
+                }
+            }
+            clNodes++;
+        }
+    });
+
+    printf("[+] Child list fullness :\n");
+    for (uint32_t i = 0; i < buckets; i++) {
+        printf("\tUp to %.2f%%: %.2f%%\n", 
+            100.0f * (i+1) / (float)buckets, 
+            100.0f * childListFullness[i] / (float)clNodes);
+    }
+    printf("\n");
 }
 
 void SceneBuilder::ForEachTreeNode(std::function<void(TreeNode*)> f) 
@@ -359,9 +306,10 @@ void SceneBuilder::ForEachTreeNode(std::function<void(TreeNode*)> f)
 void SceneBuilder::ForEachTreeNodeHelper(TreeNode* node, std::function<void(TreeNode*)> f) 
 {
     if (node->level < m_voxels->gridLevels - 1) {
-        uint32_t childCount = node->interiorMaskPC.back();
-        for (uint32_t i = 0; i < childCount; i++) {
-            ForEachTreeNodeHelper(node->childList[i], f);
+        for (TreeNode* child : node->childList) {
+            if (child != nullptr) {
+                ForEachTreeNodeHelper(child, f);
+            }
         }
     }
     f(node);

@@ -91,16 +91,13 @@ void Raytracer::InitPipeline()
         m_paramsBuffer.buffer, 0, m_paramsBuffer.size);
     auto nodeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
-    auto childInfo = vkw::init::DescriptorBufferInfo(
-        m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
     auto tapeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage( 0, &outImageInfo,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,  VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &uniformsInfo,  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &nodeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(3, &childInfo,     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(4, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
 
     // Pipeline layout
@@ -177,21 +174,16 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
 
     // Level data
     uint32_t nodeOfs = 0;
-    uint32_t childOfs = 0;
     float cellSize = m_voxels->worldSize;
     for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
         cellSize /= m_voxels->gridDims[i];
 
         params->levels[i].dim = m_voxels->gridDims[i];
         params->levels[i].nodeOfs = nodeOfs;
-        params->levels[i].childOfs = childOfs;
         params->levels[i].cellSize = cellSize;
 
         // Remember : the offsets are in uints (not in bytes).
         nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
-        if (i < m_voxels->gridLevels - 1) {
-            childOfs += m_voxels->interiorNodeCount[i] * glm::pow(m_voxels->gridDims[i], 3);
-        }
     }
     
     /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {

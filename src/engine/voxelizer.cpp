@@ -94,15 +94,12 @@ void Voxelizer::InitPipelines()
         m_paramsBuffer.buffer, 0, m_paramsBuffer.size);
     auto nodeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
-    auto childInfo = vkw::init::DescriptorBufferInfo(
-        m_voxels->childBuffer.buffer, 0, m_voxels->childBuffer.size);
     auto tapeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindBuffer(0, &paramsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &nodeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(2, &childInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(3, &tapeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &tapeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
     
     // Pipeline layout
@@ -142,7 +139,6 @@ void Voxelizer::UpdateShaderParams(uint32_t level)
 
     params->levels[0].dim = m_voxels->gridDims[0];
     params->levels[0].nodeOfs = 0;
-    params->levels[0].childOfs = 0;
     params->levels[0].cellSize = m_voxels->worldSize / m_voxels->gridDims[0];
 
     memcpy(params->constantPool, m_voxels->tape.constantPool.data(),
@@ -217,13 +213,9 @@ void Voxelizer::AllocateGPUBuffers()
 {
     // Start with 1MB
     uint32_t nodeSize = 1 << 20;
-    uint32_t childSize = 1 << 20;    
     uint32_t tapeSize = m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
 
     m_voxels->nodeBuffer.Allocate(nodeSize,   
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VMA_MEMORY_USAGE_GPU_ONLY);
-    m_voxels->childBuffer.Allocate(childSize, 
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VMA_MEMORY_USAGE_GPU_ONLY);
     m_voxels->tapeBuffer.Allocate(tapeSize,   

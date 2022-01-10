@@ -9,11 +9,6 @@
 class VoxelStorage
 {
 public:
-    struct Voxel {
-        glm::vec3 normal; 
-        uint32_t materialIndex;
-    };
-
     // These should be filled before calling Init().
     // gridDims[i] is the number of VOXELS in each direction for nodes
     // at level i (not the number of vertices in each direction).
@@ -35,9 +30,7 @@ public:
 
     // These are GPU buffers.
     vkw::Buffer nodeBuffer;
-    vkw::Buffer childBuffer;
     vkw::Buffer tapeBuffer;
-
 
     void Init(VmaAllocator allocator, csg::Expr shape) 
     {
@@ -52,14 +45,12 @@ public:
         tape = csg::Tape(shape);
 
         nodeBuffer.Init(allocator);
-        childBuffer.Init(allocator);
         tapeBuffer.Init(allocator);
     }
 
     void Cleanup()
     {
         nodeBuffer.Cleanup();
-        childBuffer.Cleanup();
         tapeBuffer.Cleanup();
     }
 
@@ -71,31 +62,25 @@ public:
 
     // The sizes are in bytes.
     uint32_t NodeSize(uint32_t level) {
-        return 20 + 3 * (glm::pow(gridDims[level], 3) / 8);
-    }
-    uint32_t NodeOfsCLIdx(uint32_t level) {
-        return 0;
+        if (level == gridLevels - 1) {
+            return 4 + glm::pow(gridDims[level], 3) / 4;
+        }
+        else {
+            return 4 + 17 * (glm::pow(gridDims[level], 3) / 4);
+        }
     }
     uint32_t NodeOfsTapeIdx(uint32_t level) {
-        return 4;
-    }
-    uint32_t NodeOfsCoords(uint32_t level) {
-        return 8;
-    }
-    uint32_t NodeOfsInteriorMask(uint32_t level) {
-        return 20;
-    }
-    uint32_t NodeOfsInteriorMaskPC(uint32_t level) {
-        return 20 + glm::pow(gridDims[level], 3) / 8;
+        return 0;
     }
     uint32_t NodeOfsLeafMask(uint32_t level) {
-        return 20 + 2 * (glm::pow(gridDims[level], 3) / 8);
+        return 4;
     }
-
-
-    uint32_t ChildListSize(uint32_t level) {
-        // The last level doesn't have child lists.
+    uint32_t NodeOfsInteriorMask(uint32_t level) {
         assert(level < gridLevels - 1);
-        return 4 * glm::pow(gridDims[level], 3);
+        return 4 + glm::pow(gridDims[level], 3) / 8;
+    }
+    uint32_t NodeOfsChildList(uint32_t level) {
+        assert(level < gridLevels - 1);
+        return 4 + 2 * (glm::pow(gridDims[level], 3) / 8);
     }
 };  

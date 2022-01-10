@@ -21,27 +21,23 @@ Daniel Reiter Horn, Jeremy Sugerman, Mike Houston, Pat Hanrahan
 GPU data layout : 4 large storage buffers
 
 Interior Node Buffer : all interior nodes at level 0, then all at level 1, etc.
-Child Buffer : child lists for all interior nodes
-    -> all lists at level 0, then all at level 1, etc.
 Tape buffer : the list of all tapes 
 
 Interior Node structure :
-    child list index  : 4 bytes (1 uint)
     tape index        : 4 bytes (1 uint)
-    coordinates       : 12 bytes (3 uints)
-    interior mask     : res(L)^3 / 8 bytes
-    interior mask PC  : res(L)^3 / 8 bytes
-    leaf  mask        : res(L)^3 / 8 bytes    
+    leaf  mask        : res(L)^3 / 8 bytes
+    interior mask     : res(L)^3 / 8 bytes 
+    child list        : 4 * res(L)^3 bytes   
 The coordinates of a node are given in the finest grid.
 The interior mask is the mask of the non-leaf children nodes.
 The leaf mask is the mask of the leaf children nodes.
-
-The leaf nodes don't occupy any space in memory.
-
-
+The leaf nodes don't occupy any space in memory,
+    apart from the bit in the leaf mask. 
 Child list : contains the indices (in the node buffer) of the non-leaf children nodes. 
     An index is 4 bytes. 
     There are res(L)^3 indices to store, where L is the level of the parent node.
+Interior nodes at the maximum level don't have an interior mask or a child list.
+
 
 # Voxelizer
 

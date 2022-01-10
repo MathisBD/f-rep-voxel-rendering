@@ -1,0 +1,45 @@
+#version 450
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : enable
+
+// Include other files  
+//#define DEBUG_LOG
+#include "utils.comp"
+#include "voxelizer/inputs.comp"
+#include "tape.comp"
+
+void voxelize(uint node, uvec3 cell)
+{
+    uint cell_index = INDEX3D(cell, dim);
+    uint q = cell_index >> 5;
+    uint r = cell_index & ((1 << 5) - 1);
+    
+    uint node_pos = params_buf.levels[lvl].node_ofs +
+        node * NODE_SIZE(lvl);     
+
+    // Point evaluation 
+    if (lvl == params_buf.level_count - 1) {
+        vec3 pos = node_world_pos(node, lvl) +
+            cell * params_buf.levels[lvl].cell_size;
+        float density = eval_tape(pos);
+        
+        if (density < 0.0f) {
+            atomicOr(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(lvl) + q], 1 << r);
+        }
+    }
+    // Interval evaluation
+    else {
+        atomicOr(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(lvl) + q], 1 << r);
+    }
+}
+
+
+// The first stage only updates the leaf and interior masks.
+// All the other book-keeping operations are performed in the second stage. 
+void main()
+{ 
+    uvec3 cell = gl_GlobalInvocationID.xyz % params_buf.levels[params_buf.level].dim;
+    uint node = gl_GlobalInvocationID.x / params_buf.levels[params_buf.level].dim;
+    voxelize(node, cell);
+}

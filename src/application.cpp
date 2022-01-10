@@ -118,15 +118,15 @@ void Application::InitRenderTarget()
 
 void Application::SetupScene() 
 {
-    m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
+    /*m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
         &m_voxels, m_vmaAllocator);
 
     m_voxelizer.Voxelize();
 
-    m_voxelizer.Cleanup();
+    m_voxelizer.Cleanup();*/
 
 
-    /*m_builder.Init(m_vmaAllocator, &m_voxels);
+    m_builder.Init(m_vmaAllocator, &m_voxels);
 
     auto start = std::chrono::high_resolution_clock::now();
     // Create the voxels
@@ -144,7 +144,7 @@ void Application::SetupScene()
         std::chrono::duration_cast<std::chrono::milliseconds>(upload - build).count());
 
     // We can now cleanup the scene builder (and delete its staging buffers)
-    m_builder.Cleanup();*/
+    m_builder.Cleanup();
 }
 
 

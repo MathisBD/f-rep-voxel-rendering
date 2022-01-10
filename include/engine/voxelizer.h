@@ -30,8 +30,8 @@ private:
     typedef struct {
         uint32_t dim;
         uint32_t nodeOfs;
-        uint32_t childOfs;
         float cellSize;
+        uint32_t _padding_;
     } ShaderLevelData;
 
     typedef struct {

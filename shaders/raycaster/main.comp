@@ -8,7 +8,8 @@
 //#define DEBUG_LOG
 #include "utils.comp"
 #include "raycaster/inputs.comp"
-#include "tape.comp"
+#include "node.comp"
+#include "tape.comp" 
 
 
 struct Hit {
@@ -54,6 +55,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     vec3 invDir = 1.0f / dir;
     uint lvl;
     uint node;
+    vec3 node_pos;
     float t_curr = max(grid_t_enter, 0.0f) + EPS; // the current time
     float t_max = t_curr;
 
@@ -63,12 +65,13 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
     while (t_max < grid_t_leave - EPS) {
         lvl = 0;
         node = 0;
+        node_pos = params_buf.grid_world_pos;
         t_curr = t_max + EPS;
         t_max = grid_t_leave;
 
         while (t_curr < t_max - EPS) {
             // Prepare
-            vec3 norm_pos = (orig + (t_curr + EPS) * dir - node_world_pos(node, lvl)) /
+            vec3 norm_pos = (orig + (t_curr + EPS) * dir - node_pos) /
                 params_buf.levels[lvl].cell_size; 
             ivec3 cell = ivec3(floor(norm_pos));
             vec3 t_next = (t_curr + EPS) + (cell + SIGN_01(invDir) - norm_pos) * 
@@ -77,7 +80,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
             //LOG8("level=%u   node=%u   pos=%.3v3f   cell_size=%.4f   norm_pos=%.3v3f   cell=%v3d   cell_index=%u   node_pos=%.3v3f\n", 
             //    lvl, node, orig + (t_curr + EPS) * dir, params_buf.levels[lvl].cell_size, norm_pos, cell, cell_index, node_world_pos(node, lvl));
-     
+      
             if (node_has_leaf_child(node, lvl, cell_index)) {
                 hit.t = t_curr;  
                 //LOG0("Hit voxel\n");
@@ -87,6 +90,7 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
             else if (node_has_interior_child(node, lvl, cell_index)) {
                 //LOG0("Recursing in child\n");
                 node = node_get_interior_child(node, lvl, cell_index);
+                node_pos += cell * params_buf.levels[lvl].cell_size;
                 t_max = MIN_3(t_next.x, t_next.y, t_next.z);
                 lvl++;
             }
