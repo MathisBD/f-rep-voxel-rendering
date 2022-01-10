@@ -182,7 +182,7 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
         params->levels[i].nodeOfs = nodeOfs;
         params->levels[i].cellSize = cellSize;
 
-        // Remember : the offsets are in uints (not in bytes).
+        // Remember : the shader-side offsets are in uints (not in bytes).
         nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
     }
     

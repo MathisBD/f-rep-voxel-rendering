@@ -41,6 +41,7 @@ set(SHADER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/shaders")
 
 set(SHADER_SOURCES 
     "${CMAKE_SOURCE_DIR}/shaders/raycaster/main.comp"
+    "${CMAKE_SOURCE_DIR}/shaders/voxelizer/main.comp"
     "${CMAKE_SOURCE_DIR}/shaders/renderer/triangle.vert"
     "${CMAKE_SOURCE_DIR}/shaders/renderer/triangle.frag")
 

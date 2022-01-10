@@ -25,7 +25,7 @@ layout (set = 0, binding = 0) uniform ParamsBuffer {
     uint level_count;
     uint level;
     uint tape_instr_count;
-    uint child_id_counter;
+    uint _padding_;
 
     vec3 grid_world_pos;
     float grid_world_size;
@@ -46,33 +46,6 @@ layout (std430, set = 0, binding = 2) readonly buffer TapeBuffer {
     uint instrs[];
 } tape_buf;
 
-// Node structure.
-// Sizes are given in uints rather than bytes.
-#define NODE_SIZE(level)                 (5 + 3 * (CUBE(params_buf.levels[(level)].dim) >> 5))
-#define NODE_OFS_CL_IDX(level)           0
-#define NODE_OFS_TAPE_IDX(level)         1
-#define NODE_OFS_COORDS(level)           2
-#define NODE_OFS_INTERIOR_MASK(level)    5
-#define NODE_OFS_INTERIOR_MASK_PC(level) (5 + (CUBE(params_buf.levels[(level)].dim) >> 5))
-#define NODE_OFS_LEAF_MASK(level)        (5 + (CUBE(params_buf.levels[(level)].dim) >> 4))
-// Child list structure.
-// Sizes are given in uints rather than bytes.
-#define CL_SIZE(level) CUBE(params_buf.levels[(level)].dim)
-
-
-
-vec3 node_world_pos(uint node_id, uint level)
-{
-    uint coords_pos = 
-        params_buf.levels[level].node_ofs +
-        NODE_SIZE(level) * node_id +
-        NODE_OFS_COORDS(level);
-
-    uvec3 coords = uvec3(
-        node_buf.data[coords_pos],
-        node_buf.data[coords_pos + 1],
-        node_buf.data[coords_pos + 2]);
-
-    return params_buf.grid_world_pos +
-        vec3(coords) * params_buf.levels[params_buf.level_count - 1].cell_size;
-}
+layout(std430, set = 0, binding = 3) buffer ChildCountBuffer {
+    uint child_count;
+} child_count_buf;

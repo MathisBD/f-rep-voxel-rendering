@@ -63,24 +63,27 @@ public:
     // The sizes are in bytes.
     uint32_t NodeSize(uint32_t level) {
         if (level == gridLevels - 1) {
-            return 4 + glm::pow(gridDims[level], 3) / 4;
+            return 16 + glm::pow(gridDims[level], 3) / 4;
         }
         else {
-            return 4 + 17 * (glm::pow(gridDims[level], 3) / 4);
+            return 16 + 17 * (glm::pow(gridDims[level], 3) / 4);
         }
     }
     uint32_t NodeOfsTapeIdx(uint32_t level) {
         return 0;
     }
-    uint32_t NodeOfsLeafMask(uint32_t level) {
+    uint32_t NodeOfsCoords(uint32_t level) {
         return 4;
+    }
+    uint32_t NodeOfsLeafMask(uint32_t level) {
+        return 16;
     }
     uint32_t NodeOfsInteriorMask(uint32_t level) {
         assert(level < gridLevels - 1);
-        return 4 + glm::pow(gridDims[level], 3) / 8;
+        return 16 + glm::pow(gridDims[level], 3) / 8;
     }
     uint32_t NodeOfsChildList(uint32_t level) {
         assert(level < gridLevels - 1);
-        return 4 + 2 * (glm::pow(gridDims[level], 3) / 8);
+        return 16 + 2 * (glm::pow(gridDims[level], 3) / 8);
     }
 };  

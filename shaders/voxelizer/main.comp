@@ -1,0 +1,98 @@
+#version 450
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : enable
+
+// Include other files  
+//#define DEBUG_LOG 
+#include "utils.comp"
+#include "voxelizer/inputs.comp"
+#include "node.comp"
+#include "tape.comp"
+
+
+#define LVL params_buf.level
+#define DIM params_buf.levels[params_buf.level].dim
+
+void set_leaf_bit(uint node, uvec3 cell)
+{
+    uint cell_index = INDEX3D(cell, DIM);
+    uint q = cell_index >> 5;
+    uint r = cell_index & ((1 << 5) - 1);
+    
+    uint node_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL);     
+
+    atomicOr(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], 1 << r);
+}
+
+void set_interior_bit(uint node, uvec3 cell)
+{
+    uint cell_index = INDEX3D(cell, DIM);
+    uint q = cell_index >> 5;
+    uint r = cell_index & ((1 << 5) - 1);
+    
+    uint node_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL);     
+
+    atomicOr(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], 1 << r);
+}
+
+void set_child_list_entry(uint node, uvec3 cell, uint child)
+{
+    // set the child id in the parent child list
+    uint child_list_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL) +
+        NODE_OFS_CHILD_LIST(LVL);
+
+    uint cell_index = INDEX3D(cell, DIM);
+    node_buf.data[child_list_pos + cell_index] = child;
+}
+
+void set_child_coords(uint child, uvec3 coords)
+{
+    uint coords_pos = params_buf.levels[LVL+1].node_ofs +
+        child * NODE_SIZE(LVL+1) + NODE_OFS_COORDS(LVL+1);
+    node_buf.data[coords_pos + 0] = coords.x;
+    node_buf.data[coords_pos + 1] = coords.y;
+    node_buf.data[coords_pos + 2] = coords.z;
+}
+
+void voxelize(uint node, uvec3 cell)
+{
+    // node coordinates
+    uint coords_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL) + NODE_OFS_COORDS(LVL);
+    uvec3 coords = uvec3(
+        node_buf.data[coords_pos + 0],
+        node_buf.data[coords_pos + 1],
+        node_buf.data[coords_pos + 2]);
+    uvec3 child_coords = coords * DIM + cell;
+
+    // Point evaluation 
+    if (LVL == params_buf.level_count - 1) {
+        vec3 pos = params_buf.grid_world_pos + 
+            child_coords * params_buf.levels[LVL].cell_size;
+        float density = eval_tape(pos);
+        if (density < 0.0f) {
+            set_leaf_bit(node, cell);
+        } 
+    }
+    // Interval evaluation 
+    else {
+        set_interior_bit(node, cell); 
+        uint child = atomicAdd(child_count_buf.child_count, 1);
+        set_child_list_entry(node, cell, child);
+        set_child_coords(child, child_coords);
+    } 
+}
+
+
+// The first stage only updates the leaf and interior masks.
+// All the other book-keeping operations are performed in the second stage. 
+void main()
+{ 
+    uvec3 cell = gl_GlobalInvocationID.xyz % DIM;
+    uint node = gl_GlobalInvocationID.x / DIM;
+    voxelize(node, cell);
+} 

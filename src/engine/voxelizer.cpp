@@ -24,7 +24,7 @@ void Voxelizer::Init(
     ZeroOutNodeBuffer();
     UploadTape();
 
-    InitPipelines();
+    InitPipeline();
 }
 
 void Voxelizer::Cleanup() 
@@ -70,16 +70,24 @@ void Voxelizer::InitSynchronization()
 
 void Voxelizer::InitBuffers() 
 {
-    // Uniform buffer
+    // Params buffer
     m_paramsBuffer.Init(m_vmaAllocator);
     m_paramsBuffer.Allocate(
         sizeof(ShaderParams), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_cleanupQueue.AddFunction([=] { m_paramsBuffer.Cleanup(); });
+
+    // Child count buffer
+    m_childCountBuffer.Init(m_vmaAllocator);
+    m_childCountBuffer.Allocate(
+        sizeof(uint32_t),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_cleanupQueue.AddFunction([=] { m_childCountBuffer.Cleanup(); });
 }
 
-void Voxelizer::InitPipelines() 
+void Voxelizer::InitPipeline() 
 {
     // Load the shader
     vkw::Shader shader;
@@ -96,10 +104,13 @@ void Voxelizer::InitPipelines()
         m_voxels->nodeBuffer.buffer, 0, m_voxels->nodeBuffer.size);
     auto tapeInfo = vkw::init::DescriptorBufferInfo(
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
+    auto childCountInfo = vkw::init::DescriptorBufferInfo(
+        m_childCountBuffer.buffer, 0, m_childCountBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
-        .BindBuffer(0, &paramsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(1, &nodeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .BindBuffer(2, &tapeInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(0, &paramsInfo,     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(1, &nodeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(2, &tapeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(3, &childCountInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
     
     // Pipeline layout
@@ -137,14 +148,29 @@ void Voxelizer::UpdateShaderParams(uint32_t level)
     params->gridWorldCoords = m_voxels->lowVertex;
     params->gridWorldSize = m_voxels->worldSize;
 
-    params->levels[0].dim = m_voxels->gridDims[0];
-    params->levels[0].nodeOfs = 0;
-    params->levels[0].cellSize = m_voxels->worldSize / m_voxels->gridDims[0];
+    uint32_t nodeOfs = 0;
+    float cellSize = m_voxels->worldSize;
+    for (uint32_t i = 0; i <= level+1 && i < m_voxels->gridLevels; i++) {
+        cellSize /= m_voxels->gridDims[i];
+
+        params->levels[i].dim = m_voxels->gridDims[i];
+        params->levels[i].cellSize = cellSize;
+        params->levels[i].nodeOfs = nodeOfs;
+
+        // Remember : the shader-side offsets are in uints (not in bytes).
+        nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
+    }
+    //params->levels[0].nodeOfs = 0;
+    //params->levels[1].nodeOfs = m_voxels->NodeSize(0) / sizeof(uint32_t);
 
     memcpy(params->constantPool, m_voxels->tape.constantPool.data(),
         m_voxels->tape.constantPool.size() * sizeof(csg::Tape::Instr));
 
     m_paramsBuffer.Unmap();
+
+    uint32_t* childCount = (uint32_t*)m_childCountBuffer.Map();
+    *childCount = 0;
+    m_childCountBuffer.Unmap();
 }
 
 void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level) 
@@ -160,7 +186,7 @@ void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level)
     assert(dim % THREAD_GROUP_SIZE_Y == 0);
     assert(dim % THREAD_GROUP_SIZE_Z == 0);
     vkCmdDispatch(cmd, 
-        dim / THREAD_GROUP_SIZE_X, 
+        (dim / THREAD_GROUP_SIZE_X) * m_voxels->interiorNodeCount[level], 
         dim / THREAD_GROUP_SIZE_Y, 
         dim / THREAD_GROUP_SIZE_Z);
 }
@@ -207,12 +233,16 @@ void Voxelizer::VoxelizeLevel(uint32_t level)
     // Wait for the command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
+
+    uint32_t* childCount = (uint32_t*)m_childCountBuffer.Map();
+    m_voxels->interiorNodeCount[level + 1] = *childCount;
+    m_childCountBuffer.Unmap();
 }
 
 void Voxelizer::AllocateGPUBuffers() 
 {
-    // Start with 1MB
-    uint32_t nodeSize = 1 << 20;
+    // Start with 1GB
+    uint32_t nodeSize = 1 << 30;
     uint32_t tapeSize = m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
 
     m_voxels->nodeBuffer.Allocate(nodeSize,   
@@ -307,7 +337,10 @@ void Voxelizer::Voxelize()
 {
     // No need to actually create the root node,
     // as 0 initialized fields are correct.
+    // However we have to encode the number of nodes on level 0.
+    m_voxels->interiorNodeCount[0] = 1;
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        printf("\tlevel %u: interior node count=%u\n", i, m_voxels->interiorNodeCount[i]);
         VoxelizeLevel(i);
     }
 }

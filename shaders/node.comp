@@ -3,15 +3,16 @@
 // Sizes are given in uints rather than bytes.
 #define NODE_SIZE(level)                                    \
     ((level) == params_buf.level_count - 1 ?                \
-    1 + (CUBE(params_buf.levels[(level)].dim) >> 4) :       \
-    1 + 17 * (CUBE(params_buf.levels[(level)].dim) >> 4))
+    4 + (CUBE(params_buf.levels[(level)].dim) >> 4) :       \
+    4 + 17 * (CUBE(params_buf.levels[(level)].dim) >> 4))
 
 #define NODE_OFS_TAPE_IDX(level)         0
-#define NODE_OFS_LEAF_MASK(level)        1 
-// Nodes on level params_buf.level_count - 1 don't have
+#define NODE_OFS_COORDS(level)           1
+#define NODE_OFS_LEAF_MASK(level)        4 
+// Nodes on level (params_buf.level_count - 1) don't have
 // an interior mask or a child list.
-#define NODE_OFS_INTERIOR_MASK(level)    (1 + (CUBE(params_buf.levels[(level)].dim) >> 5))
-#define NODE_OFS_CHILD_LIST(level)       (1 + (CUBE(params_buf.levels[(level)].dim) >> 4))
+#define NODE_OFS_INTERIOR_MASK(level)    (4 + (CUBE(params_buf.levels[(level)].dim) >> 5))
+#define NODE_OFS_CHILD_LIST(level)       (4 + (CUBE(params_buf.levels[(level)].dim) >> 4))
 
 
 // child_index == INDEX(local position in the node)

@@ -11,8 +11,6 @@
 
 float eval_tape(vec3 pos)
 {
-    LOG1("POS=%.2v3f\n", pos);
-
     float slots[MAX_SLOT_COUNT];
     slots[0] = pos.x;
     slots[1] = pos.y;
@@ -26,15 +24,11 @@ float eval_tape(vec3 pos)
         uint outSlot = (inst >> 8)  & 0xFF;
         uint inSlotA = (inst >> 16) & 0xFF;
         uint inSlotB = (inst >> 24) & 0xFF;
-        
-        LOG5("i=%u   op=%u   outSlot=%u   inSlotA=%u   inSlotB=%u\n", 
-            i, op, outSlot, inSlotA, inSlotB);
 
         // Dispatch        
         switch (op) {
         case OP_CONSTANT:
             slots[outSlot] = params_buf.const_pool[inSlotA / 4][inSlotA % 4];
-            LOG1("\tCONSTANT=%.3f\n", slots[outSlot]);
             break;
         case OP_SIN:
             slots[outSlot] = sin(slots[inSlotA]);
@@ -57,6 +51,5 @@ float eval_tape(vec3 pos)
         } 
         i++;
     }   
-    LOG1("result=%.3f\n", slots[0]);
     return slots[0];
 }

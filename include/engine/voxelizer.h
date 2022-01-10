@@ -26,7 +26,6 @@ private:
     static const uint32_t MAX_LEVEL_COUNT        = 8;
     static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
 
-
     typedef struct {
         uint32_t dim;
         uint32_t nodeOfs;
@@ -70,11 +69,12 @@ private:
 
     // The shader parameters uniform buffer.
     vkw::Buffer m_paramsBuffer;
+    vkw::Buffer m_childCountBuffer;
 
     void InitCommands();
     void InitSynchronization();
     void InitBuffers();
-    void InitPipelines();
+    void InitPipeline();
 
     void AllocateGPUBuffers();
     void ZeroOutNodeBuffer();

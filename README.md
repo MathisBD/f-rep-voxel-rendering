@@ -25,10 +25,11 @@ Tape buffer : the list of all tapes
 
 Interior Node structure :
     tape index        : 4 bytes (1 uint)
+    coords            : 12 bytes (3 uints)
     leaf  mask        : res(L)^3 / 8 bytes
     interior mask     : res(L)^3 / 8 bytes 
     child list        : 4 * res(L)^3 bytes   
-The coordinates of a node are given in the finest grid.
+The coordinates of a node are given in the finest grid at this node's level.
 The interior mask is the mask of the non-leaf children nodes.
 The leaf mask is the mask of the leaf children nodes.
 The leaf nodes don't occupy any space in memory,
