@@ -6,8 +6,9 @@
 #define IS_BIT_SET(x, bit) ((x) & (1 << (bit)))
 
 #define MAX_3(x, y, z) max((x), max((y), (z)))
-
 #define MIN_3(x, y, z) min((x), min((y), (z)))
+#define MAX_4(x, y, z, w) max(max((x), (y)), max((z), (w)))
+#define MIN_4(x, y, z, w) min(min((x), (y)), min((z), (w)))
 
 #define EPS 0.0001f
 

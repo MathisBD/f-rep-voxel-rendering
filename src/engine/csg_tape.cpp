@@ -204,7 +204,7 @@ void csg::Tape::BuildInstrs()
 
     for (uint32_t i = 0; i < m_exprs.size(); i++) {
         csg::Expr e = m_exprs[i];
-        csg::Tape::Instr inst;
+        csg::Tape::Instr inst = {};
 
         if (e.IsAxisOp()) {
             assert(e.node.get() == m_x.node.get() || 

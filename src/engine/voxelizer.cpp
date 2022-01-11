@@ -340,7 +340,6 @@ void Voxelizer::Voxelize()
     // However we have to encode the number of nodes on level 0.
     m_voxels->interiorNodeCount[0] = 1;
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        printf("\tlevel %u: interior node count=%u\n", i, m_voxels->interiorNodeCount[i]);
         VoxelizeLevel(i);
     }
 }

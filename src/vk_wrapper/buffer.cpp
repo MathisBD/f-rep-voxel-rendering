@@ -15,6 +15,7 @@ void vkw::Buffer::Cleanup()
 void vkw::Buffer::Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memUsage) 
 {
     assert(size > 0);
+    assert(size <= (1 << 30)); // more than this freezes my computer
     this->size = size;
 
     VkBufferCreateInfo info = {};

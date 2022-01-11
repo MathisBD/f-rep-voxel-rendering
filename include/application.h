@@ -20,7 +20,9 @@ public:
     {
         bool enableValidationLayers = true;
         bool enableShaderDebugPrintf = false;
+        bool useGPUVoxelizer = false;
         bool printFPS = false;
+        bool printHardwareInfo = false;
         std::vector<uint32_t> gridDims;
         csg::Expr shape;
     };

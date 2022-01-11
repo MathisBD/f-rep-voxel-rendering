@@ -18,24 +18,47 @@ void Application::Init()
 {
     EngineBase::Init();
 
-    printf("[+] Queue families :\n\tgraphics=%u\n\tcompute=%u\n\ttransfer=%u\n",
-        m_device.queueFamilies.graphics, 
-        m_device.queueFamilies.compute,
-        m_device.queueFamilies.transfer);
-    printf("[+] Shader invocation limits :\n");
-    printf("\tmax work group size=(%u %u %u)\n", 
-        m_device.properties.limits.maxComputeWorkGroupSize[0],
-        m_device.properties.limits.maxComputeWorkGroupSize[1],
-        m_device.properties.limits.maxComputeWorkGroupSize[2]);
-    printf("\tmax work group count=(%u %u %u)\n", 
-        m_device.properties.limits.maxComputeWorkGroupCount[0],
-        m_device.properties.limits.maxComputeWorkGroupCount[1],
-        m_device.properties.limits.maxComputeWorkGroupCount[2]);
-    printf("\tmax invocation count=%u\n", m_device.properties.limits.maxComputeWorkGroupInvocations);
+    if (m_params.printHardwareInfo) {
+        printf("[+] Using device %s\n", m_device.properties.deviceName);
+        printf("[+] Queue families :\n\tgraphics=%u\n\tcompute=%u\n\ttransfer=%u\n",
+            m_device.queueFamilies.graphics, 
+            m_device.queueFamilies.compute,
+            m_device.queueFamilies.transfer);
+        printf("[+] Shader invocation limits :\n");
+        printf("\tmax work group size=(%u %u %u)\n", 
+            m_device.properties.limits.maxComputeWorkGroupSize[0],
+            m_device.properties.limits.maxComputeWorkGroupSize[1],
+            m_device.properties.limits.maxComputeWorkGroupSize[2]);
+        printf("\tmax work group count=(%u %u %u)\n", 
+            m_device.properties.limits.maxComputeWorkGroupCount[0],
+            m_device.properties.limits.maxComputeWorkGroupCount[1],
+            m_device.properties.limits.maxComputeWorkGroupCount[2]);
+        printf("\tmax invocation count=%u\n", m_device.properties.limits.maxComputeWorkGroupInvocations);
+    }
 
     InitRenderTarget();
     InitVoxels();
+    
+    auto start = std::chrono::high_resolution_clock::now();
     SetupScene();
+    auto end = std::chrono::high_resolution_clock::now();
+    printf("[+] Voxelization time = %ldms\n", 
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+
+    printf("[+] Grid dimensions: ");
+    uint32_t totalDim = 1;
+    for (uint32_t i = 0; i < m_voxels.gridLevels; i++) {
+        printf("%u ", m_voxels.gridDims[i]);
+        totalDim *= m_voxels.gridDims[i];
+    }
+    printf(" total=%u\n", totalDim);
+
+    printf("[+] Nodes per level :\n");
+    for (uint32_t i = 0; i < m_voxels.gridLevels; i++) {
+        printf("\tlevel %u: %u\n", i, m_voxels.interiorNodeCount[i]);
+    }
+    printf("\n");
+
 
     m_renderer.Init(
         &m_device, &m_descAllocator, &m_descCache,
@@ -116,30 +139,20 @@ void Application::InitRenderTarget()
 
 void Application::SetupScene() 
 {
-    m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
-        &m_voxels, m_vmaAllocator);
-    m_voxelizer.Voxelize();
-    m_voxelizer.Cleanup();
-
-    /*m_builder.Init(m_vmaAllocator, &m_voxels);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    // Create the voxels
-    m_builder.BuildScene();
-
-    auto build = std::chrono::high_resolution_clock::now();
-    printf("[+] Build time = %ldms\n", 
-        std::chrono::duration_cast<std::chrono::milliseconds>(build - start).count());
-
-    ImmediateSubmit([=] (VkCommandBuffer cmd) { 
-        m_builder.UploadSceneToGPU(cmd);
-    });
-    auto upload = std::chrono::high_resolution_clock::now();
-    printf("[+] Upload time = %ldms\n", 
-        std::chrono::duration_cast<std::chrono::milliseconds>(upload - build).count());
-
-    // We can now cleanup the scene builder (and delete its staging buffers)
-    m_builder.Cleanup();*/
+    if (m_params.useGPUVoxelizer) {
+        m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
+            &m_voxels, m_vmaAllocator);
+        m_voxelizer.Voxelize();
+        m_voxelizer.Cleanup();
+    }
+    else {
+        m_builder.Init(m_vmaAllocator, &m_voxels);
+        m_builder.BuildScene();
+        ImmediateSubmit([=] (VkCommandBuffer cmd) { 
+            m_builder.UploadSceneToGPU(cmd);
+        });
+        m_builder.Cleanup();
+    }
 }
 
 

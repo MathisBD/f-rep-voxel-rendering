@@ -84,7 +84,6 @@ void EngineBase::InitVulkanCore()
     // Device info
     m_device.features = vkbPhysDev.features;
     m_device.properties = vkbPhysDev.properties;
-    printf("[+] Using device %s\n", m_device.properties.deviceName);
 
     // Device queues
     m_device.queueFamilyProperties = vkbDev.queue_families;

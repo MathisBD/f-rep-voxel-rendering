@@ -68,23 +68,35 @@ void voxelize(uint node, uvec3 cell)
         node_buf.data[coords_pos + 1],
         node_buf.data[coords_pos + 2]);
     uvec3 child_coords = coords * DIM + cell;
-
+    vec3 child_pos = params_buf.grid_world_pos + 
+        child_coords * params_buf.levels[LVL].cell_size;
+    
     // Point evaluation 
     if (LVL == params_buf.level_count - 1) {
-        vec3 pos = params_buf.grid_world_pos + 
-            child_coords * params_buf.levels[LVL].cell_size;
-        float density = eval_tape(pos);
+        float density = tape_eval_point(child_pos);
         if (density < 0.0f) {
             set_leaf_bit(node, cell);
         } 
     }
     // Interval evaluation 
     else {
-        set_interior_bit(node, cell); 
-        uint child = atomicAdd(child_count_buf.child_count, 1);
-        set_child_list_entry(node, cell, child);
-        set_child_coords(child, child_coords);
-    } 
+        Interval density = tape_eval_interval(child_pos, child_pos + params_buf.levels[LVL].cell_size);
+        // Empty node
+        if (density.low > 0) {
+            return;
+        }
+        // Leaf node
+        else if (density.high < 0) {
+            set_leaf_bit(node, cell);
+        }
+        // Ambiguous node
+        else {
+            set_interior_bit(node, cell); 
+            uint child = atomicAdd(child_count_buf.child_count, 1);
+            set_child_list_entry(node, cell, child);
+            set_child_coords(child, child_coords);
+        }
+    }  
 }
 
 

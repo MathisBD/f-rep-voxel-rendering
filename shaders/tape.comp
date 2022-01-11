@@ -9,7 +9,15 @@
 #define OP_MUL      5
 #define OP_DIV      6
 
-float eval_tape(vec3 pos)
+const float infinity = 1. / 0.;
+
+struct Interval {
+    float low;
+    float high;
+};
+
+
+float tape_eval_point(vec3 pos)
 {
     float slots[MAX_SLOT_COUNT];
     slots[0] = pos.x;
@@ -47,6 +55,85 @@ float eval_tape(vec3 pos)
             break;
         case OP_DIV:
             slots[outSlot] = slots[inSlotA] / slots[inSlotB];
+            break;
+        } 
+        i++;
+    }   
+    return slots[0];
+}
+
+Interval interval_multiply(Interval a, Interval b)
+{
+    Interval c;
+    c.low = MIN_4(
+        a.low * b.low, a.low * b.high, a.high * b.low, a.high * b.high);
+    c.high = MAX_4(
+        a.low * b.low, a.low * b.high, a.high * b.low, a.high * b.high);
+    return c;
+}
+
+
+Interval tape_eval_interval(vec3 low, vec3 high)
+{
+    Interval slots[MAX_SLOT_COUNT];
+    slots[0].low = low.x;
+    slots[1].low = low.y;
+    slots[2].low = low.z;
+    slots[0].high = high.x;
+    slots[1].high = high.y;
+    slots[2].high = high.z;
+
+    uint i = 0;
+    while (i < params_buf.tape_instr_count) {
+        // Decode the instruction
+        uint inst = tape_buf.instrs[i];
+        uint op      = (inst >> 0)  & 0xFF;
+        uint outSlot = (inst >> 8)  & 0xFF;
+        uint inSlotA = (inst >> 16) & 0xFF;
+        uint inSlotB = (inst >> 24) & 0xFF;
+
+        Interval a = slots[inSlotA];
+        Interval b = slots[inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            float c = params_buf.const_pool[inSlotA / 4][inSlotA % 4];
+            slots[outSlot].low = c;
+            slots[outSlot].high = c;
+            break;
+        case OP_SIN:
+            slots[outSlot].low = -1;
+            slots[outSlot].high = 1;
+            break;
+        case OP_COS:
+            slots[outSlot].low = -1;
+            slots[outSlot].high = 1;      
+            break;
+        case OP_ADD:
+            slots[outSlot].low = a.low + b.low;
+            slots[outSlot].high = a.high + b.high;
+            break;
+        case OP_SUB:
+            slots[outSlot].low = a.low - b.high;
+            slots[outSlot].high = a.high - b.low;
+            break;
+        case OP_MUL:
+            slots[outSlot] = interval_multiply(a, b);
+            break;
+        case OP_DIV:
+            if ((b.low == 0 && b.high == 0) || (b.low < 0 && b.high > 0)) {
+                slots[outSlot] = Interval(-infinity, infinity);
+            }
+            else if (b.low == 0) {
+                slots[outSlot] = interval_multiply(a, Interval(1. / b.high, infinity));
+            }
+            else if (b.high == 0) {
+                slots[outSlot] = interval_multiply(a, Interval(-infinity, 1. / b.low));
+            }
+            else {
+                slots[outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));
+            }
             break;
         } 
         i++;
