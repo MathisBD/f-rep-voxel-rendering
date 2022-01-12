@@ -107,6 +107,14 @@ bool contains_multiple(Interval i, float x)
 }
 
 
+// How to compute intervals for unary C^1 functions. 
+// If the input interval is [x, y] and we call [f(a), f(b)] the output interval,
+// then it must hold that : 
+// (i) f'(a) == 0 or a == x or a == y
+// (ii) f'(b) == 0 or b == x or b == y
+// Thus, if c_1 ... c_n are the critical points of f in [x, y] (i.e. where f' == 0),
+// the output interval is [min(f(x), f(y), f(c_i)), max(f(x), f(y), f(c_i))].
+// We use this method for sin and cos (for which we know the critical points).
 Interval tape_eval_interval(vec3 low, vec3 high)
 {
     Interval slots[MAX_SLOT_COUNT];
