@@ -107,10 +107,10 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
 vec3 tape_normal(vec3 pos)
 {
-    float d = eval_tape(pos);
-    float dx = eval_tape(pos + vec3(EPS, 0, 0));
-    float dy = eval_tape(pos + vec3(0, EPS, 0));
-    float dz = eval_tape(pos + vec3(0, 0, EPS));
+    float d = tape_eval_point(pos);
+    float dx = tape_eval_point(pos + vec3(EPS, 0, 0));
+    float dy = tape_eval_point(pos + vec3(0, EPS, 0));
+    float dz = tape_eval_point(pos + vec3(0, 0, EPS));
 
     return normalize(vec3((dx - d) / EPS, (dy - d) / EPS, (dz - d) / EPS));
 }
@@ -118,8 +118,8 @@ vec3 tape_normal(vec3 pos)
 
 vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 {
-    vec3 normal = tape_normal(ray_orig + hit.t * ray_dir);
-    
+    vec3 normal = tape_normal(ray_orig + (hit.t + EPS) * ray_dir);
+     
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < params_buf.light_count; i++) {
         DirectionalLight light = params_buf.lights[i];

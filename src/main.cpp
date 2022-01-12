@@ -8,9 +8,12 @@ int main()
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
     params.useGPUVoxelizer = true;
-    params.printFPS = true;
-    params.gridDims = { 16, 8, 8, 4 };
-    params.shape = Shapes::TangleCube({0, 0, 0}, 4);
+    params.printFPS = false;
+    params.printHardwareInfo = true;
+    params.gridDims = { 32, 4, 4 };
+    params.shape = csg::Max(
+        Shapes::Sphere({0, 0, 0}, 20),
+        -Shapes::Sphere({10, 10, 10}, 10));
 
     Application app(params);
     app.Init();

@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/voxel_storage.h"
-#include "engine/csg_expression.h"
-#include "engine/csg_tape.h"
+#include "csg/expression.h"
+#include "csg/tape.h"
 #include "utils/thread_pool.h"
 
 

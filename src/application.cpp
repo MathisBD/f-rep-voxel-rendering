@@ -4,8 +4,8 @@
 #include "utils/running_average.h"
 #include "utils/timer.h"
 #include "shapes.h"
-#include "engine/csg_expression.h"
-#include "engine/csg_tape.h"
+#include "csg/expression.h"
+#include "csg/tape.h"
 
 
 Application::Application(Params params) : m_params(params), m_frameTime(32) 

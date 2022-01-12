@@ -28,6 +28,7 @@ namespace csg
         Expr operator-(const Expr other) const;
         Expr operator*(const Expr other) const;
         Expr operator/(const Expr other) const;
+        Expr operator-() const;
 
         float Eval(float x, float y, float z) const;
         void Print() const;
@@ -53,16 +54,18 @@ namespace csg
     csg::Expr Constant(float x);
     csg::Expr Sin(csg::Expr e);
     csg::Expr Cos(csg::Expr e);
-
+    csg::Expr Min(csg::Expr e1, csg::Expr e2);
+    csg::Expr Max(csg::Expr e1, csg::Expr e2);
+    csg::Expr Exp(csg::Expr e);
 
     enum class Operator
     {
         // Nullary operators (no inputs)
         X, Y, Z, CONST,
         // Unary operators
-        SIN, COS, //EXP, NEG
+        SIN, COS, EXP, NEG,
         // Binary operators
-        ADD, SUB, MUL, DIV, //MIN, MAX
+        ADD, SUB, MUL, DIV, MIN, MAX
     };
 
     // Contains all the information for a CSG operation.

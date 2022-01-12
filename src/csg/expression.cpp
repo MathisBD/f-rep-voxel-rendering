@@ -1,5 +1,6 @@
-#include "engine/csg_expression.h"
+#include "csg/expression.h"
 #include <glm/glm.hpp>
+
 
 bool csg::Expr::IsAxisOp() const 
 {
@@ -20,11 +21,16 @@ bool csg::Expr::IsInputOp() const
     assert(node);
     return node->op == csg::Operator::SIN ||
            node->op == csg::Operator::COS ||
+           node->op == csg::Operator::EXP ||
+           node->op == csg::Operator::NEG ||
            node->op == csg::Operator::ADD ||
            node->op == csg::Operator::SUB ||
            node->op == csg::Operator::MUL ||
-           node->op == csg::Operator::DIV;
+           node->op == csg::Operator::DIV ||
+           node->op == csg::Operator::MIN ||
+           node->op == csg::Operator::MAX;
 }
+
 
 csg::Expr csg::Expr::operator+(const csg::Expr other) const 
 {
@@ -48,6 +54,12 @@ csg::Expr csg::Expr::operator/(const csg::Expr other) const
 {
     std::vector<csg::Expr> inputs = { *this, other };
     return { .node = std::make_shared<csg::Node>(csg::Operator::DIV, std::move(inputs)) };
+}
+
+csg::Expr csg::Expr::operator-() const
+{
+    std::vector<csg::Expr> inputs = { *this };
+    return { .node = std::make_shared<csg::Node>(csg::Operator::NEG, std::move(inputs)) };
 }
 
 csg::Expr csg::operator+(float constant, const csg::Expr e2)
@@ -111,6 +123,12 @@ float csg::Expr::Eval(float x, float y, float z) const
     case csg::Operator::COS:    
         assert(node->inputs.size() == 1);
         return glm::cos(node->inputs[0].Eval(x, y, z));
+    case csg::Operator::EXP:    
+        assert(node->inputs.size() == 1);
+        return glm::exp(node->inputs[0].Eval(x, y, z));
+    case csg::Operator::NEG:    
+        assert(node->inputs.size() == 1);
+        return -node->inputs[0].Eval(x, y, z);
     case csg::Operator::ADD:    
         assert(node->inputs.size() == 2);
         return node->inputs[0].Eval(x, y, z) + node->inputs[1].Eval(x, y, z);
@@ -120,11 +138,19 @@ float csg::Expr::Eval(float x, float y, float z) const
     case csg::Operator::MUL:    
         assert(node->inputs.size() == 2);
         return node->inputs[0].Eval(x, y, z) * node->inputs[1].Eval(x, y, z);
-    case csg::Operator::DIV:    
+    case csg::Operator::DIV: 
+        {   
+            assert(node->inputs.size() == 2);
+            float denom = node->inputs[1].Eval(x, y, z);
+            assert(denom != 0.0f);
+            return node->inputs[0].Eval(x, y, z) / denom;
+        }
+    case csg::Operator::MIN:    
         assert(node->inputs.size() == 2);
-        float denom = node->inputs[1].Eval(x, y, z);
-        assert(denom != 0.0f);
-        return node->inputs[0].Eval(x, y, z) / denom;
+        return glm::min(node->inputs[0].Eval(x, y, z), node->inputs[1].Eval(x, y, z));
+    case csg::Operator::MAX:    
+        assert(node->inputs.size() == 2);
+        return glm::max(node->inputs[0].Eval(x, y, z), node->inputs[1].Eval(x, y, z));
     }
     assert(false); return 0.0f;
 }
@@ -138,10 +164,14 @@ static std::string OpName(csg::Operator op)
     case csg::Operator::CONST:  return "CONST";
     case csg::Operator::SIN:    return "SIN";
     case csg::Operator::COS:    return "COS";
+    case csg::Operator::EXP:    return "EXP";
+    case csg::Operator::NEG:    return "NEG";
     case csg::Operator::ADD:    return "ADD";
     case csg::Operator::SUB:    return "SUB";
     case csg::Operator::MUL:    return "MUL";
     case csg::Operator::DIV:    return "DIV";
+    case csg::Operator::MIN:    return "MIN";
+    case csg::Operator::MAX:    return "MAX";
     default: assert(false); return "";
     }
 }
@@ -205,3 +235,20 @@ csg::Expr csg::Cos(csg::Expr e)
     return { .node = std::make_shared<csg::Node>(csg::Operator::COS, std::move(inputs)) };
 }
 
+csg::Expr csg::Exp(csg::Expr e)
+{
+    std::vector<csg::Expr> inputs = { e };
+    return { .node = std::make_shared<csg::Node>(csg::Operator::EXP, std::move(inputs)) };
+}
+
+csg::Expr csg::Min(csg::Expr e1, csg::Expr e2) 
+{
+    std::vector<csg::Expr> inputs = { e1, e2 };
+    return { .node = std::make_shared<csg::Node>(csg::Operator::MIN, std::move(inputs)) };
+}
+
+csg::Expr csg::Max(csg::Expr e1, csg::Expr e2) 
+{
+    std::vector<csg::Expr> inputs = { e1, e2 };
+    return { .node = std::make_shared<csg::Node>(csg::Operator::MAX, std::move(inputs)) };
+}

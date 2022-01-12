@@ -1,4 +1,4 @@
-#include "engine/csg_tape.h"
+#include "csg/tape.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <functional>
@@ -185,6 +185,10 @@ uint16_t csg::Tape::TapeOpFromExprOp(csg::Operator op)
     case csg::Operator::SUB:    return csg::Tape::Op::SUB;
     case csg::Operator::MUL:    return csg::Tape::Op::MUL;
     case csg::Operator::DIV:    return csg::Tape::Op::DIV;
+    case csg::Operator::MIN:    return csg::Tape::Op::MIN;
+    case csg::Operator::MAX:    return csg::Tape::Op::MAX;
+    case csg::Operator::EXP:    return csg::Tape::Op::EXP;
+    case csg::Operator::NEG:    return csg::Tape::Op::NEG;
     }    
     assert(false);
     return 0;
@@ -271,6 +275,10 @@ std::string csg::Tape::OpName(uint16_t op)
     case SUB: return "SUB";
     case MUL: return "MUL";
     case DIV: return "DIV";
+    case MIN: return "MIN";
+    case MAX: return "MAX";
+    case EXP: return "EXP";
+    case NEG: return "NEG";
     default: assert(false); return "";
     }
 }
@@ -281,24 +289,8 @@ void csg::Tape::Print() const
         instructions.size(), m_slots.size());
     for (uint32_t i = 0; i < instructions.size(); i++) {
         Instr inst = instructions[i];
-        switch (inst.op) {
-        case LOAD_CONST: 
-        case SIN:
-        case COS:
-            printf("\t%2u   %10s  out=%u   in=%u(%.3f)\n", 
-                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA,
-                constantPool[inst.inSlotA]);
-            break;
-        case ADD:
-        case SUB:
-        case MUL:
-        case DIV:
-            printf("\t%2u   %10s  out=%u   inA=%u   inB=%u\n", 
-                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
-            break;
-        default:
-            assert(false);
-        }
+        printf("\t%2u   %10s  out=%u   inA=%u   inB=%u\n", 
+            i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
     }
     printf("[+] Constant Pool:\n");
     for (uint32_t i = 0; i < constantPool.size(); i++) {
@@ -318,10 +310,14 @@ float csg::Tape::Eval(float x, float y, float z) const
         case Op::LOAD_CONST: slots[i.outSlot] = constantPool[i.inSlotA]; break;
         case Op::SIN:        slots[i.outSlot] = glm::sin(slots[i.inSlotA]); break;
         case Op::COS:        slots[i.outSlot] = glm::cos(slots[i.inSlotA]); break;
+        case Op::EXP:        slots[i.outSlot] = glm::exp(slots[i.inSlotA]); break;
+        case Op::NEG:        slots[i.outSlot] = -slots[i.inSlotA]; break;
         case Op::ADD:        slots[i.outSlot] = slots[i.inSlotA] + slots[i.inSlotB]; break;
         case Op::SUB:        slots[i.outSlot] = slots[i.inSlotA] - slots[i.inSlotB]; break;
         case Op::MUL:        slots[i.outSlot] = slots[i.inSlotA] * slots[i.inSlotB]; break;
         case Op::DIV:        slots[i.outSlot] = slots[i.inSlotA] / slots[i.inSlotB]; break;
+        case Op::MIN:        slots[i.outSlot] = glm::min(slots[i.inSlotA], slots[i.inSlotB]); break;
+        case Op::MAX:        slots[i.outSlot] = glm::max(slots[i.inSlotA], slots[i.inSlotB]); break;
         default: assert(false);
         }
     }

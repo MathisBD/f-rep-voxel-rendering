@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <stdint.h>
-#include "engine/csg_expression.h"
+#include "csg/expression.h"
 #include <unordered_map>
 #include <functional>
 
@@ -20,6 +20,10 @@ namespace csg
             SUB = 4, 
             MUL = 5, 
             DIV = 6,
+            MIN = 7,
+            MAX = 8,
+            EXP = 9,
+            NEG = 10,
             _OP_COUNT_
         };
 

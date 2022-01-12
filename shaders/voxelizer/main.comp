@@ -84,7 +84,7 @@ void voxelize(uint node, uvec3 cell)
         // Empty node
         if (density.low > 0) {
             return;
-        }
+        }  
         // Leaf node
         else if (density.high < 0) {
             set_leaf_bit(node, cell);

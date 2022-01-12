@@ -39,19 +39,26 @@ target_link_libraries(proj pthread)
 set(GLSL_VALIDATOR "glslangValidator")
 set(SHADER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/shaders")
 
-set(SHADER_SOURCES 
+# Shaders we will actually pass to glslangValidator
+set(SHADER_MODULES 
     "${CMAKE_SOURCE_DIR}/shaders/raycaster/main.comp"
     "${CMAKE_SOURCE_DIR}/shaders/voxelizer/main.comp"
     "${CMAKE_SOURCE_DIR}/shaders/renderer/triangle.vert"
     "${CMAKE_SOURCE_DIR}/shaders/renderer/triangle.frag")
 
-foreach(SHADER ${SHADER_SOURCES})
-    message("Compiling shader: ${SHADER}")
+# All shader source files
+FILE(GLOB_RECURSE SHADER_SOURCES RELATIVE ${CMAKE_SOURCE_DIR}
+    "shaders/*.comp"
+    "shaders/*.vert"
+    "shaders/*.frag")
+
+foreach(SHADER ${SHADER_MODULES})
+    message("Compiling shader module: ${SHADER}")
     set(SPIRV "${SHADER}.spv")
     add_custom_command(
         OUTPUT ${SPIRV}
         COMMAND ${GLSL_VALIDATOR} -V -I${SHADER_INCLUDE_DIR} ${SHADER} -o ${SPIRV}
-        DEPENDS ${SHADER})
+        DEPENDS ${SHADER_SOURCES}) # we recompile the shader modules everytime ANY shader file changes
     list(APPEND SPIRV_FILES ${SPIRV})
 endforeach(SHADER)
 

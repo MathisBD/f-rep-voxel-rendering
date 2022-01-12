@@ -8,6 +8,10 @@
 #define OP_SUB      4
 #define OP_MUL      5
 #define OP_DIV      6
+#define OP_MIN      7
+#define OP_MAX      8
+#define OP_EXP      9
+#define OP_NEG      10
 
 const float infinity = 1. / 0.;
 
@@ -56,6 +60,18 @@ float tape_eval_point(vec3 pos)
         case OP_DIV:
             slots[outSlot] = slots[inSlotA] / slots[inSlotB];
             break;
+        case OP_MIN:
+            slots[outSlot] = min(slots[inSlotA], slots[inSlotB]);       
+            break;
+        case OP_MAX:
+            slots[outSlot] = max(slots[inSlotA], slots[inSlotB]);       
+            break;
+        case OP_EXP:
+            slots[outSlot] = exp(slots[inSlotA]);       
+            break;
+        case OP_NEG:
+            slots[outSlot] = -slots[inSlotA];       
+            break;
         } 
         i++;
     }   
@@ -76,12 +92,9 @@ Interval interval_multiply(Interval a, Interval b)
 Interval tape_eval_interval(vec3 low, vec3 high)
 {
     Interval slots[MAX_SLOT_COUNT];
-    slots[0].low = low.x;
-    slots[1].low = low.y;
-    slots[2].low = low.z;
-    slots[0].high = high.x;
-    slots[1].high = high.y;
-    slots[2].high = high.z;
+    slots[0] = Interval(low.x, high.x);
+    slots[1] = Interval(low.y, high.y);
+    slots[2] = Interval(low.z, high.z);
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -99,24 +112,19 @@ Interval tape_eval_interval(vec3 low, vec3 high)
         switch (op) {
         case OP_CONSTANT:
             float c = params_buf.const_pool[inSlotA / 4][inSlotA % 4];
-            slots[outSlot].low = c;
-            slots[outSlot].high = c;
+            slots[outSlot] = Interval(c, c);
             break;
         case OP_SIN:
-            slots[outSlot].low = -1;
-            slots[outSlot].high = 1;
+            slots[outSlot] = Interval(-1, 1);
             break;
         case OP_COS:
-            slots[outSlot].low = -1;
-            slots[outSlot].high = 1;      
+            slots[outSlot] = Interval(-1, 1);
             break;
         case OP_ADD:
-            slots[outSlot].low = a.low + b.low;
-            slots[outSlot].high = a.high + b.high;
+            slots[outSlot] = Interval(a.low + b.low, a.high + b.high);
             break;
         case OP_SUB:
-            slots[outSlot].low = a.low - b.high;
-            slots[outSlot].high = a.high - b.low;
+            slots[outSlot] = Interval(a.low - b.high, a.high - b.low);
             break;
         case OP_MUL:
             slots[outSlot] = interval_multiply(a, b);
@@ -134,6 +142,18 @@ Interval tape_eval_interval(vec3 low, vec3 high)
             else {
                 slots[outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));
             }
+            break;
+        case OP_MIN:
+            slots[outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
+            break;
+        case OP_MAX:
+            slots[outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
+            break;
+        case OP_EXP:
+            slots[outSlot] = Interval(exp(a.low), exp(a.high));
+            break;
+        case OP_NEG:
+            slots[outSlot] = Interval(-a.high, -a.low);
             break;
         } 
         i++;
