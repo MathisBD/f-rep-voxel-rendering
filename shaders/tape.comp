@@ -16,6 +16,7 @@
 #define OP_COPY     12
 
 const float infinity = 1. / 0.;
+const float pi = 3.141592653589793238462643383279502884197;
 
 struct Interval {
     float low;
@@ -96,6 +97,15 @@ Interval interval_multiply(Interval a, Interval b)
     return c;
 }
 
+// Returns true if an integral multiple of x lies
+// in the interval i (endpoints included).
+bool contains_multiple(Interval i, float x)
+{
+    return floor(i.low / x) < floor(i.high / x) || 
+           floor(i.low / x) == i.low / x        ||
+           floor(i.high / x) == i.high / x;
+}
+
 
 Interval tape_eval_interval(vec3 low, vec3 high)
 {
@@ -122,11 +132,33 @@ Interval tape_eval_interval(vec3 low, vec3 high)
             float c = params_buf.const_pool[inSlotA / 4][inSlotA % 4];
             slots[outSlot] = Interval(c, c);
             break;
-        case OP_SIN:
-            slots[outSlot] = Interval(-1, 1);
-            break;
         case OP_COS:
-            slots[outSlot] = Interval(-1, 1);
+            if (contains_multiple(Interval(a.low - pi, a.high - pi), 2*pi)) {
+                slots[outSlot].low = -1;
+            }
+            else {
+                slots[outSlot].low = min(cos(a.low), cos(a.high));
+            }
+            if (contains_multiple(a, 2*pi)) {
+                slots[outSlot].high = 1;
+            }
+            else {
+                slots[outSlot].high = max(cos(a.low), cos(a.high));
+            }
+            break;
+        case OP_SIN:
+            if (contains_multiple(Interval(a.low + pi / 2, a.high + pi / 2), 2*pi)) {
+                slots[outSlot].low = -1;
+            }
+            else {
+                slots[outSlot].low = min(sin(a.low), sin(a.high));
+            }
+            if (contains_multiple(Interval(a.low - pi / 2, a.high - pi / 2), 2*pi)) {
+                slots[outSlot].high = 1;
+            }
+            else {
+                slots[outSlot].high = max(sin(a.low), sin(a.high));
+            }
             break;
         case OP_ADD:
             slots[outSlot] = Interval(a.low + b.low, a.high + b.high);
