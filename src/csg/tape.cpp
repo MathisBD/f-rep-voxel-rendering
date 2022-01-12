@@ -189,6 +189,7 @@ uint16_t csg::Tape::TapeOpFromExprOp(csg::Operator op)
     case csg::Operator::MAX:    return csg::Tape::Op::MAX;
     case csg::Operator::EXP:    return csg::Tape::Op::EXP;
     case csg::Operator::NEG:    return csg::Tape::Op::NEG;
+    case csg::Operator::SQRT:   return csg::Tape::Op::SQRT;
     }    
     assert(false);
     return 0;
@@ -279,6 +280,8 @@ std::string csg::Tape::OpName(uint16_t op)
     case MAX: return "MAX";
     case EXP: return "EXP";
     case NEG: return "NEG";
+    case SQRT: return "SQRT";
+    case COPY: return "COPY";
     default: assert(false); return "";
     }
 }
@@ -310,14 +313,16 @@ float csg::Tape::Eval(float x, float y, float z) const
         case Op::LOAD_CONST: slots[i.outSlot] = constantPool[i.inSlotA]; break;
         case Op::SIN:        slots[i.outSlot] = glm::sin(slots[i.inSlotA]); break;
         case Op::COS:        slots[i.outSlot] = glm::cos(slots[i.inSlotA]); break;
-        case Op::EXP:        slots[i.outSlot] = glm::exp(slots[i.inSlotA]); break;
-        case Op::NEG:        slots[i.outSlot] = -slots[i.inSlotA]; break;
         case Op::ADD:        slots[i.outSlot] = slots[i.inSlotA] + slots[i.inSlotB]; break;
         case Op::SUB:        slots[i.outSlot] = slots[i.inSlotA] - slots[i.inSlotB]; break;
         case Op::MUL:        slots[i.outSlot] = slots[i.inSlotA] * slots[i.inSlotB]; break;
         case Op::DIV:        slots[i.outSlot] = slots[i.inSlotA] / slots[i.inSlotB]; break;
         case Op::MIN:        slots[i.outSlot] = glm::min(slots[i.inSlotA], slots[i.inSlotB]); break;
         case Op::MAX:        slots[i.outSlot] = glm::max(slots[i.inSlotA], slots[i.inSlotB]); break;
+        case Op::EXP:        slots[i.outSlot] = glm::exp(slots[i.inSlotA]); break;
+        case Op::NEG:        slots[i.outSlot] = -slots[i.inSlotA]; break;
+        case Op::SQRT:       slots[i.outSlot] = glm::sqrt(slots[i.inSlotA]); break;
+        case Op::COPY:       slots[i.outSlot] = slots[i.inSlotA]; break;
         default: assert(false);
         }
     }

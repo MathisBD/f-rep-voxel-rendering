@@ -24,6 +24,8 @@ namespace csg
             MAX = 8,
             EXP = 9,
             NEG = 10,
+            SQRT = 11,
+            COPY = 12,
             _OP_COUNT_
         };
 

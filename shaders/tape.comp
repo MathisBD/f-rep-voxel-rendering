@@ -12,6 +12,8 @@
 #define OP_MAX      8
 #define OP_EXP      9
 #define OP_NEG      10
+#define OP_SQRT     11
+#define OP_COPY     12
 
 const float infinity = 1. / 0.;
 
@@ -71,6 +73,12 @@ float tape_eval_point(vec3 pos)
             break;
         case OP_NEG:
             slots[outSlot] = -slots[inSlotA];       
+            break;
+        case OP_SQRT:
+            slots[outSlot] = sqrt(slots[inSlotA]);       
+            break;
+        case OP_COPY:
+            slots[outSlot] = slots[inSlotA];       
             break;
         } 
         i++;
@@ -154,6 +162,12 @@ Interval tape_eval_interval(vec3 low, vec3 high)
             break;
         case OP_NEG:
             slots[outSlot] = Interval(-a.high, -a.low);
+            break;
+        case OP_SQRT:
+            slots[outSlot] = Interval(sqrt(max(0, a.low)), sqrt(max(0, a.high)));
+            break;
+        case OP_COPY:
+            slots[outSlot] = a;
             break;
         } 
         i++;

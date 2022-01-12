@@ -23,47 +23,51 @@ namespace csg
         bool IsAxisOp() const;
         bool IsConstantOp() const;
         bool IsInputOp() const;
-        
-        Expr operator+(const Expr other) const;
-        Expr operator-(const Expr other) const;
-        Expr operator*(const Expr other) const;
-        Expr operator/(const Expr other) const;
-        Expr operator-() const;
-
+    
         float Eval(float x, float y, float z) const;
         void Print() const;
     };
 
-    // These avoid the need for writing e + csg::Constant(1.0f).
+    // Overloading operators with float inputs
+    // avoids the need for writing e + csg::Constant(1.0f).
     // We can just write e + 10.0f and the float will be automatically
     // wrapped in an expression.
-    Expr operator+(float constant, const Expr e);
-    Expr operator-(float constant, const Expr e);
-    Expr operator*(float constant, const Expr e);
-    Expr operator/(float constant, const Expr e);
 
-    Expr operator+(const Expr e, float constant);
-    Expr operator-(const Expr e, float constant);
-    Expr operator*(const Expr e, float constant);
-    Expr operator/(const Expr e, float constant);
+    Expr operator-(Expr e);
+
+    Expr operator+(Expr e1, Expr e2);
+    Expr operator-(Expr e1, Expr e2);
+    Expr operator*(Expr e1, Expr e2);
+    Expr operator/(Expr e1, Expr e2);
+
+    Expr operator+(float constant, Expr e);
+    Expr operator-(float constant, Expr e);
+    Expr operator*(float constant, Expr e);
+    Expr operator/(float constant, Expr e);
+
+    Expr operator+(Expr e, float constant);
+    Expr operator-(Expr e, float constant);
+    Expr operator*(Expr e, float constant);
+    Expr operator/(Expr e, float constant);
 
 
-    csg::Expr X();
-    csg::Expr Y();
-    csg::Expr Z();
-    csg::Expr Constant(float x);
-    csg::Expr Sin(csg::Expr e);
-    csg::Expr Cos(csg::Expr e);
-    csg::Expr Min(csg::Expr e1, csg::Expr e2);
-    csg::Expr Max(csg::Expr e1, csg::Expr e2);
-    csg::Expr Exp(csg::Expr e);
-
+    Expr X();
+    Expr Y();
+    Expr Z();
+    Expr Constant(float x);
+    Expr Sin(Expr e);
+    Expr Cos(Expr e);
+    Expr Min(Expr e1, Expr e2);
+    Expr Max(Expr e1, Expr e2);
+    Expr Exp(Expr e);
+    Expr Sqrt(Expr e);
+    
     enum class Operator
     {
         // Nullary operators (no inputs)
         X, Y, Z, CONST,
         // Unary operators
-        SIN, COS, EXP, NEG,
+        SIN, COS, EXP, NEG, SQRT,
         // Binary operators
         ADD, SUB, MUL, DIV, MIN, MAX
     };
