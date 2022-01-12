@@ -18,6 +18,12 @@ bool csg::Expr::IsConstantOp() const
     return node->op == csg::Operator::CONST;    
 }
 
+bool csg::Expr::IsConstantOp(float constant) const 
+{
+    assert(node);
+    return node->op == csg::Operator::CONST && node->constant == constant;    
+}
+
 bool csg::Expr::IsInputOp() const 
 {
     assert(node);

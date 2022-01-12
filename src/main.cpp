@@ -23,7 +23,7 @@ int main()
     params.useGPUVoxelizer = true;
     params.printFPS = false;
     params.printHardwareInfo = true;
-    params.gridDims = { 32, 8, 4 };
+    params.gridDims = { 16, 16, 4 };
     params.shape = Shape();
     
     csg::Tape tape(params.shape);

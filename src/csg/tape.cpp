@@ -22,6 +22,7 @@ csg::Expr csg::Tape::Simplify(csg::Expr root)
 {
     return root.TopoMap([&] (csg::Expr e, std::vector<csg::Expr> inputs) 
     {
+        // Merge axis nodes
         switch (e.node->op) {
         case csg::Operator::X:
             if (!m_x.node) { m_x = e; }
@@ -33,26 +34,49 @@ csg::Expr csg::Tape::Simplify(csg::Expr root)
             if (!m_z.node) { m_z = e; }
             return m_z;
         case csg::Operator::CONST:
-            return e;    
-        default:
+            return e;
+        default: 
             assert(e.IsInputOp());
-            // Get the input constants
-            std::vector<float> constants;
-            for (auto i : inputs) {
-                if (i.IsConstantOp()) {
-                    constants.push_back(i.node->constant);
-                }
-            }
-            // Constant propagation
-            if (constants.size() == inputs.size()) {
-                float res = csg::ApplyOperator(e.node->op, constants);
-                return csg::Expr(res);
-            }
-            // Just copy the expression
-            else {
-                return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+            break;
+        }
+
+        // Constant propagation
+        std::vector<float> constants;
+        for (auto i : inputs) {
+            if (i.IsConstantOp()) {
+                constants.push_back(i.node->constant);
             }
         }
+        if (constants.size() == inputs.size()) {
+            float res = csg::ApplyOperator(e.node->op, constants);
+            return csg::Expr(res);
+        }
+
+        // Eliminate identity operations
+        switch (e.node->op) {
+        case csg::Operator::ADD:
+            if (inputs[0].IsConstantOp(0)) { return inputs[1]; }
+            if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
+            break;
+        case csg::Operator::SUB:
+            if (inputs[0].IsConstantOp(0)) { return -inputs[1]; }
+            if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
+            break;
+        case csg::Operator::MUL:
+            if (inputs[0].IsConstantOp(1)) { return inputs[1]; }
+            if (inputs[1].IsConstantOp(1)) { return inputs[0]; }
+            if (inputs[0].IsConstantOp(0)) { return csg::Expr(0); }
+            if (inputs[1].IsConstantOp(0)) { return csg::Expr(0); }
+            break;
+        case csg::Operator::DIV:
+            if (inputs[0].IsConstantOp(0)) { return csg::Expr(0); }
+            if (inputs[1].IsConstantOp(1)) { return inputs[0]; }
+            break;
+        default: break;
+        }
+
+        // No simplification : just copy the expression
+        return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
     });
 }
 

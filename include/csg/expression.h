@@ -28,6 +28,10 @@ namespace csg
         bool IsAxisOp() const;
         bool IsConstantOp() const;
         bool IsInputOp() const;
+
+        // Returns true if this is a constant op 
+        // and the constant is equal to the argument.
+        bool IsConstantOp(float constant) const;
     
         // build a new expression DAG where x is replaced with newX,
         // y with newY and z with newZ.
