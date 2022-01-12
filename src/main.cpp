@@ -1,20 +1,34 @@
 #include "application.h"
-#include "shapes.h"
+#include "csg/lib.h"
 
+
+csg::Expr Shape()
+{
+    using namespace csg;
+    auto shape = Box({-20, -2, -2}, {40, 4, 4});
+
+    auto angle = X();
+    shape = RotateX(shape, angle);
+
+    auto scale = Exp(X() / 20.0f);
+    shape = ScaleXYZ(shape, {1, scale, scale});
+    return shape;
+}
 
 int main()
 {
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.useGPUVoxelizer = true;
+    params.useGPUVoxelizer = false;
     params.printFPS = false;
     params.printHardwareInfo = true;
-    params.gridDims = { 32, 4, 4 };
-    params.shape = csg::Max(
-        Shapes::Sphere({0, 0, 0}, 20),
-        -Shapes::Sphere({10, 10, 10}, 10));
-
+    params.gridDims = { 16, 4, 4 };
+    params.shape = Shape();
+    
+    csg::Tape tape(params.shape);
+    tape.Print();
+    
     Application app(params);
     app.Init();
     app.Run();

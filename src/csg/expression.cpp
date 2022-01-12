@@ -1,5 +1,7 @@
 #include "csg/expression.h"
 #include <glm/glm.hpp>
+#include <unordered_set>
+#include <unordered_map>
 
 
 bool csg::Expr::IsAxisOp() const 
@@ -35,73 +37,29 @@ bool csg::Expr::IsInputOp() const
 csg::Expr csg::operator-(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::NEG, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::NEG, std::move(inputs)) };
 }
 
 
 csg::Expr csg::operator+(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::ADD, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::ADD, std::move(inputs)) };
 }
 csg::Expr csg::operator-(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::SUB, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::SUB, std::move(inputs)) };
 }
 csg::Expr csg::operator*(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::MUL, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::MUL, std::move(inputs)) };
 }
 csg::Expr csg::operator/(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::DIV, std::move(inputs)) };
-}
-
-
-csg::Expr csg::operator+(float constant, csg::Expr e2)
-{
-    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 + e2;
-}
-csg::Expr csg::operator-(float constant, csg::Expr e2)
-{
-    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 - e2;
-}
-csg::Expr csg::operator*(float constant, csg::Expr e2)
-{
-    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 * e2;
-}
-csg::Expr csg::operator/(float constant, csg::Expr e2)
-{
-    csg::Expr e1 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 / e2;
-}
-
-
-csg::Expr csg::operator+(csg::Expr e1, float constant)
-{
-    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 + e2;
-}
-csg::Expr csg::operator-(csg::Expr e1, float constant)
-{
-    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 - e2;
-}
-csg::Expr csg::operator*(csg::Expr e1, float constant)
-{
-    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 * e2;
-}
-csg::Expr csg::operator/(csg::Expr e1, float constant)
-{
-    csg::Expr e2 = { .node = std::make_shared<csg::Node>(constant) };
-    return e1 / e2;
+    return { std::make_shared<csg::Node>(csg::Operator::DIV, std::move(inputs)) };
 }
 
 
@@ -202,58 +160,112 @@ void csg::Expr::Print() const
 csg::Expr csg::X()
 {
     std::vector<csg::Expr> inputs = {};
-    return { .node = std::make_shared<csg::Node>(csg::Operator::X, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::X, std::move(inputs)) };
 }
 
 csg::Expr csg::Y()
 {
     std::vector<csg::Expr> inputs = {};
-    return { .node = std::make_shared<csg::Node>(csg::Operator::Y, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::Y, std::move(inputs)) };
 }
 
 csg::Expr csg::Z()
 {
     std::vector<csg::Expr> inputs = {};
-    return { .node = std::make_shared<csg::Node>(csg::Operator::Z, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::Z, std::move(inputs)) };
 }
 
 csg::Expr csg::Constant(float x)
 {
-    return { .node = std::make_shared<csg::Node>(x) };
+    return { x };
 }
 
 csg::Expr csg::Sin(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::SIN, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::SIN, std::move(inputs)) };
 }
 
 csg::Expr csg::Cos(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::COS, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::COS, std::move(inputs)) };
 }
 
 csg::Expr csg::Exp(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::EXP, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::EXP, std::move(inputs)) };
 }
 
 csg::Expr csg::Sqrt(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::SQRT, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::SQRT, std::move(inputs)) };
 }
 
 csg::Expr csg::Min(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::MIN, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::MIN, std::move(inputs)) };
 }
 
 csg::Expr csg::Max(csg::Expr e1, csg::Expr e2) 
 {
     std::vector<csg::Expr> inputs = { e1, e2 };
-    return { .node = std::make_shared<csg::Node>(csg::Operator::MAX, std::move(inputs)) };
+    return { std::make_shared<csg::Node>(csg::Operator::MAX, std::move(inputs)) };
+}
+
+
+csg::Expr csg::Expr::operator()(csg::Expr newX, csg::Expr newY, csg::Expr newZ) const 
+{
+    return TopoMap([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
+        switch (e.node->op) {
+        case csg::Operator::X: return newX;
+        case csg::Operator::Y: return newY;
+        case csg::Operator::Z: return newZ;
+        case csg::Operator::CONST: return e;
+        default: 
+            assert(e.IsInputOp());
+            return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+        }
+    });
+}
+
+
+void csg::Expr::TopoIter(const std::function<void(csg::Expr)>& f) const
+{
+    std::unordered_set<csg::Node*> visited; 
+    std::function<void(csg::Expr)> dfs = [&] (csg::Expr e) {
+        if (visited.find(e.node.get()) == visited.end()) {
+            visited.insert(e.node.get());
+
+            if (e.IsInputOp()) {
+                for (csg::Expr child : e.node->inputs) {
+                    dfs(child);
+                }
+            }
+            f(e);
+        }
+    };
+    dfs(*this);
+}
+
+csg::Expr csg::Expr::TopoMap(
+    const std::function<csg::Expr(csg::Expr, std::vector<csg::Expr>)>& f) const 
+{
+    // Maps old nodes to new nodes.
+    std::unordered_map<csg::Node*, csg::Expr> newExpr;
+
+    std::function<void(csg::Expr)> copyExpr = [&] (csg::Expr e) 
+    {
+        std::vector<csg::Expr> newInputs;
+        for (auto child : e.node->inputs) {
+            newInputs.push_back(newExpr[child.node.get()]);
+        }
+        newExpr[e.node.get()] = f(e, newInputs);
+    };
+
+    TopoIter(copyExpr);
+    return newExpr[node.get()];
 }

@@ -67,13 +67,8 @@ namespace csg
         std::unordered_map<float, uint32_t> m_constantIdx;
 
         std::vector<Expr> m_slots;
-
-        // Applies f to every expression in the DAG of e,
-        // and guarantees that a node is visited after all its children
-        // have been visited.
-        void TopoMap(Expr e, const std::function<void(Expr)>& f);
-
-        Expr MergeAxesNodes(Expr e);
+        
+        Expr Simplify(Expr e);
         void BuildConstantPool();
         void TopoSort();
 

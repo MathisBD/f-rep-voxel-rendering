@@ -11,56 +11,40 @@ csg::Tape::Tape() {}
 
 csg::Tape::Tape(csg::Expr e) 
 {
-    m_result = MergeAxesNodes(e);
+    m_result = Simplify(e);
     TopoSort();
     BuildConstantPool();
     ComputeLiveliness();
     BuildInstrs();
 }
 
-csg::Expr csg::Tape::MergeAxesNodes(csg::Expr root) 
+csg::Expr csg::Tape::Simplify(csg::Expr root) 
 {
-    // Maps old nodes to new nodes.
-    std::unordered_map<csg::Node*, csg::Expr> newExpr;
-
-    std::function<void(csg::Expr)> copyExpr = [&] (csg::Expr e) 
+    return root.TopoMap([&] (csg::Expr e, std::vector<csg::Expr> inputs) 
     {
-        csg::Expr newE;
         switch (e.node->op) {
         case csg::Operator::X:
             if (!m_x.node) { m_x = e; }
-            newE = m_x;
-            break;
+            return m_x;
         case csg::Operator::Y:
             if (!m_y.node) { m_y = e; }
-            newE = m_y;
-            break; 
+            return m_y;
         case csg::Operator::Z:
             if (!m_z.node) { m_z = e; }
-            newE = m_z;
-            break;
+            return m_z;
         case csg::Operator::CONST:
-            newE.node = std::make_shared<csg::Node>(e.node->constant);
-            break;
+            return e;    
         default:
             assert(e.IsInputOp());
-            std::vector<csg::Expr> newInputs;
-            for (auto child : e.node->inputs) {
-                newInputs.push_back(newExpr[child.node.get()]);
-            }
-            newE.node = std::make_shared<csg::Node>(e.node->op, std::move(newInputs));
-            break;
+            return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+            
         }
-        newExpr[e.node.get()] = newE;
-    };
-
-    TopoMap(root, copyExpr);
-    return newExpr[root.node.get()];
+    });
 }
 
 void csg::Tape::TopoSort() 
 {
-    TopoMap(m_result, [=] (csg::Expr e) {
+    m_result.TopoIter([=] (csg::Expr e) {
         m_exprs.push_back(e);
     });
 
@@ -70,25 +54,6 @@ void csg::Tape::TopoSort()
     }    
 }
 
-void csg::Tape::TopoMap(csg::Expr root, const std::function<void(csg::Expr)>& f) 
-{
-    std::unordered_set<csg::Node*> visited; 
-
-    std::function<void(csg::Expr)> dfs = [&] (csg::Expr e) {
-        if (visited.find(e.node.get()) == visited.end()) {
-            visited.insert(e.node.get());
-
-            if (e.IsInputOp()) {
-                for (csg::Expr child : e.node->inputs) {
-                    dfs(child);
-                }
-            }
-            f(e);
-        }
-    };
-
-    dfs(root);
-}
 
 void csg::Tape::BuildConstantPool() 
 {

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <memory>
 #include <assert.h>
+#include <functional>
 
 
 
@@ -20,36 +21,36 @@ namespace csg
     public:
         std::shared_ptr<Node> node = nullptr;
 
+        Expr() : node(nullptr) {};
+        Expr(std::shared_ptr<Node> node_) : node(node_) {};
+        Expr(float constant) : node(std::make_shared<csg::Node>(constant)) {};
+
         bool IsAxisOp() const;
         bool IsConstantOp() const;
         bool IsInputOp() const;
     
+        // build a new expression DAG where x is replaced with newX,
+        // y with newY and z with newZ.
+        Expr operator()(Expr newX, Expr newY, Expr newZ) const;
+
         float Eval(float x, float y, float z) const;
         void Print() const;
+
+        // Applies f to every expression in the DAG of e,
+        // and guarantees that a node is visited after all its children
+        // have been visited.
+        void TopoIter(const std::function<void(Expr)>& f) const;
+        // Similar to TopoIter, but f takes as input : the expression e,
+        // and the result of f applied to the children of e,
+        // and returns a new expression.
+        Expr TopoMap(const std::function<Expr(Expr, std::vector<Expr>)>& f) const;
     };
 
-    // Overloading operators with float inputs
-    // avoids the need for writing e + csg::Constant(1.0f).
-    // We can just write e + 10.0f and the float will be automatically
-    // wrapped in an expression.
-
     Expr operator-(Expr e);
-
     Expr operator+(Expr e1, Expr e2);
     Expr operator-(Expr e1, Expr e2);
     Expr operator*(Expr e1, Expr e2);
     Expr operator/(Expr e1, Expr e2);
-
-    Expr operator+(float constant, Expr e);
-    Expr operator-(float constant, Expr e);
-    Expr operator*(float constant, Expr e);
-    Expr operator/(float constant, Expr e);
-
-    Expr operator+(Expr e, float constant);
-    Expr operator-(Expr e, float constant);
-    Expr operator*(Expr e, float constant);
-    Expr operator/(Expr e, float constant);
-
 
     Expr X();
     Expr Y();

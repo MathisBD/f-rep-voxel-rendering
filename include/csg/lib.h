@@ -15,17 +15,17 @@ namespace csg
         Vector3(Expr x_, Expr y_, Expr z_) : x(x_), y(y_), z(z_) {}
     };
     
-    Vector3 operator+(Vector3 a, Vector3 b);
-    Vector3 operator-(Vector3 a, Vector3 b);
-    Vector3 operator-(Vector3 a);
-    Vector3 operator*(Vector3 a, float constant);
-    Vector3 operator*(float constant, Vector3 b);
-    Vector3 operator/(Vector3 a, float constant);
+    Vector3 operator+(Vector3 v1, Vector3 v2);
+    Vector3 operator-(Vector3 v1, Vector3 v2);
+    Vector3 operator-(Vector3 v);
+    Vector3 operator*(Vector3 v, Expr e);
+    Vector3 operator*(Expr e, Vector3 v);
+    Vector3 operator/(Vector3 v, Expr e);
     
 
     // returns a vector whose components 
     // are csg::X(), csg::Y() and csg::Z()
-    Vector3 Axis();
+    Vector3 Axes();
 
     Expr Square(Expr x);
     Expr Abs(Expr x);
@@ -39,7 +39,7 @@ namespace csg
 
     Expr Union(Expr a, Expr b);
     Expr Intersect(Expr a, Expr b);
-    Expr Complement(Expr a, Expr b);
+    Expr Complement(Expr a);
     Expr Diff(Expr a, Expr b);
 
     Expr Sphere(Vector3 center, Expr radius);
@@ -53,6 +53,7 @@ namespace csg
     Expr ScaleX(Expr a, Expr scaleX);
     Expr ScaleY(Expr a, Expr scaleY);
     Expr ScaleZ(Expr a, Expr scaleZ);
+    Expr ScaleXYZ(Expr a, Expr scale);
     Expr ScaleXYZ(Expr a, Vector3 scale);
     
     Expr RotateX(Expr a, Expr angleX);
