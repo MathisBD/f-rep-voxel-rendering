@@ -73,6 +73,8 @@ namespace csg
         ADD, SUB, MUL, DIV, MIN, MAX
     };
 
+    float ApplyOperator(Operator op, std::vector<float> args);
+
     // Contains all the information for a CSG operation.
     class Node
     {

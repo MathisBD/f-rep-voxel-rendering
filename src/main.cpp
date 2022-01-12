@@ -20,10 +20,10 @@ int main()
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.useGPUVoxelizer = false;
+    params.useGPUVoxelizer = true;
     params.printFPS = false;
     params.printHardwareInfo = true;
-    params.gridDims = { 16, 4, 4 };
+    params.gridDims = { 32, 8, 4 };
     params.shape = Shape();
     
     csg::Tape tape(params.shape);

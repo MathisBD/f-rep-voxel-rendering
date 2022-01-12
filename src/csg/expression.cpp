@@ -63,6 +63,49 @@ csg::Expr csg::operator/(csg::Expr e1, csg::Expr e2)
 }
 
 
+float csg::ApplyOperator(csg::Operator op, std::vector<float> args) 
+{
+    switch (op) {
+    case csg::Operator::SIN:    
+        assert(args.size() == 1);
+        return glm::sin(args[0]);
+    case csg::Operator::COS:    
+        assert(args.size() == 1);
+        return glm::cos(args[0]);
+    case csg::Operator::EXP:    
+        assert(args.size() == 1);
+        return glm::exp(args[0]);
+    case csg::Operator::NEG:    
+        assert(args.size() == 1);
+        return -args[0];
+    case csg::Operator::SQRT:    
+        assert(args.size() == 1);
+        return glm::sqrt(args[0]);
+    case csg::Operator::ADD:    
+        assert(args.size() == 2);
+        return args[0] + args[1];
+    case csg::Operator::SUB:    
+        assert(args.size() == 2);
+        return args[0] - args[1];
+    case csg::Operator::MUL:    
+        assert(args.size() == 2);
+        return args[0] * args[1];
+    case csg::Operator::DIV: 
+        {   
+            assert(args.size() == 2);
+            assert(args[1] != 0.0f);
+            return args[0] / args[1];
+        }
+    case csg::Operator::MIN:    
+        assert(args.size() == 2);
+        return glm::min(args[0], args[1]);
+    case csg::Operator::MAX:    
+        assert(args.size() == 2);
+        return glm::max(args[0], args[1]);
+    default: assert(false); return 0.0f;
+    }
+}
+
 float csg::Expr::Eval(float x, float y, float z) const
 {
     switch (node->op) {
@@ -70,45 +113,13 @@ float csg::Expr::Eval(float x, float y, float z) const
     case csg::Operator::Y:      return y;
     case csg::Operator::Z:      return z;
     case csg::Operator::CONST:  return node->constant;
-    case csg::Operator::SIN:    
-        assert(node->inputs.size() == 1);
-        return glm::sin(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::COS:    
-        assert(node->inputs.size() == 1);
-        return glm::cos(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::EXP:    
-        assert(node->inputs.size() == 1);
-        return glm::exp(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::NEG:    
-        assert(node->inputs.size() == 1);
-        return -node->inputs[0].Eval(x, y, z);
-    case csg::Operator::SQRT:    
-        assert(node->inputs.size() == 1);
-        return glm::sqrt(node->inputs[0].Eval(x, y, z));
-    case csg::Operator::ADD:    
-        assert(node->inputs.size() == 2);
-        return node->inputs[0].Eval(x, y, z) + node->inputs[1].Eval(x, y, z);
-    case csg::Operator::SUB:    
-        assert(node->inputs.size() == 2);
-        return node->inputs[0].Eval(x, y, z) - node->inputs[1].Eval(x, y, z);
-    case csg::Operator::MUL:    
-        assert(node->inputs.size() == 2);
-        return node->inputs[0].Eval(x, y, z) * node->inputs[1].Eval(x, y, z);
-    case csg::Operator::DIV: 
-        {   
-            assert(node->inputs.size() == 2);
-            float denom = node->inputs[1].Eval(x, y, z);
-            assert(denom != 0.0f);
-            return node->inputs[0].Eval(x, y, z) / denom;
+    default:
+        std::vector<float> args;
+        for (csg::Expr i : node->inputs) {
+            args.push_back(i.Eval(x, y, z));
         }
-    case csg::Operator::MIN:    
-        assert(node->inputs.size() == 2);
-        return glm::min(node->inputs[0].Eval(x, y, z), node->inputs[1].Eval(x, y, z));
-    case csg::Operator::MAX:    
-        assert(node->inputs.size() == 2);
-        return glm::max(node->inputs[0].Eval(x, y, z), node->inputs[1].Eval(x, y, z));
+        return csg::ApplyOperator(node->op, args);
     }
-    assert(false); return 0.0f;
 }
 
 static std::string OpName(csg::Operator op)

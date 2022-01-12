@@ -36,8 +36,22 @@ csg::Expr csg::Tape::Simplify(csg::Expr root)
             return e;    
         default:
             assert(e.IsInputOp());
-            return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
-            
+            // Get the input constants
+            std::vector<float> constants;
+            for (auto i : inputs) {
+                if (i.IsConstantOp()) {
+                    constants.push_back(i.node->constant);
+                }
+            }
+            // Constant propagation
+            if (constants.size() == inputs.size()) {
+                float res = csg::ApplyOperator(e.node->op, constants);
+                return csg::Expr(res);
+            }
+            // Just copy the expression
+            else {
+                return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+            }
         }
     });
 }
