@@ -214,3 +214,94 @@ Interval tape_eval_interval(vec3 low, vec3 high)
     }   
     return slots[0];
 }
+
+vec3 tape_eval_gradient(vec3 pos)
+{
+    // A slot contains :
+    // x, y, z : partial derivatives wrt. x, y and z
+    // w : the value of the functions
+    vec4 slots[MAX_SLOT_COUNT];
+    slots[0] = vec4(1, 0, 0, pos.x);
+    slots[1] = vec4(0, 1, 0, pos.y);
+    slots[2] = vec4(0, 0, 1, pos.z);
+
+    uint i = 0;
+    while (i < params_buf.tape_instr_count) {
+        // Decode the instruction
+        uint inst = tape_buf.instrs[i];
+        uint op      = (inst >> 0)  & 0xFF;
+        uint outSlot = (inst >> 8)  & 0xFF;
+        uint inSlotA = (inst >> 16) & 0xFF;
+        uint inSlotB = (inst >> 24) & 0xFF;
+
+        vec4 a = slots[inSlotA];
+        vec4 b = slots[inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            slots[outSlot] = vec4(0, 0, 0, params_buf.const_pool[inSlotA / 4][inSlotA % 4]);
+            break;
+        case OP_SIN:
+            slots[outSlot] = vec4(
+                cos(a.w) * a.xyz,
+                sin(a.w));
+            break;
+        case OP_COS:
+            slots[outSlot] = vec4(
+                -sin(a.w) * a.xyz,
+                cos(a.w));
+            break;
+        case OP_ADD:
+            slots[outSlot] = a + b;
+            break;
+        case OP_SUB:
+            slots[outSlot] = a - b;
+            break;
+        case OP_MUL:
+            slots[outSlot] = vec4(
+                a.xyz * b.w + a.w * b.xyz,
+                a.w * b.w);
+            break;
+        case OP_DIV:
+            slots[outSlot] = vec4(
+                (a.xyz * b.w - a.w * b.xyz) / (b.w*b.w),
+                a.w / b.w);
+            break;
+        case OP_MIN:
+            if (a.w < b.w) {
+                slots[outSlot] = a;
+            }
+            else {
+                slots[outSlot] = b;
+            }       
+            break;
+        case OP_MAX:
+            if (a.w > b.w) {
+                slots[outSlot] = a;
+            }
+            else {
+                slots[outSlot] = b;
+            }
+            break;
+        case OP_EXP:
+            slots[outSlot] =  vec4(
+                exp(a.w) * a.xyz, 
+                exp(a.w));
+            break;
+        case OP_NEG:
+            slots[outSlot] = -a;       
+            break;
+        case OP_SQRT:
+            slots[outSlot] = vec4(
+                a.xyz / (2 * sqrt(a.w)),
+                sqrt(a.w));       
+            break;
+        case OP_COPY:
+            slots[outSlot] = a;       
+            break;
+        } 
+        i++;
+    }   
+    return slots[0].xyz;
+}

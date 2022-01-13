@@ -10,7 +10,7 @@ csg::Expr Shape()
     auto angle = X();
     shape = RotateX(shape, angle);
 
-    auto scale = Exp(X() / 20.0f);
+    auto scale = (X() + 30) / 20;
     shape = ScaleXYZ(shape, {1, scale, scale});
     return shape;
 }
@@ -23,7 +23,7 @@ int main()
     params.useGPUVoxelizer = true;
     params.printFPS = false;
     params.printHardwareInfo = true;
-    params.gridDims = { 16, 16, 4 };
+    params.gridDims = { 16, 16, 4, 4 };
     params.shape = Shape();
     
     csg::Tape tape(params.shape);
