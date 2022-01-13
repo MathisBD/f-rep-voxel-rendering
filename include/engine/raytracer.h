@@ -21,8 +21,10 @@ public:
         RenderTarget* target, VoxelStorage* voxels, VmaAllocator vmaAllocator);
     void Cleanup();
 
-    void Trace(VkSemaphore renderSem, const Camera* camera);
-    VkSemaphore GetComputeSemaphore() const { return m_semaphore; }
+    void Trace(VkSemaphore waitSem, const Camera* camera, float time);
+    // Returns a semaphore that is signaled 
+    // when the raytracing is finished.
+    VkSemaphore GetTraceSem() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
     static const uint32_t THREAD_GROUP_SIZE_X    = 16;
@@ -47,14 +49,10 @@ private:
     } ShaderLevelData;
 
     typedef struct {
-        glm::vec4 color;
-    } ShaderMaterial;
-
-    typedef struct {
         uint32_t lightCount;
-        uint32_t materialCount;
         uint32_t levelCount;  
         uint32_t tapeInstrCount;
+        float time;
 
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
@@ -80,7 +78,6 @@ private:
         // The color we use for rays that don't intersect any voxel (w unused).
         glm::vec4 backgroundColor;
         ShaderLight lights[MAX_LIGHT_COUNT];
-        ShaderMaterial materials[MAX_MATERIAL_COUNT];
         // The tape's constant pool.
         float constantPool[MAX_CONSTANT_POOL_SIZE];
     } ShaderParams;
@@ -120,7 +117,7 @@ private:
     void InitBuffers();
     void InitUploadCtxt();
 
-    void UpdateShaderParams(const Camera* camera);
+    void UpdateShaderParams(const Camera* camera, float time);
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);

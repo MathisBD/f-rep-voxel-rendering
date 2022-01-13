@@ -20,7 +20,7 @@ public:
     {
         bool enableValidationLayers = true;
         bool enableShaderDebugPrintf = false;
-        bool useGPUVoxelizer = false;
+        bool voxelizeRealTime = true;
         bool printFPS = false;
         bool printHardwareInfo = false;
         std::vector<uint32_t> gridDims;
@@ -41,6 +41,7 @@ private:
     Renderer m_renderer;
     
     RunningAverage<float> m_frameTime;
+    bool m_voxelizedOnce = false;
 
     void InitVoxels();
     void InitRenderTarget();

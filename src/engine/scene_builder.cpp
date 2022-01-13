@@ -121,7 +121,7 @@ SceneBuilder::TreeNode* SceneBuilder::BuildNode(uint32_t level, const glm::u32ve
                 // Max level : check if the child is a leaf node.
                 if (level == m_voxels->gridLevels - 1) {
                     glm::vec3 pos = m_voxels->WorldPosition(childCoords);
-                    float density = m_voxels->tape.Eval(pos.x, pos.y, pos.z);
+                    float density = m_voxels->tape.Eval(pos.x, pos.y, pos.z, 0);
                     // Simply update the leaf mask
                     if (density < 0.0f) {
                         node->leafMask[q] |= (1 << r);

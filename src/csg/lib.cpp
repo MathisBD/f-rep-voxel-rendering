@@ -1,4 +1,5 @@
 #include "csg/lib.h"
+#include <glm/gtc/constants.hpp>
 
 
 namespace csg
@@ -12,6 +13,17 @@ namespace csg
     {
         return { v1.x - v2.x, v1.y - v2.y, v1.z - v2.z };
     }
+
+    Vector3 operator*(Vector3 v1, Vector3 v2)
+    {
+        return { v1.x * v2.x, v1.y * v2.y, v1.z * v2.z };
+    }
+    
+    Vector3 operator/(Vector3 v1, Vector3 v2)
+    {
+        return { v1.x / v2.x, v1.y / v2.y, v1.z / v2.z };
+    }
+    
 
     Vector3 operator-(Vector3 v)
     {
@@ -33,9 +45,19 @@ namespace csg
         return { v.x / e, v.y / e, v.z / e };
     }
 
+    Expr Empty()
+    {
+        return Expr(1);
+    }
+
     Vector3 Axes()
     {
         return { X(), Y(), Z() };
+    }
+
+    Expr Pi() 
+    {
+        return Expr(glm::pi<float>());
     }
 
     Expr Square(Expr x) 
@@ -65,6 +87,11 @@ namespace csg
         else {
             return Square(Pow(x, p / 2)) * x;
         }
+    }
+
+    Expr Dot(Vector3 a, Vector3 b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
     Expr Dist(Vector3 a, Vector3 b) 
@@ -122,68 +149,68 @@ namespace csg
 
     Expr TranslateX(Expr a, Expr dx) 
     {
-        return a(X() - dx, Y(), Z());    
+        return a(X() - dx, Y(), Z(), T());    
     }
 
     Expr TranslateY(Expr a, Expr dy) 
     {
-        return a(X(), Y() - dy, Z());    
+        return a(X(), Y() - dy, Z(), T());    
     }
 
     Expr TranslateZ(Expr a, Expr dz) 
     {
-        return a(X(), Y(), Z() - dz);    
+        return a(X(), Y(), Z() - dz, T());    
     }
 
     Expr TranslateXYZ(Expr a, Vector3 da) 
     {
-        return a(X() - da.x, Y() - da.y, Z() - da.z);    
+        return a(X() - da.x, Y() - da.y, Z() - da.z, T());    
     }
 
     Expr ScaleX(Expr a, Expr scaleX)
     {
-        return a(X() / scaleX, Y(), Z());
+        return a(X() / scaleX, Y(), Z(), T());
     }
 
     Expr ScaleY(Expr a, Expr scaleY)
     {
-        return a(X(), Y() / scaleY, Z());
+        return a(X(), Y() / scaleY, Z(), T());
     }
 
     Expr ScaleZ(Expr a, Expr scaleZ)
     {
-        return a(X(), Y(), Z() / scaleZ);
+        return a(X(), Y(), Z() / scaleZ, T());
     }
 
     Expr ScaleXYZ(Expr a, Expr scale)
     {
-        return a(X() / scale, Y() / scale, Z() / scale);
+        return a(X() / scale, Y() / scale, Z() / scale, T());
     }
 
     Expr ScaleXYZ(Expr a, Vector3 scale)
     {
-        return a(X() / scale.x, Y() / scale.y, Z() / scale.z);
+        return a(X() / scale.x, Y() / scale.y, Z() / scale.z, T());
     }
     
     Expr RotateX(Expr a, Expr angleX)
     {
-        auto c = Cos(angleX);
-        auto s = Sin(angleX);
-        return a(X(), c * Y() + s * Z(), -s * Y() + c * Z());
+        auto c = Cos(-angleX);
+        auto s = Sin(-angleX);
+        return a(X(), c * Y() - s * Z(), s * Y() + c * Z(), T());
     }
     
     Expr RotateY(Expr a, Expr angleY)
     {
         auto c = Cos(-angleY);
         auto s = Sin(-angleY);
-        return a(-s * X() + c * Z(), Y(), c * X() + s * Z());
+        return a(c * X() + s * Z(), Y(), -s * X() + c * Z(), T());
     }
 
     Expr RotateZ(Expr a, Expr angleZ)
     {
-        auto c = Cos(angleZ);
-        auto s = Sin(angleZ);
-        return a(c * X() + s * Y(), -s * X() + c * Y(), Z());
+        auto c = Cos(-angleZ);
+        auto s = Sin(-angleZ);
+        return a(c * X() - s * Y(), s * X() + c * Y(), Z(), T());
     }
 }
 

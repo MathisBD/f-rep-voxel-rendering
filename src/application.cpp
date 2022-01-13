@@ -38,12 +38,7 @@ void Application::Init()
 
     InitRenderTarget();
     InitVoxels();
-    
-    auto start = std::chrono::high_resolution_clock::now();
-    SetupScene();
-    auto end = std::chrono::high_resolution_clock::now();
-    printf("[+] Voxelization time = %ldms\n", 
-        std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+    //SetupScene();
 
     printf("[+] Grid dimensions: ");
     uint32_t totalDim = 1;
@@ -53,23 +48,22 @@ void Application::Init()
     }
     printf(" total=%u\n", totalDim);
 
-    printf("[+] Nodes per level :\n");
-    for (uint32_t i = 0; i < m_voxels.gridLevels; i++) {
-        printf("\tlevel %u: %u\n", i, m_voxels.interiorNodeCount[i]);
-    }
-    printf("\n");
-
+    m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
+        &m_voxels, m_vmaAllocator);
+    m_cleanupQueue.AddFunction([=] { m_voxelizer.Cleanup(); });  
 
     m_renderer.Init(
         &m_device, &m_descAllocator, &m_descCache,
         &m_target, m_windowExtent, m_surface);
     m_cleanupQueue.AddFunction([=] { m_renderer.Cleanup(); });
+    // We have to signal the renderer's sem so that the first frame can work normally.
+    m_renderer.SignalRenderSem();
 
     m_raytracer.Init(
         &m_device, &m_descAllocator, &m_descCache,
         &m_target, &m_voxels, m_vmaAllocator);
     m_cleanupQueue.AddFunction([=] { m_raytracer.Cleanup(); });
-    m_raytracer.SetBackgroundColor({ 0.0f, 0.0f, 0.0f });
+    m_raytracer.SetBackgroundColor({ 0.0f, 0.0f, 0.0f });  
 
     // Camera
     m_camera.position = { 0, 0, 40.0f };
@@ -78,6 +72,7 @@ void Application::Init()
     m_camera.fovDeg = 45;
     m_camera.aspectRatio = m_windowExtent.width / (float)m_windowExtent.height;
     m_camera.Init();
+
 }
 
 void Application::InitVoxels() 
@@ -139,10 +134,19 @@ void Application::InitRenderTarget()
 
 void Application::SetupScene() 
 {
-    if (m_params.useGPUVoxelizer) {
+    /*if (m_params.useGPUVoxelizer) {
         m_voxelizer.Init(&m_device, &m_descAllocator, &m_descCache,
             &m_voxels, m_vmaAllocator);
-        m_voxelizer.Voxelize();
+        
+        size_t iterations = 10;
+        auto start = std::chrono::high_resolution_clock::now();
+        for (size_t i = 0; i < iterations; i++) {
+            m_voxelizer.Voxelize(20);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        printf("[+] Voxelization time = %ldms\n", 
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / iterations);
+        
         m_voxelizer.Cleanup();
     }
     else {
@@ -152,7 +156,7 @@ void Application::SetupScene()
             m_builder.UploadSceneToGPU(cmd);
         });
         m_builder.Cleanup();
-    }
+    }*/
 }
 
 
@@ -163,11 +167,24 @@ void Application::Draw()
         printf("Frame time : %.1fms (%.1ffps)\n", 
             1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
     }
-    
+
+    // Voxelize
+    VkSemaphore traceWaitSem;
+    if (m_params.voxelizeRealTime || !m_voxelizedOnce) {
+        m_voxelizer.Voxelize(m_renderer.GetRenderSem(), Timer::s_time);
+        traceWaitSem = m_voxelizer.GetVoxelizeSem();
+        m_voxelizedOnce = true;
+    }
+    else {
+        traceWaitSem = m_renderer.GetRenderSem();    
+    }
+
+    // Raytrace
     m_camera.Update(m_inputManager);
-    m_raytracer.Trace(m_renderer.GetRenderSemaphore(), &m_camera);
+    m_raytracer.Trace(traceWaitSem, &m_camera, Timer::s_time);
     
+    // Render
     m_renderer.BeginFrame();
-    m_renderer.Render(m_raytracer.GetComputeSemaphore());
+    m_renderer.Render(m_raytracer.GetTraceSem());
     m_renderer.EndFrame();
 }

@@ -138,12 +138,13 @@ void Voxelizer::InitPipeline()
     });
 }
 
-void Voxelizer::UpdateShaderParams(uint32_t level) 
+void Voxelizer::UpdateShaderParams(uint32_t level, float time) 
 {
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
     params->levelCount = m_voxels->gridLevels;
     params->level = level;
     params->tapeInstrCount = m_voxels->tape.instructions.size();
+    params->time = time;
 
     params->gridWorldCoords = m_voxels->lowVertex;
     params->gridWorldSize = m_voxels->worldSize;
@@ -191,27 +192,30 @@ void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level)
         dim / THREAD_GROUP_SIZE_Z);
 }
 
-void Voxelizer::SubmitCmd(VkCommandBuffer cmd, uint32_t level) 
+void Voxelizer::SubmitCmd(VkCommandBuffer cmd, uint32_t level, VkSemaphore waitSem) 
 {
     auto info = vkw::init::SubmitInfo(&cmd);
 
-    // Level 0 doesn't wait on anyone
-    if (level > 0) {
-        VkPipelineStageFlags waitMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &m_voxelizeLevelSems[level - 1];
-        info.pWaitDstStageMask = &waitMask;
+    VkPipelineStageFlags waitMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    info.waitSemaphoreCount = 1;
+    if (level == 0) {
+        info.pWaitSemaphores = &waitSem;
     }
+    else {
+        info.pWaitSemaphores = &m_voxelizeLevelSems[level - 1];
+    }
+    info.pWaitDstStageMask = &waitMask;
+        
     info.signalSemaphoreCount = 1;
     info.pSignalSemaphores = &m_voxelizeLevelSems[level];
 
     VK_CHECK(vkQueueSubmit(m_queue, 1, &info, m_fence));
 }
 
-void Voxelizer::VoxelizeLevel(uint32_t level) 
+void Voxelizer::VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float time) 
 {
     // Update the uniform buffer
-    UpdateShaderParams(level);
+    UpdateShaderParams(level, time);
 
     // Reset the command pool (and its buffers).
     VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
@@ -228,7 +232,7 @@ void Voxelizer::VoxelizeLevel(uint32_t level)
     // End the command
     VK_CHECK(vkEndCommandBuffer(cmd));
     // Submit.
-    SubmitCmd(cmd, level);
+    SubmitCmd(cmd, level, waitSem);
     
     // Wait for the command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
@@ -333,13 +337,13 @@ void Voxelizer::UploadTape()
     tapeStagingBuf.Cleanup();
 }
 
-void Voxelizer::Voxelize() 
+void Voxelizer::Voxelize(VkSemaphore waitSem, float time) 
 {
     // No need to actually create the root node,
     // as 0 initialized fields are correct.
     // However we have to encode the number of nodes on level 0.
     m_voxels->interiorNodeCount[0] = 1;
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        VoxelizeLevel(i);
+        VoxelizeLevel(i, waitSem, time);
     }
 }

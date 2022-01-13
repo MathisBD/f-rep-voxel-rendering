@@ -8,9 +8,8 @@
 //#define DEBUG_LOG
 #include "utils.comp"
 #include "raycaster/inputs.comp"
-#include "node.comp"
 #include "tape.comp" 
- 
+#include "node.comp"
 
 struct Hit {
     float t;
@@ -128,7 +127,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 
     vec4 ambient = vec4(0.2f, 0.2f, 0.2f, 1.0f);
 
-    return params_buf.materials[0].color * (ambient + diffuse);
+    return vec4(1, 1, 1, 1) * (ambient + diffuse);
 }
 
 

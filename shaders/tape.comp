@@ -1,4 +1,4 @@
-#define MAX_SLOT_COUNT      16
+#define MAX_SLOT_COUNT      64
 
 
 #define OP_CONSTANT 0
@@ -30,6 +30,7 @@ float tape_eval_point(vec3 pos)
     slots[0] = pos.x;
     slots[1] = pos.y;
     slots[2] = pos.z;
+    slots[3] = params_buf.time;
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -121,6 +122,7 @@ Interval tape_eval_interval(vec3 low, vec3 high)
     slots[0] = Interval(low.x, high.x);
     slots[1] = Interval(low.y, high.y);
     slots[2] = Interval(low.z, high.z);
+    slots[3] = Interval(params_buf.time, params_buf.time);
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -226,6 +228,7 @@ vec3 tape_eval_gradient(vec3 pos)
     slots[0] = vec4(1, 0, 0, pos.x);
     slots[1] = vec4(0, 1, 0, pos.y);
     slots[2] = vec4(0, 0, 1, pos.z);
+    slots[3] = vec4(0, 0, 0, params_buf.time);
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -305,3 +308,76 @@ vec3 tape_eval_gradient(vec3 pos)
     }   
     return slots[0].xyz;
 }
+
+/*#include "affine.comp"
+
+Affine tape_eval_affine(vec3 low, vec3 high)
+{
+    vec3 middle = (high + low) / 2;
+    vec3 radius = (high - low) / 2;
+
+    Affine slots[MAX_SLOT_COUNT];
+    slots[0] = Affine(middle.x, vec3(radius.x, 0, 0), 0);
+    slots[1] = Affine(middle.y, vec3(0, radius.y, 0), 0);
+    slots[2] = Affine(middle.z, vec3(0, 0, radius.z), 0);
+    slots[3] = ;
+
+    uint i = 0;
+    while (i < params_buf.tape_instr_count) {
+        // Decode the instruction
+        uint inst = tape_buf.instrs[i];
+        uint op      = (inst >> 0)  & 0xFF;
+        uint outSlot = (inst >> 8)  & 0xFF;
+        uint inSlotA = (inst >> 16) & 0xFF;
+        uint inSlotB = (inst >> 24) & 0xFF;
+
+        Affine a = slots[inSlotA];
+        Affine b = slots[inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            float c = params_buf.const_pool[inSlotA / 4][inSlotA % 4];
+            slots[outSlot] = Affine(c, vec3(0, 0, 0), 0);
+            break;
+        case OP_COS:
+            slots[outSlot] = affine_cos(a);
+            break;
+        case OP_SIN:
+            slots[outSlot] = affine_sin(a);
+            break;
+        case OP_ADD:
+            slots[outSlot] = Affine(a.c + b.c, a.axis + b.axis, a.acc + b.acc);
+            break;
+        case OP_SUB:
+            slots[outSlot] = Affine(a.c - b.c, a.axis - b.axis, a.acc - b.acc);
+            break;
+        case OP_MUL:
+            slots[outSlot] = affine_multiply(a, b);
+            break;
+        case OP_DIV:
+            Affine b_inv = affine_inverse(b);
+            slots[outSlot] = affine_multiply(a, b);
+            break;
+        case OP_MIN:
+            slots[outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
+            break;
+        case OP_MAX:
+            slots[outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
+            break;
+        case OP_EXP:
+            slots[outSlot] = affine_exp(a);
+            break;
+        case OP_NEG:
+            slots[outSlot] = Affine(-a.c, -a.axis, -a.acc);
+            break;
+        case OP_SQRT:
+            slots[outSlot] = affine_sqrt(a);
+            break;
+        case OP_COPY:
+            slots[outSlot] = a;
+            break;
+        } 
+        i++;
+    }   
+}*/

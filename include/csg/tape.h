@@ -46,11 +46,11 @@ namespace csg
 
         static std::string OpName(uint16_t op);
         void Print() const;
-        float Eval(float x, float y, float z) const;
+        float Eval(float x, float y, float z, float t) const;
     private:
-        // The unique x, y and z nodes in the expression DAG.
-        Expr m_x, m_y, m_z;
-        // The root of the expression DAG.
+        // The unique x, y, z and t nodes in the simplified expression DAG.
+        Expr m_x, m_y, m_z, m_t;
+        // The root of the simplified expression DAG.
         Expr m_result;
 
         // A topological sort of the expression DAG;

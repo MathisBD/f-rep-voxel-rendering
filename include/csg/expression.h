@@ -35,9 +35,9 @@ namespace csg
     
         // build a new expression DAG where x is replaced with newX,
         // y with newY and z with newZ.
-        Expr operator()(Expr newX, Expr newY, Expr newZ) const;
+        Expr operator()(Expr newX, Expr newY, Expr newZ, Expr newT) const;
 
-        float Eval(float x, float y, float z) const;
+        float Eval(float x, float y, float z, float t) const;
         void Print() const;
 
         // Applies f to every expression in the DAG of e,
@@ -59,6 +59,7 @@ namespace csg
     Expr X();
     Expr Y();
     Expr Z();
+    Expr T();
     Expr Constant(float x);
     Expr Sin(Expr e);
     Expr Cos(Expr e);
@@ -70,7 +71,7 @@ namespace csg
     enum class Operator
     {
         // Nullary operators (no inputs)
-        X, Y, Z, CONST,
+        X, Y, Z, T, CONST,
         // Unary operators
         SIN, COS, EXP, NEG, SQRT,
         // Binary operators

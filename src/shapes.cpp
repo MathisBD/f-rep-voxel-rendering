@@ -1,35 +1,7 @@
 #include "shapes.h"
 
 
-csg::Expr Shapes::Sphere(const glm::vec3& center, float radius) 
-{
-    auto x = csg::X();
-    auto y = csg::Y();
-    auto z = csg::Z();
 
-    auto px = x - center.x;
-    auto py = y - center.y;
-    auto pz = z - center.z;
-
-    return (px*px + py*py + pz*pz) - radius*radius;
-}
-
-csg::Expr Shapes::TangleCube(const glm::vec3& center, float scale) 
-{
-    auto x = csg::X();
-    auto y = csg::Y();
-    auto z = csg::Z();
-    
-    auto px = (x - center.x) / scale;
-    auto py = (y - center.y) / scale;
-    auto pz = (z - center.z) / scale;
-    
-    auto px2 = px*px;
-    auto py2 = py*py;
-    auto pz2 = pz*pz;
-
-    return (px2*px2 + py2*py2 + pz2*pz2) - 8 * (px2 + py2 + pz2) + 25;
-}
 
 /*Shapes::density_t Shapes::BarthSextic(const glm::vec3& center, float scale) {
     float t = (1 + glm::sqrt(5)) / 2;

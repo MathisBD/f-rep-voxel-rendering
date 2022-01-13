@@ -15,17 +15,23 @@ namespace csg
         Vector3(Expr x_, Expr y_, Expr z_) : x(x_), y(y_), z(z_) {}
     };
     
+    // These operations are done component-wise.
     Vector3 operator+(Vector3 v1, Vector3 v2);
     Vector3 operator-(Vector3 v1, Vector3 v2);
+    Vector3 operator*(Vector3 v1, Vector3 v2);
+    Vector3 operator/(Vector3 v1, Vector3 v2);
+
     Vector3 operator-(Vector3 v);
     Vector3 operator*(Vector3 v, Expr e);
     Vector3 operator*(Expr e, Vector3 v);
     Vector3 operator/(Vector3 v, Expr e);
     
-
+    // Returns an empty shape
+    Expr Empty();
     // returns a vector whose components 
     // are csg::X(), csg::Y() and csg::Z()
     Vector3 Axes();
+    Expr Pi();
 
     Expr Square(Expr x);
     Expr Abs(Expr x);

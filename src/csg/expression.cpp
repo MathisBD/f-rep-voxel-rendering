@@ -9,7 +9,8 @@ bool csg::Expr::IsAxisOp() const
     assert(node);
     return node->op == csg::Operator::X || 
            node->op == csg::Operator::Y ||
-           node->op == csg::Operator::Z;
+           node->op == csg::Operator::Z ||
+           node->op == csg::Operator::T;
 }
 
 bool csg::Expr::IsConstantOp() const 
@@ -112,17 +113,18 @@ float csg::ApplyOperator(csg::Operator op, std::vector<float> args)
     }
 }
 
-float csg::Expr::Eval(float x, float y, float z) const
+float csg::Expr::Eval(float x, float y, float z, float t) const
 {
     switch (node->op) {
     case csg::Operator::X:      return x;
     case csg::Operator::Y:      return y;
     case csg::Operator::Z:      return z;
+    case csg::Operator::T:      return t;
     case csg::Operator::CONST:  return node->constant;
     default:
         std::vector<float> args;
         for (csg::Expr i : node->inputs) {
-            args.push_back(i.Eval(x, y, z));
+            args.push_back(i.Eval(x, y, z, t));
         }
         return csg::ApplyOperator(node->op, args);
     }
@@ -134,6 +136,7 @@ static std::string OpName(csg::Operator op)
     case csg::Operator::X:      return "X";
     case csg::Operator::Y:      return "Y";
     case csg::Operator::Z:      return "Z";
+    case csg::Operator::T:      return "T";
     case csg::Operator::CONST:  return "CONST";
     case csg::Operator::SIN:    return "SIN";
     case csg::Operator::COS:    return "COS";
@@ -192,6 +195,12 @@ csg::Expr csg::Z()
     return { std::make_shared<csg::Node>(csg::Operator::Z, std::move(inputs)) };
 }
 
+csg::Expr csg::T()
+{
+    std::vector<csg::Expr> inputs = {};
+    return { std::make_shared<csg::Node>(csg::Operator::T, std::move(inputs)) };
+}
+
 csg::Expr csg::Constant(float x)
 {
     return { x };
@@ -234,13 +243,14 @@ csg::Expr csg::Max(csg::Expr e1, csg::Expr e2)
 }
 
 
-csg::Expr csg::Expr::operator()(csg::Expr newX, csg::Expr newY, csg::Expr newZ) const 
+csg::Expr csg::Expr::operator()(csg::Expr newX, csg::Expr newY, csg::Expr newZ, csg::Expr newT) const 
 {
     return TopoMap([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
         switch (e.node->op) {
         case csg::Operator::X: return newX;
         case csg::Operator::Y: return newY;
         case csg::Operator::Z: return newZ;
+        case csg::Operator::T: return newT;
         case csg::Operator::CONST: return e;
         default: 
             assert(e.IsInputOp());

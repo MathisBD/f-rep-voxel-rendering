@@ -143,15 +143,15 @@ void Raytracer::InitUploadCtxt()
 }
 
 
-void Raytracer::UpdateShaderParams(const Camera* camera) 
+void Raytracer::UpdateShaderParams(const Camera* camera, float time) 
 {
     assert(m_voxels->gridLevels < MAX_LEVEL_COUNT);
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
     
     params->lightCount = 2;
-    params->materialCount = 1;
     params->levelCount = m_voxels->gridLevels;
     params->tapeInstrCount = m_voxels->tape.instructions.size(); 
+    params->time = time;
 
     // Grid positions
     params->gridWorldCoords = m_voxels->lowVertex;
@@ -198,14 +198,11 @@ void Raytracer::UpdateShaderParams(const Camera* camera)
     params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
     // Lights
-    params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, 0, 0 }));
+    params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
     params->lights[0].color = { 1, 0, 0, 0 };
 
-    params->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, 0, 0 }));
+    params->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, -0.2, 0 }));
     params->lights[1].color = { 0, 0, 2, 0 };
-
-    // Materials
-    params->materials[0].color = { 1, 1, 0.8f, 0 };
 
     // Tape constant pool
     assert(m_voxels->tape.constantPool.size() <= MAX_CONSTANT_POOL_SIZE);
@@ -229,14 +226,14 @@ void Raytracer::RecordComputeCmd(VkCommandBuffer cmd)
         1);   
 }
 
-void Raytracer::SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem) 
+void Raytracer::SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore waitSem) 
 {
     auto info = vkw::init::SubmitInfo(&cmd);
 
-    VkPipelineStageFlags waitMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    VkPipelineStageFlags waitDstMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores = &renderSem;
-    info.pWaitDstStageMask = &waitMask;
+    info.pWaitSemaphores = &waitSem;
+    info.pWaitDstStageMask = &waitDstMask;
 
     info.signalSemaphoreCount = 1;
     info.pSignalSemaphores = &m_semaphore;
@@ -244,14 +241,14 @@ void Raytracer::SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem)
     VK_CHECK(vkQueueSubmit(m_queue, 1, &info, m_fence));
 }
 
-void Raytracer::Trace(VkSemaphore renderSem, const Camera* camera) 
+void Raytracer::Trace(VkSemaphore waitSem, const Camera* camera, float time) 
 {
     // Wait for the previous command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
     
     // Update the uniform buffer
-    UpdateShaderParams(camera);
+    UpdateShaderParams(camera, time);
 
     // Reset the command pool (and its buffers).
     VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
@@ -268,7 +265,7 @@ void Raytracer::Trace(VkSemaphore renderSem, const Camera* camera)
     // End the command
     VK_CHECK(vkEndCommandBuffer(cmd));
     // Submit.
-    SubmitComputeCmd(cmd, renderSem);
+    SubmitComputeCmd(cmd, waitSem);
 }
 
 void Raytracer::SetBackgroundColor(const glm::vec3& color) 

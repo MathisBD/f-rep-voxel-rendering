@@ -117,8 +117,10 @@ void Renderer::InitSynchronization()
         vkDestroySemaphore(m_device->logicalDevice, m_imageReadySem, nullptr);
         vkDestroySemaphore(m_device->logicalDevice, m_presentSem, nullptr);
     });
+}
 
-    // Signal the render to compute semaphore
+void Renderer::SignalRenderSem()
+{
     auto submitInfo = vkw::init::SubmitInfo(nullptr, 0);
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &m_renderSem;
@@ -233,17 +235,17 @@ void Renderer::RecordRenderCmd(VkCommandBuffer cmd)
     vkCmdEndRenderPass(cmd);
 }
 
-void Renderer::SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore computeSem) 
+void Renderer::SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore waitSem) 
 {
     auto info = vkw::init::SubmitInfo(&cmd);
 
-    VkSemaphore waitSems[] = { computeSem, m_imageReadySem };
-    VkPipelineStageFlags waitMasks[] = { 
+    VkSemaphore waitSems[] = { waitSem, m_imageReadySem };
+    VkPipelineStageFlags waitDstMasks[] = { 
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     info.waitSemaphoreCount = 2;
     info.pWaitSemaphores = &waitSems[0];
-    info.pWaitDstStageMask = &waitMasks[0];
+    info.pWaitDstStageMask = &waitDstMasks[0];
 
     VkSemaphore signalSemaphores[] = { m_renderSem, m_presentSem };
     info.signalSemaphoreCount = 2;
@@ -252,7 +254,7 @@ void Renderer::SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore computeSem)
     VK_CHECK(vkQueueSubmit(m_queue, 1, &info, m_fence));
 }
 
-void Renderer::Render(VkSemaphore computeSem) 
+void Renderer::Render(VkSemaphore waitSem) 
 {
     // Wait for the previous command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, VK_TRUE, 1000000000));
@@ -274,7 +276,7 @@ void Renderer::Render(VkSemaphore computeSem)
     // End the command
     VK_CHECK(vkEndCommandBuffer(cmd));
     // Submit
-    SubmitRenderCmd(cmd, computeSem);
+    SubmitRenderCmd(cmd, waitSem);
 }
 
 void Renderer::EndFrame() 

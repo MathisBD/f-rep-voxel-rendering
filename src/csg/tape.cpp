@@ -33,6 +33,9 @@ csg::Expr csg::Tape::Simplify(csg::Expr root)
         case csg::Operator::Z:
             if (!m_z.node) { m_z = e; }
             return m_z;
+        case csg::Operator::T:
+            if (!m_t.node) { m_t = e; }
+            return m_t;
         case csg::Operator::CONST:
             return e;
         default: 
@@ -178,6 +181,7 @@ uint16_t csg::Tape::TapeOpFromExprOp(csg::Operator op)
     case csg::Operator::X:
     case csg::Operator::Y:
     case csg::Operator::Z:
+    case csg::Operator::T:
         // These expressions don't build any instruction.
         assert(false);
         return 0;
@@ -209,6 +213,7 @@ void csg::Tape::BuildInstrs()
     m_slots.push_back(m_x);
     m_slots.push_back(m_y);
     m_slots.push_back(m_z);
+    m_slots.push_back(m_t);
 
     for (uint32_t i = 0; i < m_exprs.size(); i++) {
         csg::Expr e = m_exprs[i];
@@ -217,7 +222,8 @@ void csg::Tape::BuildInstrs()
         if (e.IsAxisOp()) {
             assert(e.node.get() == m_x.node.get() || 
                    e.node.get() == m_y.node.get() || 
-                   e.node.get() == m_z.node.get());
+                   e.node.get() == m_z.node.get() ||
+                   e.node.get() == m_t.node.get());
             // We don't build an instruction for these expressions.
             continue;
         }
@@ -304,12 +310,13 @@ void csg::Tape::Print() const
     }
 }
 
-float csg::Tape::Eval(float x, float y, float z) const 
+float csg::Tape::Eval(float x, float y, float z, float t) const 
 {
     std::vector<float> slots(m_slots.size());
     slots[0] = x;
     slots[1] = y;
     slots[2] = z;
+    slots[3] = t;
 
     for (auto i : instructions) {
         switch (i.op) {

@@ -15,20 +15,20 @@ public:
         vkw::Device* device, 
         vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
         RenderTarget* target, VkExtent2D windowExtent, VkSurfaceKHR surface);
+    void SignalRenderSem();
     void Cleanup();
 
     // Acquires a swapchain image. 
     // Blocks if no image is available.
     void BeginFrame();
     // Submits the render commands to the graphics queue.
-    // Waits on the compute semaphore.
-    void Render(VkSemaphore computeSem);
+    // Waits on the given semaphore.
+    void Render(VkSemaphore waitSem);
+    // Returns the semaphore signaled when the render command ends.
+    VkSemaphore GetRenderSem() const { return m_renderSem; }
     // Presents the image to the screen
     void EndFrame();
 
-    // Returns the semaphore signaled when the render command ends,
-    // to be waited on by the compute command.
-    VkSemaphore GetRenderSemaphore() const { return m_renderSem; }
     void SetClearColor(glm::vec3 color);
 private:
     vkw::Device* m_device;
@@ -71,5 +71,5 @@ private:
     void InitPipeline();
 
     void RecordRenderCmd(VkCommandBuffer cmd);
-    void SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore computeSem);
+    void SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore waitSem);
 };

@@ -14,7 +14,7 @@
 #define LVL params_buf.level
 #define DIM params_buf.levels[params_buf.level].dim
 
-void set_leaf_bit(uint node, uvec3 cell)
+void set_leaf_bit(uint node, uvec3 cell, bool set)
 {
     uint cell_index = INDEX3D(cell, DIM);
     uint q = cell_index >> 5;
@@ -23,10 +23,15 @@ void set_leaf_bit(uint node, uvec3 cell)
     uint node_pos = params_buf.levels[LVL].node_ofs +
         node * NODE_SIZE(LVL);     
 
-    atomicOr(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], 1 << r);
+    if (set) {
+        atomicOr(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], 1 << r);
+    }
+    else {
+        atomicAnd(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], ~(1 << r));
+    }
 }
 
-void set_interior_bit(uint node, uvec3 cell)
+void set_interior_bit(uint node, uvec3 cell, bool set)
 {
     uint cell_index = INDEX3D(cell, DIM);
     uint q = cell_index >> 5;
@@ -35,7 +40,12 @@ void set_interior_bit(uint node, uvec3 cell)
     uint node_pos = params_buf.levels[LVL].node_ofs +
         node * NODE_SIZE(LVL);     
 
-    atomicOr(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], 1 << r);
+    if (set) {
+        atomicOr(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], 1 << r);
+    }
+    else {
+        atomicAnd(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], ~(1 << r));
+    }
 }
 
 void set_child_list_entry(uint node, uvec3 cell, uint child)
@@ -75,23 +85,31 @@ void voxelize(uint node, uvec3 cell)
     if (LVL == params_buf.level_count - 1) {
         float density = tape_eval_point(child_pos);
         if (density < 0.0f) {
-            set_leaf_bit(node, cell);
+            set_leaf_bit(node, cell, true);
         } 
+        else {
+            set_leaf_bit(node, cell, false);
+        }
     }
     // Interval evaluation 
     else {
         Interval density = tape_eval_interval(child_pos, child_pos + params_buf.levels[LVL].cell_size);
         // Empty node
         if (density.low > 0) {
+            set_leaf_bit(node, cell, false);
+            set_interior_bit(node, cell, false);
             return;
         }  
         // Leaf node
         else if (density.high < 0) {
-            set_leaf_bit(node, cell);
+            set_leaf_bit(node, cell, true);
+            set_interior_bit(node, cell, false);
         }
         // Ambiguous node
         else {
-            set_interior_bit(node, cell); 
+            set_leaf_bit(node, cell, false);
+            set_interior_bit(node, cell, true);
+
             uint child = atomicAdd(child_count_buf.child_count, 1);
             set_child_list_entry(node, cell, child);
             set_child_coords(child, child_coords);

@@ -18,7 +18,9 @@ public:
         VoxelStorage* voxels, VmaAllocator vmaAllocator);
     void Cleanup();
 
-    void Voxelize();
+    void Voxelize(VkSemaphore waitSem, float time);
+    // Returns a semaphore that is signaled when the voxelization is finished.
+    VkSemaphore GetVoxelizeSem() const { return m_voxelizeLevelSems.back(); }
 private:
     static const uint32_t THREAD_GROUP_SIZE_X    = 4;
     static const uint32_t THREAD_GROUP_SIZE_Y    = 4;
@@ -37,7 +39,7 @@ private:
         uint32_t levelCount;
         uint32_t level;    
         uint32_t tapeInstrCount;
-        uint32_t _padding_;
+        float time;
 
         // The world positions of the grid bottom left corner.
         glm::vec3 gridWorldCoords;
@@ -80,12 +82,12 @@ private:
     void ZeroOutNodeBuffer();
     void UploadTape();
 
-    void UpdateShaderParams(uint32_t level);
+    void UpdateShaderParams(uint32_t level, float time);
     void RecordCmd(VkCommandBuffer cmd, uint32_t level);
-    void SubmitCmd(VkCommandBuffer cmd, uint32_t level);
+    void SubmitCmd(VkCommandBuffer cmd, uint32_t level, VkSemaphore waitSem);
 
     // This creates the level 'level',
     // assuming the previous level was created.
     // If level==0, then it only assumes an empty root node exists.
-    void VoxelizeLevel(uint32_t level);
+    void VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float time);
 };
