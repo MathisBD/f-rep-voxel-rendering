@@ -215,11 +215,13 @@ Interval tape_eval_interval(vec3 low, vec3 high)
     return slots[0];
 }
 
+// Evaluate the gradient of the tape function
+// using forward mode automatic differentiation.
 vec3 tape_eval_gradient(vec3 pos)
 {
     // A slot contains :
     // x, y, z : partial derivatives wrt. x, y and z
-    // w : the value of the functions
+    // w : the value of the function
     vec4 slots[MAX_SLOT_COUNT];
     slots[0] = vec4(1, 0, 0, pos.x);
     slots[1] = vec4(0, 1, 0, pos.y);
@@ -285,9 +287,7 @@ vec3 tape_eval_gradient(vec3 pos)
             }
             break;
         case OP_EXP:
-            slots[outSlot] =  vec4(
-                exp(a.w) * a.xyz, 
-                exp(a.w));
+            slots[outSlot] =  exp(a.w) * vec4(a.xyz, 1);
             break;
         case OP_NEG:
             slots[outSlot] = -a;       
