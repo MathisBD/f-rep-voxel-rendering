@@ -168,10 +168,15 @@ void Application::Draw()
             1000.0f * m_frameTime.GetAverage(), 1.0f / m_frameTime.GetAverage());
     }
 
+    float time = 0.0f;
+    if (m_params.voxelizeRealTime) {
+        time = Timer::s_time;
+    }
+
     // Voxelize
     VkSemaphore traceWaitSem;
     if (m_params.voxelizeRealTime || !m_voxelizedOnce) {
-        m_voxelizer.Voxelize(m_renderer.GetRenderSem(), Timer::s_time);
+        m_voxelizer.Voxelize(m_renderer.GetRenderSem(), time);
         traceWaitSem = m_voxelizer.GetVoxelizeSem();
         m_voxelizedOnce = true;
     }
@@ -181,7 +186,7 @@ void Application::Draw()
 
     // Raytrace
     m_camera.Update(m_inputManager);
-    m_raytracer.Trace(traceWaitSem, &m_camera, Timer::s_time);
+    m_raytracer.Trace(traceWaitSem, &m_camera, time);
     
     // Render
     m_renderer.BeginFrame();

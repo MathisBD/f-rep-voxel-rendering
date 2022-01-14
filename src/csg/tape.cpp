@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <stdio.h>
 #include <glm/glm.hpp>
+#include <fstream>
+#include "csg/simplifier.h"
 
 
 csg::Tape::Tape() {}
@@ -20,67 +22,10 @@ csg::Tape::Tape(csg::Expr e)
 
 csg::Expr csg::Tape::Simplify(csg::Expr root) 
 {
-    return root.TopoMap([&] (csg::Expr e, std::vector<csg::Expr> inputs) 
-    {
-        // Merge axis nodes
-        switch (e.node->op) {
-        case csg::Operator::X:
-            if (!m_x.node) { m_x = e; }
-            return m_x;
-        case csg::Operator::Y:
-            if (!m_y.node) { m_y = e; }
-            return m_y;
-        case csg::Operator::Z:
-            if (!m_z.node) { m_z = e; }
-            return m_z;
-        case csg::Operator::T:
-            if (!m_t.node) { m_t = e; }
-            return m_t;
-        case csg::Operator::CONST:
-            return e;
-        default: 
-            assert(e.IsInputOp());
-            break;
-        }
-
-        // Constant propagation
-        std::vector<float> constants;
-        for (auto i : inputs) {
-            if (i.IsConstantOp()) {
-                constants.push_back(i.node->constant);
-            }
-        }
-        if (constants.size() == inputs.size()) {
-            float res = csg::ApplyOperator(e.node->op, constants);
-            return csg::Expr(res);
-        }
-
-        // Eliminate identity operations
-        switch (e.node->op) {
-        case csg::Operator::ADD:
-            if (inputs[0].IsConstantOp(0)) { return inputs[1]; }
-            if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
-            break;
-        case csg::Operator::SUB:
-            if (inputs[0].IsConstantOp(0)) { return -inputs[1]; }
-            if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
-            break;
-        case csg::Operator::MUL:
-            if (inputs[0].IsConstantOp(1)) { return inputs[1]; }
-            if (inputs[1].IsConstantOp(1)) { return inputs[0]; }
-            if (inputs[0].IsConstantOp(0)) { return csg::Expr(0); }
-            if (inputs[1].IsConstantOp(0)) { return csg::Expr(0); }
-            break;
-        case csg::Operator::DIV:
-            if (inputs[0].IsConstantOp(0)) { return csg::Expr(0); }
-            if (inputs[1].IsConstantOp(1)) { return inputs[0]; }
-            break;
-        default: break;
-        }
-
-        // No simplification : just copy the expression
-        return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
-    });
+    csg::Expr e = root;
+    e = csg::MergeAxes(e);
+    e = csg::ConstantFold(e);
+    return e;
 }
 
 void csg::Tape::TopoSort() 
@@ -205,25 +150,32 @@ uint16_t csg::Tape::TapeOpFromExprOp(csg::Operator op)
 
 void csg::Tape::BuildInstrs() 
 {
-    assert(m_x.node->op == csg::Operator::X);
-    assert(m_y.node->op == csg::Operator::Y);
-    assert(m_z.node->op == csg::Operator::Z);
+    csg::Expr x, y, z, t;
+    for (auto& e : m_exprs) {
+        switch (e.node->op) {
+        case csg::Operator::X: x = e; break;
+        case csg::Operator::Y: y = e; break;
+        case csg::Operator::Z: z = e; break;
+        case csg::Operator::T: t = e; break;
+        default: break;
+        }
+    }
 
-    // Initially the x, y and z values occupy the first three slots
-    m_slots.push_back(m_x);
-    m_slots.push_back(m_y);
-    m_slots.push_back(m_z);
-    m_slots.push_back(m_t);
+    // Initially the x, y, z and t values occupy the first three slots
+    m_slots.push_back(x);
+    m_slots.push_back(y);
+    m_slots.push_back(z);
+    m_slots.push_back(t);
 
     for (uint32_t i = 0; i < m_exprs.size(); i++) {
         csg::Expr e = m_exprs[i];
         csg::Tape::Instr inst = {};
 
         if (e.IsAxisOp()) {
-            assert(e.node.get() == m_x.node.get() || 
-                   e.node.get() == m_y.node.get() || 
-                   e.node.get() == m_z.node.get() ||
-                   e.node.get() == m_t.node.get());
+            assert(e.node.get() == x.node.get() || 
+                   e.node.get() == y.node.get() || 
+                   e.node.get() == z.node.get() ||
+                   e.node.get() == t.node.get());
             // We don't build an instruction for these expressions.
             continue;
         }

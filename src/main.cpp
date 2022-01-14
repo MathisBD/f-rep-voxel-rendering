@@ -1,5 +1,7 @@
 #include "application.h"
 #include "csg/lib.h"
+#include <fstream>
+#include "csg/simplifier.h"
 
 
 // A rotating screw.
@@ -84,7 +86,7 @@ csg::Expr Menger(int level)
 csg::Expr MengerSponge()
 {
     using namespace csg;
-    auto shape = Menger(2);
+    auto shape = Menger(0);
     shape = TranslateXYZ(shape, {-0.5, -0.5, -0.5});
     shape = ScaleXYZ(shape, {30, 30, 1});
     shape = Diff(shape, Sphere({10, 10, 0}, 10));
@@ -105,6 +107,26 @@ int main()
     
     csg::Tape tape(params.shape);
     tape.Print();
+
+    {
+        csg::Expr e = csg::Sphere({0, 0, 0}, 1);
+        e = csg::TranslateXYZ(e, { 1, 1, 1});
+        e = csg::ScaleXYZ(e, 2);
+        e = csg::TranslateXYZ(e, { 3, 3, 3});
+        e = csg::ConstantFold(e);
+
+        std::fstream file;
+        file.open("expr.dot", std::ios::out);
+        assert(file.good());
+        file << e.ToDotGraph() << std::endl;
+        file.close();
+
+        file.open("expr_normal.dot", std::ios::out);
+
+        assert(file.good());
+        file << csg::ConstantFold(csg::ArithNormalForm(e)).ToDotGraph() << std::endl;
+        file.close();
+    }
 
     uint32_t minMaxOps = 0;
     for (auto i : tape.instructions) {

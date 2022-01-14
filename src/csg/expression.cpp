@@ -4,6 +4,20 @@
 #include <unordered_map>
 
 
+csg::Node::Node(float constant) 
+{
+    this->op = Operator::CONST;
+    this->constant = constant;
+}
+
+csg::Node::Node(Operator op, std::vector<Expr>&& inputs) 
+{
+    assert(op != Operator::CONST);
+    this->op = op;
+    this->inputs = inputs;
+}
+
+
 bool csg::Expr::IsAxisOp() const 
 {
     assert(node);
@@ -88,15 +102,27 @@ float csg::ApplyOperator(csg::Operator op, std::vector<float> args)
     case csg::Operator::SQRT:    
         assert(args.size() == 1);
         return glm::sqrt(args[0]);
-    case csg::Operator::ADD:    
-        assert(args.size() == 2);
-        return args[0] + args[1];
+    case csg::Operator::ADD: 
+        {   
+            assert(args.size() >= 2);
+            float res = 0;
+            for (float x : args) {
+                res += x;
+            }
+            return res;
+        }
     case csg::Operator::SUB:    
         assert(args.size() == 2);
         return args[0] - args[1];
-    case csg::Operator::MUL:    
-        assert(args.size() == 2);
-        return args[0] * args[1];
+    case csg::Operator::MUL: 
+        {
+            assert(args.size() >= 2);
+            float res = 1;
+            for (float x : args) {
+                res *= x;
+            }
+            return res;
+        }
     case csg::Operator::DIV: 
         {   
             assert(args.size() == 2);
@@ -245,7 +271,7 @@ csg::Expr csg::Max(csg::Expr e1, csg::Expr e2)
 
 csg::Expr csg::Expr::operator()(csg::Expr newX, csg::Expr newY, csg::Expr newZ, csg::Expr newT) const 
 {
-    return TopoMap([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
+    return TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
         switch (e.node->op) {
         case csg::Operator::X: return newX;
         case csg::Operator::Y: return newY;
@@ -278,21 +304,27 @@ void csg::Expr::TopoIter(const std::function<void(csg::Expr)>& f) const
     dfs(*this);
 }
 
-csg::Expr csg::Expr::TopoMap(
-    const std::function<csg::Expr(csg::Expr, std::vector<csg::Expr>)>& f) const 
+std::string csg::Expr::ToDotGraph() const 
 {
-    // Maps old nodes to new nodes.
-    std::unordered_map<csg::Node*, csg::Expr> newExpr;
+    DotGraph graph(true);
 
-    std::function<void(csg::Expr)> copyExpr = [&] (csg::Expr e) 
-    {
-        std::vector<csg::Expr> newInputs;
-        for (auto child : e.node->inputs) {
-            newInputs.push_back(newExpr[child.node.get()]);
+    TopoMap<int>([&] (csg::Expr e, std::vector<int> inputs) {
+        std::string label;
+        if (e.IsConstantOp()) {
+            char buf[64];
+            sprintf(buf, "%.2f", e.node->constant);
+            label = std::string(buf);
         }
-        newExpr[e.node.get()] = f(e, newInputs);
-    };
+        else {
+            label = OpName(e.node->op);
+        }
 
-    TopoIter(copyExpr);
-    return newExpr[node.get()];
+        int id = graph.AddNode(label);
+        for (int cid : inputs) {
+            graph.AddEdge(id, cid);
+        }
+        return id;
+    });
+
+    return graph.Build();
 }
