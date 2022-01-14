@@ -99,11 +99,11 @@ int main()
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = false;
+    params.voxelizeRealTime = true;
     params.printFPS = false;
     params.printHardwareInfo = false;
     params.gridDims = { 16, 4, 4 };
-    params.shape = MengerSponge();
+    params.shape = ElasticCube();
     
     csg::Tape tape(params.shape);
     tape.Print();

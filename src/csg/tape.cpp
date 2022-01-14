@@ -23,8 +23,8 @@ csg::Tape::Tape(csg::Expr e)
 csg::Expr csg::Tape::Simplify(csg::Expr root) 
 {
     csg::Expr e = root;
-    e = csg::MergeAxes(e);
     e = csg::ConstantFold(e);
+    e = csg::MergeDuplicates(e);
     return e;
 }
 
