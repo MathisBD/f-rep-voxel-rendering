@@ -12,7 +12,7 @@ namespace csg
 
     int ThreeWayCompare(Expr a, Expr b);
     Expr NormalForm(Expr e);
-    Expr MergeDuplicate(Expr e);
+    Expr MergeDuplicates(Expr e);
 
     Expr AffineFold(Expr e);
 }

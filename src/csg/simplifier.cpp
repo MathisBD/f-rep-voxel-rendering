@@ -1,4 +1,5 @@
 #include "csg/simplifier.h"
+#include <algorithm>
 
 
 csg::Expr csg::MergeAxes(csg::Expr root) 
@@ -107,31 +108,6 @@ csg::Expr csg::ConstantFold(csg::Expr root)
 }
 
 
-csg::Expr csg::UnfoldArithNodes(csg::Expr root) 
-{
-    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
-        switch (e.node->op) {
-        case csg::Operator::ADD: {
-            assert(inputs.size() >= 2);
-            csg::Expr e2 = inputs[0] + inputs[1];
-            for (size_t i = 2; i < inputs.size(); i++) {
-                e2 = e2 + inputs[i];
-            }
-            return e2;
-        }
-        case csg::Operator::MUL: {
-            assert(inputs.size() >= 2);
-            csg::Expr e2 = inputs[0] * inputs[1];
-            for (size_t i = 2; i < inputs.size(); i++) {
-                e2 = e2 * inputs[i];
-            }
-            return e2;
-        }
-        default: return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
-        }
-    }); 
-}
-
 template <typename T>
 static void VectorExtend(std::vector<T>& v1, const std::vector<T>& v2)
 {
@@ -140,7 +116,7 @@ static void VectorExtend(std::vector<T>& v1, const std::vector<T>& v2)
     }
 }
 
-class AffineForm
+/*class AffineForm
 {
 public:
     struct SlopeExpr
@@ -242,4 +218,161 @@ csg::Expr csg::ArithNormalForm(csg::Expr root)
         }
     }); 
     return rootAF.ToExpr();
+}*/
+
+static constexpr int OpOrder(csg::Operator op)
+{
+    switch (op) {
+    case csg::Operator::X:     return 0;
+    case csg::Operator::Y:     return 1;
+    case csg::Operator::Z:     return 2;
+    case csg::Operator::T:     return 3;
+    case csg::Operator::CONST: return 4;
+    case csg::Operator::SIN:   return 5;
+    case csg::Operator::COS:   return 6;
+    case csg::Operator::EXP:   return 7;
+    case csg::Operator::NEG:   return 8;
+    case csg::Operator::SQRT:  return 9;
+    case csg::Operator::ADD:   return 10;
+    case csg::Operator::SUB:   return 11;
+    case csg::Operator::MUL:   return 12;
+    case csg::Operator::DIV:   return 13;
+    case csg::Operator::MIN:   return 14;
+    case csg::Operator::MAX:   return 15;
+    default: assert(false); return -1;
+    }
+}
+
+int csg::ThreeWayCompare(csg::Expr a, csg::Expr b) 
+{
+    if (OpOrder(a.node->op) < OpOrder(b.node->op)) {
+        return -1;
+    }
+    else if (OpOrder(a.node->op) > OpOrder(b.node->op)) {
+        return 1;
+    }
+
+    // Constant op
+    auto op = a.node->op;
+    if (op == csg::Operator::CONST) {
+        if (a.node->constant < b.node->constant) {
+            return -1;
+        }
+        else if (a.node->constant > b.node->constant) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    // Check a and b have the same input number
+    if (a.node->inputs.size() < b.node->inputs.size()) {
+        return -1;
+    }
+    else if (a.node->inputs.size() > b.node->inputs.size()) {
+        return 1;
+    }
+
+    // Compare the inputs
+    for (size_t i = 0; i < a.node->inputs.size(); i++) {
+        int cmp = ThreeWayCompare(a.node->inputs[i], b.node->inputs[i]);
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return 0;
+}
+
+
+struct CompareFunctor
+{
+    int operator()(const csg::Expr a, const csg::Expr b)
+    {
+        return csg::ThreeWayCompare(a, b);
+    }
+};
+
+csg::Expr csg::NormalForm(csg::Expr root) 
+{
+    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
+        if (!e.IsInputOp()) {
+            return e;
+        } 
+
+        switch (e.node->op) {
+        // These are commutative operations :
+        // we have to sort their operands
+        case csg::Operator::ADD:
+        case csg::Operator::MUL:
+        case csg::Operator::MIN:
+        case csg::Operator::MAX:
+            std::sort(inputs.begin(), inputs.end(), 
+                [] (const csg::Expr a, const csg::Expr b) 
+            {
+                return ThreeWayCompare(a, b) <= 0;
+            });
+            break;
+        default: break;
+        }
+        return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+    });
+}
+
+
+// Returns true if a and b refer to semantically equivalent expressions.
+// Assumes :
+// 1. a and b are in normal form
+// 2. we have merged all duplicates from the set of inputs to a and b 
+static bool AreDuplicate(csg::Expr a, csg::Expr b)
+{
+    if (a.node->op != b.node->op) {
+        return false;
+    }
+    auto op = a.node->op;
+
+    if (a.IsAxisOp()) {
+        return true;
+    }
+    if (op == csg::Operator::CONST) {
+        return a.node->constant == b.node->constant;
+    }
+    assert(a.IsInputOp());
+
+    if (a.node->inputs.size() != b.node->inputs.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.node->inputs.size(); i++) {
+        // here we assume that we have merged all duplicates from the set of inputs
+        // and that a and b are in normal form
+        if (a.node->inputs[i].node.get() != b.node->inputs[i].node.get()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+csg::Expr csg::MergeDuplicates(csg::Expr root) 
+{
+    // First put the root in normal form.
+    root = csg::NormalForm(root);
+
+    std::vector<csg::Expr> uniqueExprs;
+    return root.TopoMap<csg::Expr>([&] (csg::Expr e, std::vector<csg::Expr> inputs) {
+        csg::Expr newE;
+        if (e.IsConstantOp()) {
+            newE.node = std::make_shared<csg::Node>(e.node->constant);
+        }
+        else {
+            newE.node = std::make_shared<csg::Node>(e.node->op, std::move(inputs));
+        }
+
+        for (csg::Expr e2 : uniqueExprs) {
+            if (AreDuplicate(newE, e2)) {
+                return e2;
+            }
+        }
+        uniqueExprs.push_back(newE);
+        return newE;
+    });
 }

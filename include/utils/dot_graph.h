@@ -9,6 +9,7 @@ public:
     DotGraph(bool directed);
     int AddNode(const std::string& label);
     void AddEdge(int nodeFrom, int nodeTo);
+    void AddEdge(int nodeFrom, int nodeTo, const std::string& label);
     std::string Build();
 private:
     struct Node {
@@ -18,6 +19,7 @@ private:
     struct Edge {
         int nodeFrom;
         int nodeTo;
+        std::string label;
     };
 
     bool m_directed;

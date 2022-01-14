@@ -64,6 +64,7 @@ namespace csg
 
         float Eval(float x, float y, float z, float t) const;
         void Print() const;
+        std::string ToDotGraph(bool labelArrows = false) const;
 
         // Applies f to every expression in the DAG of e,
         // and guarantees that a node is visited after all its children
@@ -90,8 +91,6 @@ namespace csg
             TopoIter(helper);
             return result[node.get()];
         }
-
-        std::string ToDotGraph() const;
     };
 
     Expr operator-(Expr e);

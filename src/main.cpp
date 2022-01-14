@@ -102,29 +102,26 @@ int main()
     params.voxelizeRealTime = false;
     params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4, 4 };
+    params.gridDims = { 16, 4, 4 };
     params.shape = MengerSponge();
     
     csg::Tape tape(params.shape);
     tape.Print();
 
     {
-        csg::Expr e = csg::Sphere({0, 0, 0}, 1);
-        e = csg::TranslateXYZ(e, { 1, 1, 1});
-        e = csg::ScaleXYZ(e, 2);
-        e = csg::TranslateXYZ(e, { 3, 3, 3});
+        csg::Expr e = Morph();
         e = csg::ConstantFold(e);
+        e = csg::MergeAxes(e);
 
         std::fstream file;
         file.open("expr.dot", std::ios::out);
         assert(file.good());
-        file << e.ToDotGraph() << std::endl;
+        file << csg::NormalForm(e).ToDotGraph(true) << std::endl;
         file.close();
 
-        file.open("expr_normal.dot", std::ios::out);
-
+        file.open("expr_merged.dot", std::ios::out);
         assert(file.good());
-        file << csg::ConstantFold(csg::ArithNormalForm(e)).ToDotGraph() << std::endl;
+        file << csg::MergeDuplicates(e).ToDotGraph(true) << std::endl;
         file.close();
     }
 

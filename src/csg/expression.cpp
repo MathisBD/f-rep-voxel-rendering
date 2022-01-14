@@ -304,8 +304,14 @@ void csg::Expr::TopoIter(const std::function<void(csg::Expr)>& f) const
     dfs(*this);
 }
 
-std::string csg::Expr::ToDotGraph() const 
+std::string csg::Expr::ToDotGraph(bool labelArrows /*= false*/) const 
 {
+    // Count the number of nodes.
+    size_t nodeCount = 0;
+    TopoIter([&] (csg::Expr e) {
+        nodeCount++;
+    });
+
     DotGraph graph(true);
 
     TopoMap<int>([&] (csg::Expr e, std::vector<int> inputs) {
@@ -319,9 +325,18 @@ std::string csg::Expr::ToDotGraph() const
             label = OpName(e.node->op);
         }
 
+        if (e.node.get() == this->node.get()) {
+            label += "\\nnode count=" + std::to_string(nodeCount);
+        }
+
         int id = graph.AddNode(label);
-        for (int cid : inputs) {
-            graph.AddEdge(id, cid);
+        for (size_t i = 0; i < inputs.size(); i++) {
+            if (labelArrows) {
+                graph.AddEdge(id, inputs[i], std::to_string(i));
+            }
+            else {
+                graph.AddEdge(id, inputs[i]);
+            }
         }
         return id;
     });
