@@ -86,44 +86,67 @@ csg::Expr Menger(int level)
 csg::Expr MengerSponge()
 {
     using namespace csg;
-    auto shape = Menger(0);
+    auto shape = Menger(3);
     shape = TranslateXYZ(shape, {-0.5, -0.5, -0.5});
     shape = ScaleXYZ(shape, {30, 30, 1});
     shape = Diff(shape, Sphere({10, 10, 0}, 10));
     return shape;
 }
+
+csg::Expr TwistedTower(int level, float angle, float scale)
+{
+    using namespace csg;
+    auto box = Box({-0.5, 0, -0.5}, {1, 1, 1});
+    if (level <= 0) {
+        return box;
+    }
+
+    auto shape = TwistedTower(level-1, angle, scale);
+    shape = ScaleXYZ(shape, scale);
+    shape = RotateY(shape, angle);
+    shape = TranslateY(shape, scale);
+    return Union(shape, box);
+}
     
+/*int main()
+{
+    auto e = Menger(3);
+    printf("\n[+] e size=%lu\n", e.NodeCount());
+    csg::Tape(e).Print();
+    
+    auto e1 = csg::ConstantFold(e);
+    printf("\n[+] e1 size=%lu\n", e1.NodeCount());
+    csg::Tape(e1).Print();
+    
+    auto e2 = csg::MergeDuplicates(csg::ConstantFold(e));
+    printf("\n[+] e2 size=%lu\n", e2.NodeCount());
+    csg::Tape(e2).Print();
+    
+    DotGraph graph = e.ToDotGraph(true);
+    graph.Merge(e1.ToDotGraph(true));
+    graph.Merge(e2.ToDotGraph(true));
+
+    std::fstream file;
+    file.open("expr.dot", std::ios::out);
+    assert(file.good());
+    file << graph.Build() << std::endl;
+    file.close();
+}*/
+
 
 int main()
 {
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = true;
+    params.voxelizeRealTime = false;
     params.printFPS = false;
     params.printHardwareInfo = false;
     params.gridDims = { 16, 4, 4 };
-    params.shape = ElasticCube();
+    params.shape = MengerSponge();
     
     csg::Tape tape(params.shape);
     tape.Print();
-
-    {
-        csg::Expr e = Morph();
-        e = csg::ConstantFold(e);
-        e = csg::MergeAxes(e);
-
-        std::fstream file;
-        file.open("expr.dot", std::ios::out);
-        assert(file.good());
-        file << csg::NormalForm(e).ToDotGraph(true) << std::endl;
-        file.close();
-
-        file.open("expr_merged.dot", std::ios::out);
-        assert(file.good());
-        file << csg::MergeDuplicates(e).ToDotGraph(true) << std::endl;
-        file.close();
-    }
 
     uint32_t minMaxOps = 0;
     for (auto i : tape.instructions) {
@@ -133,7 +156,6 @@ int main()
         }
     }
     printf("[+] Number of min/max instructions : %u\n", minMaxOps);
-
 
     Application app(params);
     app.Init();

@@ -57,14 +57,20 @@ namespace csg
         // Returns true if this is a constant op 
         // and the constant is equal to the argument.
         bool IsConstantOp(float constant) const;
-    
+        bool IsOp(Operator op) const;
+
+        size_t NodeCount() const;
+
+        // Returns the i-th input expression
+        Expr operator[](size_t i) const;
+
         // build a new expression DAG where x is replaced with newX,
         // y with newY and z with newZ.
         Expr operator()(Expr newX, Expr newY, Expr newZ, Expr newT) const;
 
         float Eval(float x, float y, float z, float t) const;
         void Print() const;
-        std::string ToDotGraph(bool labelArrows = false) const;
+        DotGraph ToDotGraph(bool labelArrows = false) const;
 
         // Applies f to every expression in the DAG of e,
         // and guarantees that a node is visited after all its children

@@ -247,18 +247,22 @@ std::string csg::Tape::OpName(uint16_t op)
     }
 }
 
-void csg::Tape::Print() const 
+void csg::Tape::Print(bool detailed /*=false*/) const 
 {
     printf("[+] Tape : instr count=%lu   slot cout = %lu\n", 
         instructions.size(), m_slots.size());
-    for (uint32_t i = 0; i < instructions.size(); i++) {
-        Instr inst = instructions[i];
-        printf("\t%2u   %10s  out=%u   inA=%u   inB=%u\n", 
-            i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
+    if (detailed) {
+        for (uint32_t i = 0; i < instructions.size(); i++) {
+            Instr inst = instructions[i];
+            printf("\t%2u   %10s  out=%u   inA=%u   inB=%u\n", 
+                i, OpName(inst.op).c_str(), inst.outSlot, inst.inSlotA, inst.inSlotB);
+        }
     }
-    printf("[+] Constant Pool:\n");
-    for (uint32_t i = 0; i < constantPool.size(); i++) {
-        printf("\t%2u   %4.2f\n", i, constantPool[i]);
+    printf("[+] Constant pool : size=%lu\n", constantPool.size());
+    if (detailed) {
+        for (uint32_t i = 0; i < constantPool.size(); i++) {
+            printf("\t%2u   %4.2f\n", i, constantPool[i]);
+        }
     }
 }
 

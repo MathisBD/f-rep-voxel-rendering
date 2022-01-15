@@ -45,7 +45,7 @@ namespace csg
         Tape(Expr e);
 
         static std::string OpName(uint16_t op);
-        void Print() const;
+        void Print(bool detailed = false) const;
         float Eval(float x, float y, float z, float t) const;
     private:
         // The root of the simplified expression DAG.

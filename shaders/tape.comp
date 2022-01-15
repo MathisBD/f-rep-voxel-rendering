@@ -1,4 +1,4 @@
-#define MAX_SLOT_COUNT      64
+#define MAX_SLOT_COUNT      128
 
 
 #define OP_CONSTANT 0

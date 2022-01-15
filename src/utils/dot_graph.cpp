@@ -1,5 +1,5 @@
 #include "utils/dot_graph.h"
-
+#include <assert.h>
 
 
 DotGraph::DotGraph(bool directed) : m_directed(directed) {}
@@ -20,6 +20,19 @@ void DotGraph::AddEdge(int nodeFrom, int nodeTo)
 void DotGraph::AddEdge(int nodeFrom, int nodeTo, const std::string& label) 
 {
     m_edges.push_back({ nodeFrom, nodeTo, label });
+}
+
+void DotGraph::Merge(const DotGraph& other) 
+{
+    assert(other.m_directed == m_directed);
+
+    int ofs = m_nodes.size();
+    for (const Node& n : other.m_nodes) {
+        m_nodes.push_back({ ofs + n.id, n.label });
+    }    
+    for (const Edge& e : other.m_edges) {
+        m_edges.push_back({ ofs + e.nodeFrom, ofs + e.nodeTo, e.label });
+    }
 }
 
 std::string DotGraph::Build() 

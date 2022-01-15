@@ -55,6 +55,27 @@ bool csg::Expr::IsInputOp() const
            node->op == csg::Operator::MAX;
 }
 
+bool csg::Expr::IsOp(csg::Operator op) const
+{
+    assert(node);
+    return node->op == op;    
+}
+
+size_t csg::Expr::NodeCount() const 
+{
+    size_t count = 0;
+    TopoIter([&] (csg::Expr e) { count++; });
+    return count;    
+}
+
+csg::Expr csg::Expr::operator[](size_t i) const
+{
+    assert(IsInputOp());
+    assert(node);
+    assert(i < node->inputs.size());    
+    return node->inputs[i];
+}
+
 csg::Expr csg::operator-(csg::Expr e)
 {
     std::vector<csg::Expr> inputs = { e };
@@ -103,26 +124,14 @@ float csg::ApplyOperator(csg::Operator op, std::vector<float> args)
         assert(args.size() == 1);
         return glm::sqrt(args[0]);
     case csg::Operator::ADD: 
-        {   
-            assert(args.size() >= 2);
-            float res = 0;
-            for (float x : args) {
-                res += x;
-            }
-            return res;
-        }
+        assert(args.size() == 2);
+        return args[0] + args[1];
     case csg::Operator::SUB:    
         assert(args.size() == 2);
         return args[0] - args[1];
     case csg::Operator::MUL: 
-        {
-            assert(args.size() >= 2);
-            float res = 1;
-            for (float x : args) {
-                res *= x;
-            }
-            return res;
-        }
+        assert(args.size() == 2);
+        return args[0] * args[1];
     case csg::Operator::DIV: 
         {   
             assert(args.size() == 2);
@@ -304,7 +313,7 @@ void csg::Expr::TopoIter(const std::function<void(csg::Expr)>& f) const
     dfs(*this);
 }
 
-std::string csg::Expr::ToDotGraph(bool labelArrows /*= false*/) const 
+DotGraph csg::Expr::ToDotGraph(bool labelArrows /*= false*/) const 
 {
     // Count the number of nodes.
     size_t nodeCount = 0;
@@ -341,5 +350,5 @@ std::string csg::Expr::ToDotGraph(bool labelArrows /*= false*/) const
         return id;
     });
 
-    return graph.Build();
+    return graph;
 }

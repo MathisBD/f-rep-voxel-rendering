@@ -1,224 +1,108 @@
 #include "csg/simplifier.h"
 #include <algorithm>
 
-
-csg::Expr csg::MergeAxes(csg::Expr root) 
+csg::Expr csg::MergeAxes(csg::Expr root)
 {
     csg::Expr x, y, z, t;
     return root.TopoMap<csg::Expr>([&] (csg::Expr e, std::vector<csg::Expr> inputs) {
         switch (e.node->op) {
-        case csg::Operator::X:
-            if (!x.node) { x = e; }
+        case csg::Operator::X: 
+            if (x.node.get() == nullptr) { x = e; }
             return x;
-        case csg::Operator::Y:
-            if (!y.node) { y = e; }
+        case csg::Operator::Y: 
+            if (y.node.get() == nullptr) { y = e; }
             return y;
-        case csg::Operator::Z:
-            if (!z.node) { z = e; }
+        case csg::Operator::Z: 
+            if (z.node.get() == nullptr) { z = e; }
             return z;
-        case csg::Operator::T:
-            if (!t.node) { t = e; }
+        case csg::Operator::T: 
+            if (t.node.get() == nullptr) { t = e; }
             return t;
         case csg::Operator::CONST:
             return e;
         default: 
-            assert(e.IsInputOp());
             return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
         }
     });
 }
 
-csg::Expr csg::ConstantFold(csg::Expr root) 
+
+// Perform a single constant fold step (i.e. don't recurse on the inputs)
+static csg::Expr ConstantFoldStep(csg::Expr e) 
 {    
-    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
-        if (!e.IsInputOp()) {
-            return e;
-        }
-
-        std::vector<float> constants;
-        for (auto i : inputs) {
-            if (i.IsConstantOp()) {
-                constants.push_back(i.node->constant);
-            }
-        }
-        // All inputs are constant
-        if (constants.size() == inputs.size()) {
-            float res = csg::ApplyOperator(e.node->op, constants);
-            return csg::Expr(res);
-        }
-
-        // For add : merge all the constants
-        if (constants.size() > 0 && 
-            (e.node->op == csg::Operator::ADD || e.node->op == csg::Operator::MUL)) 
-        {
-            assert(inputs.size() >= 2);
-            float id = e.node->op == csg::Operator::ADD ? 0 : 1;
-            
-            float c = id;
-            std::vector<csg::Expr> newInputs;
-            for (const auto& inp : inputs) {
-                if (inp.IsConstantOp()) {
-                    c = ApplyOperator(e.node->op, { c, inp.node->constant });
-                }
-                else {
-                    newInputs.push_back(inp);
-                }
-            }
-            if (c != id) {
-                newInputs.push_back(csg::Expr(c));
-            }
-            assert(newInputs.size() >= 1);
-            if (newInputs.size() == 1) {
-                return newInputs[0];
-            }
-            inputs = newInputs;
-        }
-
-        // Some inputs are constant :
-        // we can replace some operations with simpler ones.
-        switch (e.node->op) {
-        case csg::Operator::MUL:
-            assert(inputs.size() >= 2);
-            for (const auto& inp : inputs) {
-                if (inp.IsConstantOp(0)) {
-                    return csg::Exp(0);
-                }
-            }
-            break;
-        case csg::Operator::SUB:
-            assert(inputs.size() == 2);
-            if (inputs[0].IsConstantOp(0)) { return -inputs[1]; }
-            if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
-            if (inputs[1].IsConstantOp())  { return inputs[0] + (-inputs[1].node->constant); }
-            break;
-        case csg::Operator::DIV:
-            assert(inputs.size() == 2);
-            if (inputs[0].IsConstantOp(0))        { return csg::Expr(0); }
-            if (inputs[1].IsConstantOp(1))        { return inputs[0]; }
-            if (e.node->inputs[1].IsConstantOp()) { return inputs[0] * (1 / inputs[1].node->constant); }
-            break;
-        case csg::Operator::NEG:
-            if (inputs[0].node->op == csg::Operator::NEG) { return inputs[0].node->inputs[0]; }
-            break;
-        default: break;
-        }
-
-        return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
-    });   
-}
-
-
-template <typename T>
-static void VectorExtend(std::vector<T>& v1, const std::vector<T>& v2)
-{
-    for (const T& x : v2) {
-        v1.push_back(x);
-    }
-}
-
-/*class AffineForm
-{
-public:
-    struct SlopeExpr
-    {
-        float slope;
-        csg::Expr expr;
-    };
-
-    // The expression this represents is 
-    // intercept + ADD_i (exprs[i].slope * exprs[i].expr)
-    float intercept;
-    std::vector<SlopeExpr> exprs;
+    if (!e.IsInputOp()) { return e; }
+    auto inputs = e.node->inputs;
     
-    AffineForm() 
-    {
-        intercept = 0;
-    }
-    AffineForm(float intercept) 
-    {
-        this->intercept = intercept;
-    }
-
-    csg::Expr ToExpr() const
-    {
-        csg::Expr res(intercept);
-        for (const auto& e : exprs) {
-            res = res + (e.slope * e.expr);
+    std::vector<float> constants;
+    for (auto i : e.node->inputs) {
+        if (i.IsConstantOp()) {
+            constants.push_back(i.node->constant);
         }
-        return res;
+    }
+    // All inputs are constant
+    if (constants.size() == inputs.size()) {
+        float res = csg::ApplyOperator(e.node->op, constants);
+        return csg::Expr(res);
     }
 
-    static ANF Multiply(const ANF& a, const ANF& b)
-    {
-        ANF result;
-        for (size_t i = 0; i < a.exprs.size(); i++) {
-            for (size_t j = 0; j < b.exprs.size(); j++) {
-                std::vector<csg::Expr> es;
-                VectorExtend(es, a.exprs[i]);
-                VectorExtend(es, b.exprs[j]);
-                result.exprs.push_back(es);
-            }
+    // Some inputs are constant :
+    // we can replace some operations with simpler ones.
+    switch (e.node->op) {
+    case csg::Operator::ADD:
+        assert(inputs.size() == 2);
+        if (inputs[0].IsConstantOp(0)) { return inputs[1]; }
+        if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
+        if (inputs[0].IsOp(csg::Operator::NEG) && inputs[1].IsOp(csg::Operator::NEG)) { 
+            return -(inputs[0] + inputs[1]); 
         }
-        return result;
-    }
-
-    static AffineForm Opposite(const AffineForm& a)
-    {
-        AffineForm result;
-        result.intercept = -a.intercept;
-        for (size_t i = 0; i < a.exprs.size(); i++) {
-            std::vector<csg::Expr> es;
-            
-
-            for (size_t j = 0; j < a.exprs[i].size(); j++) {
-                if (j == idx) {
-                    es.push_back(-a.exprs[i][j]);
-                }
-                else {
-                    es.push_back(a.exprs[i][j]);
-                }
-            }
-            result.exprs.push_back(es);
+        if (inputs[0].IsOp(csg::Operator::NEG)) { return inputs[1] - inputs[0][0]; }
+        if (inputs[1].IsOp(csg::Operator::NEG)) { return inputs[0] - inputs[1][0]; }
+        break;
+    case csg::Operator::MUL:
+        assert(inputs.size() == 2);
+        if (inputs[0].IsConstantOp(0)) { return csg::Expr(0); }
+        if (inputs[1].IsConstantOp(0)) { return csg::Expr(0); }
+        if (inputs[0].IsConstantOp(1)) { return inputs[1]; }
+        if (inputs[1].IsConstantOp(1)) { return inputs[0]; }
+        if (inputs[0].IsConstantOp(-1)) { return ConstantFoldStep(-inputs[1]); }
+        if (inputs[1].IsConstantOp(-1)) { return ConstantFoldStep(-inputs[0]); }
+        if (inputs[0].IsOp(csg::Operator::NEG) || inputs[1].IsOp(csg::Operator::NEG)) {
+            return ConstantFoldStep(-inputs[0]) * ConstantFoldStep(-inputs[1]);
         }
-        return result;
+        break;
+    case csg::Operator::SUB:
+        assert(inputs.size() == 2);
+        if (inputs[0].IsConstantOp(0)) { return ConstantFoldStep(-inputs[1]); }
+        if (inputs[1].IsConstantOp(0)) { return inputs[0]; }
+        if (inputs[1].IsOp(csg::Operator::NEG)) { return ConstantFoldStep(inputs[0] + inputs[1][0]); }
+        break;
+    case csg::Operator::DIV:
+        assert(inputs.size() == 2);
+        if (inputs[0].IsConstantOp(0))        { return csg::Expr(0); }
+        if (inputs[1].IsConstantOp(1))        { return inputs[0]; }
+        if (inputs[1].IsConstantOp(-1))        { return ConstantFoldStep(-inputs[0]); }
+        if (e.node->inputs[1].IsConstantOp()) { return ConstantFoldStep(inputs[0] * (1.0f / inputs[1].node->constant)); }
+        break;
+    case csg::Operator::NEG:
+        assert(inputs.size() == 1);
+        if (inputs[0].IsOp(csg::Operator::NEG)) { return inputs[0][0]; }
+        if (inputs[0].IsOp(csg::Operator::SUB)) { return ConstantFoldStep(inputs[0][1] - inputs[0][0]); }
+        break;
+    default: break;
     }
-};
 
+    return e;   
+}
 
-csg::Expr csg::ArithNormalForm(csg::Expr root) 
+csg::Expr csg::ConstantFold(csg::Expr root) 
 {
-    AffineForm rootAF = root.TopoMap<AffineForm>([=] (csg::Expr e, std::vector<AffineForm> inputs) {
-        AffineForm af;
-        switch (e.node->op) {
-        case csg::Operator::ADD: 
-            for (const ANF& i : inputs) {
-                VectorExtend(anf.exprs, i.exprs);
-            }
-            break;
-        case csg::Operator::MUL:
-            anf = inputs[0];
-            for (size_t i = 1; i < inputs.size(); i++) {
-                anf = ANF::Multiply(anf, inputs[i]);
-            }
-            break;
-        case csg::Operator::NEG:
-            assert(inputs.size() == 1);
-            anf = ANF::Negate(inputs[0]);
-            break;
-        case csg::Operator::CONST:
-            anf = ANF(e);
-            break;
-        default:
-            std::vector<csg::Expr> eInputs;
-            for (const ANF& i : inputs) {
-                eInputs.push_back(i.ToExpr());
-            }
-            anf = ANF(csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(eInputs))));
-            break;
-        }
-    }); 
-    return rootAF.ToExpr();
-}*/
+    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
+        if (!e.IsInputOp()) { return e; }
+        csg::Expr newE(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+        return ConstantFoldStep(newE);
+    });
+}
+
 
 static constexpr int OpOrder(csg::Operator op)
 {
@@ -285,37 +169,34 @@ int csg::ThreeWayCompare(csg::Expr a, csg::Expr b)
 }
 
 
-struct CompareFunctor
+csg::Expr NormalFormStep(csg::Expr e)
 {
-    int operator()(const csg::Expr a, const csg::Expr b)
-    {
-        return csg::ThreeWayCompare(a, b);
-    }
-};
-
-csg::Expr csg::NormalForm(csg::Expr root) 
-{
-    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
-        if (!e.IsInputOp()) {
-            return e;
-        } 
-
-        switch (e.node->op) {
-        // These are commutative operations :
-        // we have to sort their operands
-        case csg::Operator::ADD:
-        case csg::Operator::MUL:
-        case csg::Operator::MIN:
-        case csg::Operator::MAX:
+    switch (e.node->op) {
+    // These are commutative operations :
+    // we have to sort their operands
+    case csg::Operator::ADD:
+    case csg::Operator::MUL:
+    case csg::Operator::MIN:
+    case csg::Operator::MAX: 
+        {
+            auto inputs = e.node->inputs;
             std::sort(inputs.begin(), inputs.end(), 
                 [] (const csg::Expr a, const csg::Expr b) 
             {
                 return ThreeWayCompare(a, b) <= 0;
             });
-            break;
-        default: break;
+            return std::make_shared<csg::Node>(e.node->op, std::move(inputs));
         }
-        return csg::Expr(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+    default: return e;
+    }
+}
+
+csg::Expr csg::NormalForm(csg::Expr root) 
+{
+    return root.TopoMap<csg::Expr>([=] (csg::Expr e, std::vector<csg::Expr> inputs) {
+        if (!e.IsInputOp()) { return e; }
+        csg::Expr newE(std::make_shared<csg::Node>(e.node->op, std::move(inputs)));
+        return NormalFormStep(newE);
     });
 }
 
@@ -376,3 +257,124 @@ csg::Expr csg::MergeDuplicates(csg::Expr root)
         return newE;
     });
 }
+
+
+/*template <typename T>
+static void VectorExtend(std::vector<T>& v1, const std::vector<T>& v2)
+{
+    for (const T& x : v2) {
+        v1.push_back(x);
+    }
+}
+
+class AffineForm
+{
+public:
+    struct SlopeExpr
+    {
+        float slope;
+        csg::Expr expr;
+    };
+
+    // The expression this represents is 
+    // intercept + ADD_i (exprs[i].slope * exprs[i].expr).
+    // All the expressions are in normal form.
+    float intercept = 0;
+    std::vector<SlopeExpr> exprs;
+    
+    AffineForm() {}
+    AffineForm(float constant) : intercept(constant) {}
+    // Assumes e is in normal form
+    AffineForm(csg::Expr e) : intercept(0) 
+    {
+        exprs.push_back({ 1, e });
+    }
+
+    bool IsConstant() const 
+    {
+        return exprs.size() == 0;
+    }
+
+    csg::Expr ToNormFormExpr() const
+    {
+        csg::Expr res(intercept);
+        for (const auto& e : exprs) {
+            res = NormalFormStep(res + NormalFormStep(e.slope * e.expr));
+        }
+        return res;
+    }
+
+    static AffineForm Add(const AffineForm& a, const AffineForm& b)
+    {
+        AffineForm res;
+        res.intercept = a.intercept + b.intercept;
+        for (const auto& e : a.exprs) {
+            AddSingle(res, e);
+        }
+        for (const auto& e : b.exprs) {
+            AddSingle(res, e);
+        }
+        return res;
+    }
+
+    static AffineForm Multiply(const AffineForm& a, float x)
+    {
+        AffineForm res;
+        if (x == 0) { return res; }
+
+        res.intercept = x * a.intercept;
+        for (const auto& e : a.exprs) {
+            res.exprs.push_back({ x * e.slope, e.expr });
+        }
+        return res;
+    }
+
+
+private:
+    static void AddSingle(AffineForm& a, const AffineForm::SlopeExpr& eB)
+    {
+        for (auto& eA : a.exprs) {
+            if (csg::ThreeWayCompare(eA.expr, eB.expr) == 0) {
+                eA.slope += eB.slope;
+                return;
+            }
+        }
+        a.exprs.push_back(eB);
+    }
+};
+
+
+csg::Expr csg::AffineFold(csg::Expr root) 
+{
+    AffineForm rootAF = root.TopoMap<AffineForm>([=] (csg::Expr e, std::vector<AffineForm> inputs) {
+        switch (e.node->op) {
+        case csg::Operator::CONST:
+            return AffineForm(e.node->constant);
+        case csg::Operator::ADD: 
+            assert(inputs.size() == 2);
+            return AffineForm::Add(inputs[0], inputs[1]);
+        case csg::Operator::SUB: 
+            assert(inputs.size() == 2);
+            return AffineForm::Add(inputs[0], AffineForm::Multiply(inputs[1], -1));
+        case csg::Operator::MUL:
+            assert(inputs.size() == 2);
+            if (inputs[0].IsConstant()) { return AffineForm::Multiply(inputs[1], inputs[0].intercept); }
+            if (inputs[1].IsConstant()) { return AffineForm::Multiply(inputs[0], inputs[1].intercept); }
+            break;
+        case csg::Operator::DIV:
+            if (inputs[1].IsConstant()) { return AffineForm::Multiply(inputs[0], 1 / inputs[1].intercept); }
+            break;
+        case csg::Operator::NEG:
+            return AffineForm::Multiply(inputs[0], -1);
+        default: break;
+        }
+        std::vector<csg::Expr> newInputs;
+        for (const AffineForm& i : inputs) {
+            newInputs.push_back(i.ToNormFormExpr());
+        }
+        csg::Expr newE(std::make_shared<csg::Node>(e.node->op, std::move(newInputs)));
+        //return AffineForm(NormalFormStep(newE));
+        return AffineForm(NormalForm(ConstantFold(newE)));
+    }); 
+    return rootAF.ToNormFormExpr();
+}*/

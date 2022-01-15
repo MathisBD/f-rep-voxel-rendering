@@ -10,6 +10,7 @@ public:
     int AddNode(const std::string& label);
     void AddEdge(int nodeFrom, int nodeTo);
     void AddEdge(int nodeFrom, int nodeTo, const std::string& label);
+    void Merge(const DotGraph& other);
     std::string Build();
 private:
     struct Node {
