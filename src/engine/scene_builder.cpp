@@ -2,13 +2,13 @@
 #include <string.h>
 
 
-void SceneBuilder::Init(VmaAllocator vmaAllocator, VoxelStorage* voxels) 
+void SceneBuilder::Init(vkw::Device* device, VoxelStorage* voxels) 
 {
-    m_allocator = vmaAllocator;
+    m_device = device;
     m_voxels = voxels;
     
-    m_stagingBuffers.node.Init(m_allocator);
-    m_stagingBuffers.tape.Init(m_allocator);
+    m_stagingBuffers.node.Init(m_device);
+    m_stagingBuffers.tape.Init(m_device);
 }
 
 void SceneBuilder::Cleanup() 

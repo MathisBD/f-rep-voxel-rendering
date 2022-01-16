@@ -15,7 +15,7 @@ public:
     void Init(
         vkw::Device* device, 
         vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-        VoxelStorage* voxels, VmaAllocator vmaAllocator);
+        VoxelStorage* voxels);
     void Cleanup();
 
     void Voxelize(VkSemaphore waitSem, float time);
@@ -52,7 +52,6 @@ private:
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
-    VmaAllocator m_vmaAllocator;
     VoxelStorage* m_voxels;
     FunctionQueue m_cleanupQueue;
 

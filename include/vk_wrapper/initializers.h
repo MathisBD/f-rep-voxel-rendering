@@ -75,7 +75,7 @@ VkDescriptorImageInfo DescriptorImageInfo(
     VkSampler sampler, VkImageView view, VkImageLayout layout);
 
 VkSamplerCreateInfo SamplerCreateInfo(
-    VkFilter filters, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    VkFilter filters, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 VkRenderPassBeginInfo RenderPassBeginInfo(
     VkRenderPass renderpass, VkFramebuffer framebuffer, VkExtent2D extent, const VkClearValue* pClear);

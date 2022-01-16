@@ -20,10 +20,12 @@ void vkw::Image::Allocate(
     VkImageUsageFlags imgUsage, 
     VmaMemoryUsage memUsage,
     VkSharingMode sharingMode /*= VK_SHARING_MODE_EXCLUSIVE*/,
-    const std::vector<uint32_t>* pQueueFamilies /*= nullptr*/) 
+    const std::vector<uint32_t>* pQueueFamilies /*= nullptr*/,
+    uint32_t arrayLayerCount /* = 1*/) 
 {
     this->extent = extent;
     this->format = format;
+    this->layerCount = arrayLayerCount;
 
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -36,11 +38,12 @@ void vkw::Image::Allocate(
     info.format = format;
     info.imageType = VK_IMAGE_TYPE_2D;
     info.mipLevels = 1;
-    info.arrayLayers = 1;
+    info.arrayLayers = arrayLayerCount;
     info.samples = VK_SAMPLE_COUNT_1_BIT; // no multisampling
 
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = imgUsage;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     switch (sharingMode) {
     case VK_SHARING_MODE_EXCLUSIVE:
@@ -58,7 +61,6 @@ void vkw::Image::Allocate(
 
     VmaAllocationCreateInfo vmaInfo = {};
     vmaInfo.usage = memUsage;
-
     VK_CHECK(vmaCreateImage(allocator, &info, &vmaInfo, &image, &allocation, nullptr));
 }
 
@@ -98,8 +100,7 @@ void vkw::Image::ChangeLayout(
 }
 
 void vkw::Image::CopyFromBuffer(
-    VkCommandBuffer cmd,
-    const vkw::Buffer* buffer) 
+    VkCommandBuffer cmd, const vkw::Buffer* buffer) 
 {
     VkBufferImageCopy copy = {};
     copy.bufferOffset = 0;
@@ -113,7 +114,7 @@ void vkw::Image::CopyFromBuffer(
 
     copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copy.imageSubresource.baseArrayLayer = 0;
-    copy.imageSubresource.layerCount = 1;
+    copy.imageSubresource.layerCount = layerCount;
     copy.imageSubresource.mipLevel = 0;
 
     vkCmdCopyBufferToImage(cmd, 

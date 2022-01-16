@@ -16,6 +16,7 @@ namespace vkw
         VmaAllocation allocation;
         VkExtent2D extent;
         VkFormat format;
+        uint32_t layerCount;
 
         void Init(VmaAllocator allocator);
         void Allocate(
@@ -24,7 +25,8 @@ namespace vkw
             VkImageUsageFlags imgUsage, 
             VmaMemoryUsage memUsage,
             VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-            const std::vector<uint32_t>* pQueueFamilies = nullptr);
+            const std::vector<uint32_t>* pQueueFamilies = nullptr,
+            uint32_t arrayLayerCount = 1);
         void Cleanup();
 
         void ChangeLayout(

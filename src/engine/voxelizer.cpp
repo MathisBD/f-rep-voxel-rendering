@@ -8,14 +8,13 @@
 void Voxelizer::Init(
     vkw::Device* device, 
     vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-    VoxelStorage* voxels, VmaAllocator vmaAllocator) 
+    VoxelStorage* voxels) 
 {
     m_device = device;
     m_descAllocator = descAllocator;
     m_descCache = descCache;
     m_voxels = voxels;
-    m_vmaAllocator = vmaAllocator;
-
+    
     InitCommands();
     InitSynchronization();
     InitBuffers();
@@ -71,7 +70,7 @@ void Voxelizer::InitSynchronization()
 void Voxelizer::InitBuffers() 
 {
     // Params buffer
-    m_paramsBuffer.Init(m_vmaAllocator);
+    m_paramsBuffer.Init(m_device);
     m_paramsBuffer.Allocate(
         sizeof(ShaderParams), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
@@ -79,7 +78,7 @@ void Voxelizer::InitBuffers()
     m_cleanupQueue.AddFunction([=] { m_paramsBuffer.Cleanup(); });
 
     // Child count buffer
-    m_childCountBuffer.Init(m_vmaAllocator);
+    m_childCountBuffer.Init(m_device);
     m_childCountBuffer.Allocate(
         sizeof(uint32_t),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -112,7 +111,8 @@ void Voxelizer::InitPipeline()
         .BindBuffer(2, &tapeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &childCountInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
-    
+    m_device->NameObject(m_descSets[0], "voxelizer descriptor set 0");
+
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
     layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
@@ -129,7 +129,8 @@ void Voxelizer::InitPipeline()
 
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
-    
+    m_device->NameObject(m_pipeline, "voxelizer pipeline");
+
     // We can destroy the shader right away.
     shader.Cleanup();
     m_cleanupQueue.AddFunction([=] {
@@ -261,7 +262,7 @@ void Voxelizer::ZeroOutNodeBuffer()
 {
     // Staging buffer
     vkw::Buffer nodeStagingBuf;
-    nodeStagingBuf.Init(m_vmaAllocator);
+    nodeStagingBuf.Init(m_device);
     nodeStagingBuf.Allocate(m_voxels->nodeBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* nodeContents = nodeStagingBuf.Map();
@@ -300,7 +301,7 @@ void Voxelizer::ZeroOutNodeBuffer()
 void Voxelizer::UploadTape() 
 {
     vkw::Buffer tapeStagingBuf;
-    tapeStagingBuf.Init(m_vmaAllocator);
+    tapeStagingBuf.Init(m_device);
     tapeStagingBuf.Allocate(m_voxels->tapeBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* tapeContents = tapeStagingBuf.Map();

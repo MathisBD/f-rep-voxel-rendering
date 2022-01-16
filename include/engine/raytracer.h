@@ -18,7 +18,7 @@ public:
     void Init(
         vkw::Device* device, 
         vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-        RenderTarget* target, VoxelStorage* voxels, VmaAllocator vmaAllocator);
+        RenderTarget* target, VoxelStorage* voxels);
     void Cleanup();
 
     void Trace(VkSemaphore waitSem, const Camera* camera, float time);
@@ -87,7 +87,6 @@ private:
     vkw::Device* m_device;
     RenderTarget* m_target;
     VoxelStorage* m_voxels;
-    VmaAllocator m_vmaAllocator;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
 

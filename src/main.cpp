@@ -86,7 +86,7 @@ csg::Expr Menger(int level)
 csg::Expr MengerSponge()
 {
     using namespace csg;
-    auto shape = Menger(3);
+    auto shape = Menger(1);
     shape = TranslateXYZ(shape, {-0.5, -0.5, -0.5});
     shape = ScaleXYZ(shape, {30, 30, 1});
     shape = Diff(shape, Sphere({10, 10, 0}, 10));
@@ -137,12 +137,12 @@ csg::Expr TwistedTower(int level, float angle, float scale)
 int main()
 {
     Application::Params params;
-    params.enableValidationLayers = false;
+    params.enableValidationLayers = true;
     params.enableShaderDebugPrintf = false;
     params.voxelizeRealTime = false;
     params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4 };
+    params.gridDims = { 16, 4 };
     params.shape = MengerSponge();
     
     csg::Tape tape(params.shape);

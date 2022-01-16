@@ -5,15 +5,13 @@
 #include <glm/gtx/norm.hpp>
 
 
-
 void Raytracer::Init(
     vkw::Device* device, 
     vkw::DescriptorAllocator* descAllocator, vkw::DescriptorLayoutCache* descCache,
-    RenderTarget* target, VoxelStorage* voxels, VmaAllocator vmaAllocator) 
+    RenderTarget* target, VoxelStorage* voxels) 
 {
     m_device = device;
     m_target = target;
-    m_vmaAllocator = vmaAllocator;
     m_descAllocator = descAllocator;
     m_descCache = descCache;
     m_voxels = voxels;
@@ -66,11 +64,12 @@ void Raytracer::InitSynchronization()
 void Raytracer::InitBuffers()
 {
     // Uniform buffer
-    m_paramsBuffer.Init(m_vmaAllocator);
+    m_paramsBuffer.Init(m_device);
     m_paramsBuffer.Allocate(
         sizeof(ShaderParams), 
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_device->NameObject(m_paramsBuffer.buffer, "raytracer params buffer");
     m_cleanupQueue.AddFunction([=] { m_paramsBuffer.Cleanup(); });
 }
 
@@ -99,6 +98,7 @@ void Raytracer::InitPipeline()
         .BindBuffer(2, &nodeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &tapeInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
+    m_device->NameObject(m_descSets[0], "raytracer descriptor set 0");
 
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
@@ -115,7 +115,8 @@ void Raytracer::InitPipeline()
         VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
-
+    m_device->NameObject(m_pipeline, "raytracer pipeline");
+    
     // We can destroy the shader right away.
     shader.Cleanup();
     m_cleanupQueue.AddFunction([=] {

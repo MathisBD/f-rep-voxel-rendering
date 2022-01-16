@@ -3,12 +3,13 @@
 #include "csg/expression.h"
 #include "csg/tape.h"
 #include "utils/thread_pool.h"
+#include "vk_wrapper/device.h"
 
 
 class SceneBuilder
 {
 public:
-    void Init(VmaAllocator vmaAllocator, VoxelStorage* voxels);
+    void Init(vkw::Device* device, VoxelStorage* voxels);
     void Cleanup();
     void BuildScene();
     void UploadSceneToGPU(VkCommandBuffer cmd);
@@ -24,7 +25,7 @@ private:
         std::vector<TreeNode*> childList;
     };
 
-    VmaAllocator m_allocator;
+    vkw::Device* m_device;
     VoxelStorage* m_voxels;
 
     ThreadPool m_threadPool = { std::thread::hardware_concurrency() };

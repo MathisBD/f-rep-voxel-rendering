@@ -48,6 +48,7 @@ void EngineBase::InitVulkanCore()
     vkb::InstanceBuilder builder;
     builder.set_app_name("Vulkan Project")
            .require_api_version(1, 1, 0)
+           .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
            .use_default_debug_messenger();
            
     if (m_enableShaderDebugPrintf) {
@@ -115,6 +116,9 @@ void EngineBase::InitVulkanCore()
     assert(m_device.queueFamilyProperties[m_device.queueFamilies.transfer].queueFlags &
         VK_QUEUE_TRANSFER_BIT);
 
+    // Debug utils extension functions
+    m_device.pfn.vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkSetDebugUtilsObjectNameEXT");
+    
     // Cleanup
     m_cleanupQueue.AddFunction([=] {
         vkDestroyDevice(m_device.logicalDevice, nullptr); 
@@ -131,8 +135,8 @@ void EngineBase::InitVma()
     info.physicalDevice = m_device.physicalDevice;
     info.device = m_device.logicalDevice;
 
-    VK_CHECK(vmaCreateAllocator(&info, &m_vmaAllocator));
-    m_cleanupQueue.AddFunction([=] { vmaDestroyAllocator(m_vmaAllocator); });
+    VK_CHECK(vmaCreateAllocator(&info, &m_device.vmaAllocator));
+    m_cleanupQueue.AddFunction([=] { vmaDestroyAllocator(m_device.vmaAllocator); });
 }
 
 void EngineBase::InitImmUploadCtxt() 

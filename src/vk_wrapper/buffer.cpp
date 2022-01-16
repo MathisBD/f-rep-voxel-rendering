@@ -2,14 +2,15 @@
 #include "vk_wrapper/vk_check.h"
 
 
-void vkw::Buffer::Init(VmaAllocator allocator) 
+void vkw::Buffer::Init(vkw::Device* dev) 
 {
-    this->allocator = allocator;    
+    this->device = dev;
 }
 
 void vkw::Buffer::Cleanup() 
 {
-    vmaDestroyBuffer(allocator, buffer, allocation);
+    assert(buffer != VK_NULL_HANDLE);
+    vmaDestroyBuffer(device->vmaAllocator, buffer, allocation);
 }
 
 void vkw::Buffer::Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemoryUsage memUsage) 
@@ -27,19 +28,19 @@ void vkw::Buffer::Allocate(size_t size, VkBufferUsageFlags bufferUsage, VmaMemor
     VmaAllocationCreateInfo vmaInfo = {};
     vmaInfo.usage = memUsage;
 
-    VK_CHECK(vmaCreateBuffer(allocator, &info, &vmaInfo, &buffer, &allocation, nullptr));
+    VK_CHECK(vmaCreateBuffer(device->vmaAllocator, &info, &vmaInfo, &buffer, &allocation, nullptr));
 }
 
 void* vkw::Buffer::Map() 
 {
     void* ptr;
-    VK_CHECK(vmaMapMemory(allocator, allocation, &ptr));    
+    VK_CHECK(vmaMapMemory(device->vmaAllocator, allocation, &ptr));    
     return ptr;
 }
 
 void vkw::Buffer::Unmap() 
 {
-    vmaUnmapMemory(allocator, allocation);    
+    vmaUnmapMemory(device->vmaAllocator, allocation);    
 }
 
 

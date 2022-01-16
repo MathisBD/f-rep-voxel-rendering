@@ -146,7 +146,8 @@ void Renderer::InitPipeline()
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
-    
+    m_device->NameObject(m_descSets[0], "renderer descriptor set 0");
+
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
     layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
@@ -193,6 +194,7 @@ void Renderer::InitPipeline()
         printf("[-] Error building graphics pipeline\n");
         assert(false);
     }
+    m_device->NameObject(m_pipeline, "renderer pipeline");
 
     // We can destroy the shaders right after creating the pipeline.
     vertexShader.Cleanup();

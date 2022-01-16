@@ -19,7 +19,7 @@ public:
     virtual void Cleanup();
 protected:
     // These should be set by the derived classes.
-    bool m_enableValidationLayers = true;
+    bool m_enableValidationLayers = false;
     bool m_enableShaderDebugPrintf = false;
 
     // Window
@@ -37,7 +37,6 @@ protected:
     InputManager m_inputManager;
     vkw::DescriptorLayoutCache m_descCache;
     vkw::DescriptorAllocator m_descAllocator;
-    VmaAllocator m_vmaAllocator;
     struct {
         VkQueue queue;
         VkCommandPool pool;

@@ -250,6 +250,11 @@ VkImageViewCreateInfo vkw::init::ImageViewCreateInfo(
     info.format = format;
     info.image = image;
     info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    info.components = { 
+        VK_COMPONENT_SWIZZLE_R, 
+        VK_COMPONENT_SWIZZLE_G, 
+        VK_COMPONENT_SWIZZLE_B, 
+        VK_COMPONENT_SWIZZLE_A };
 
     info.subresourceRange.baseArrayLayer = 0;
     info.subresourceRange.layerCount = 1;
@@ -271,7 +276,7 @@ VkDescriptorImageInfo vkw::init::DescriptorImageInfo(
 }
 
 VkSamplerCreateInfo vkw::init::SamplerCreateInfo(
-    VkFilter filters, VkSamplerAddressMode addressMode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/) 
+    VkFilter filters, VkSamplerAddressMode addressMode /*= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE*/) 
 {
     VkSamplerCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

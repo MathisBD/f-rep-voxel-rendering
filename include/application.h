@@ -43,8 +43,6 @@ private:
     RunningAverage<float> m_frameTime;
     bool m_voxelizedOnce = false;
 
-    void InitVoxels();
-    void InitRenderTarget();
-    void SetupScene();
     void Draw() override;
+    void PrintInfo();
 };
