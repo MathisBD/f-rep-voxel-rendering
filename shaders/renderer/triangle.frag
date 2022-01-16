@@ -7,11 +7,11 @@ layout (location = 0) in vec2 texCoords;
 layout (location = 0) out vec4 outFragColor;
 
 // buffers/images
-layout (set = 0, binding = 0) uniform sampler2D tex1;
+layout (set = 0, binding = 0) uniform sampler2DArray samplerArray;
 
 
 void main()
 {
-	outFragColor = vec4(texture(tex1, texCoords).xyz, 1.0f);
-	//outFragColor = vec4(camera.color.xyz, 1.0f);
+	vec3 coords = vec3(texCoords, 0);
+	outFragColor = vec4(texture(samplerArray, coords).xyz, 1.0f);
 }

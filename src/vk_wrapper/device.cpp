@@ -15,19 +15,26 @@ void vkw::Device::NameObjectHelper(uint64_t handle, const std::string& name, VkO
 }
 
 template <>
-void vkw::Device::NameObject(VkPipeline pipeline, const std::string& name)
-{
+void vkw::Device::NameObject(VkPipeline pipeline, const std::string& name) {
     NameObjectHelper((uint64_t)pipeline, name, VK_OBJECT_TYPE_PIPELINE);
 }
-
 template <>
-void vkw::Device::NameObject(VkBuffer buffer, const std::string& name)
-{
+void vkw::Device::NameObject(VkBuffer buffer, const std::string& name) {
     NameObjectHelper((uint64_t)buffer, name, VK_OBJECT_TYPE_BUFFER);
 }
-
 template <>
-void vkw::Device::NameObject(VkDescriptorSet descSet, const std::string& name)
-{
+void vkw::Device::NameObject(VkDescriptorSet descSet, const std::string& name) {
     NameObjectHelper((uint64_t)descSet, name, VK_OBJECT_TYPE_DESCRIPTOR_SET);
+}
+template <>
+void vkw::Device::NameObject(VkImage image, const std::string& name) {
+    NameObjectHelper((uint64_t)image, name, VK_OBJECT_TYPE_IMAGE);
+}
+template <>
+void vkw::Device::NameObject(VkImageView view, const std::string& name) {
+    NameObjectHelper((uint64_t)view, name, VK_OBJECT_TYPE_IMAGE_VIEW);
+}
+template <>
+void vkw::Device::NameObject(VkSampler sampler, const std::string& name) {
+    NameObjectHelper((uint64_t)sampler, name, VK_OBJECT_TYPE_SAMPLER);
 }

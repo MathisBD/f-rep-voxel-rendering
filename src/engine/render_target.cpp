@@ -21,13 +21,26 @@ void RenderTarget::Cleanup()
     m_cleanupQueue.Flush();    
 }
 
+template <typename T>
+static std::vector<T> EliminateDuplicates(const std::vector<T>& vec)
+{
+    std::vector<T> res;
+    for (const T& x : vec) {
+        if (std::find(res.begin(), res.end(), x) == res.end()) {
+            res.push_back(x);
+        }
+    }
+    return res;
+}
+
 void RenderTarget::AllocateImage() 
 {
-    std::vector<uint32_t> queueFamilies = {
-            m_device->queueFamilies.graphics,
-            m_device->queueFamilies.compute,
-            m_device->queueFamilies.transfer };
-    VkSharingMode sharingMode = VK_SHARING_MODE_CONCURRENT;
+    std::vector<uint32_t> queueFamilies = EliminateDuplicates<uint32_t>({
+        m_device->queueFamilies.graphics,
+        m_device->queueFamilies.compute,
+        m_device->queueFamilies.transfer });
+    VkSharingMode sharingMode = queueFamilies.size() > 1 ? 
+        VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
 
     image.Allocate(
         m_windowExtent,
@@ -35,16 +48,20 @@ void RenderTarget::AllocateImage()
         VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
         sharingMode,
-        &queueFamilies);
+        &queueFamilies,
+        temporalSampleCount);
+    m_device->NameObject(image.image, "render target image array");
     m_cleanupQueue.AddFunction([=] { image.Cleanup(); });
 }
 
 void RenderTarget::ZeroOutImage(VkCommandBuffer cmd) 
 {
     // Create the staging buffer
+    size_t bufferSize = 4 * temporalSampleCount * m_windowExtent.width * m_windowExtent.height;
     m_stagingBuf.Init(m_device);
-    m_stagingBuf.Allocate(m_windowExtent.width * m_windowExtent.height * temporalSampleCount,
+    m_stagingBuf.Allocate(bufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    m_device->NameObject(m_stagingBuf.buffer, "render target staging buffer");
     m_cleanupQueue.AddFunction([=] { m_stagingBuf.Cleanup(); });
 
     // Zero its contents
@@ -63,8 +80,8 @@ void RenderTarget::ZeroOutImage(VkCommandBuffer cmd)
     // Change the layout to GENERAL
     image.ChangeLayout(cmd,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT);
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT);
 }
 
 void RenderTarget::InitView() 
@@ -75,6 +92,7 @@ void RenderTarget::InitView()
     info.subresourceRange.layerCount = temporalSampleCount;
 
     VK_CHECK(vkCreateImageView(m_device->logicalDevice, &info, nullptr, &view));
+    m_device->NameObject(view, "render target image view");
     m_cleanupQueue.AddFunction([=] {
         vkDestroyImageView(m_device->logicalDevice, view, nullptr);
     });
@@ -86,6 +104,7 @@ void RenderTarget::InitSampler()
 
     VK_CHECK(vkCreateSampler(
         m_device->logicalDevice, &samplerInfo, nullptr, &sampler));
+    m_device->NameObject(sampler, "render target sampler");
     m_cleanupQueue.AddFunction([=] {
         vkDestroySampler(m_device->logicalDevice, sampler, nullptr);
     });

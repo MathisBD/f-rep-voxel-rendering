@@ -31,7 +31,7 @@ struct LevelData {
 };
 
 // Output image.
-layout (set = 0, binding = 0, rgba8) uniform image2D out_img;
+layout (set = 0, binding = 0, rgba8) uniform image2DArray out_img;
 
 // Shader basic data.
 layout (set = 0, binding = 1) uniform ParamsBuffer {

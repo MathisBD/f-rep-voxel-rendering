@@ -142,7 +142,7 @@ int main()
     params.voxelizeRealTime = false;
     params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4 };
+    params.gridDims = { 16, 4, 4 };
     params.shape = MengerSponge();
     
     csg::Tape tape(params.shape);

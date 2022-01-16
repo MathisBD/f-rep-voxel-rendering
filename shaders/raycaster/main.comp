@@ -166,6 +166,6 @@ void main()
             dy * params_buf.screen_world_size.y * params_buf.camera_up.xyz);
 
         vec4 color = raytrace(params_buf.camera_pos.xyz, dir);
-        imageStore(out_img, ivec2(gid), color);
+        imageStore(out_img, ivec3(gid, 0), color);
     }
 }

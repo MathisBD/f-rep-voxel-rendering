@@ -10,6 +10,8 @@
 class RenderTarget
 {
 public:
+    // This is actually an array of 2D images.
+    // There is one layer for each temporal sample.
     vkw::Image image;
     VkImageView view;
     VkSampler sampler;
