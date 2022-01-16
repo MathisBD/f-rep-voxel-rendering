@@ -43,6 +43,11 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
     uint tape_instr_count;
     float time; // the time used to evaluate the tape (and thus the normals).
 
+    uint out_img_layer;
+    uint _padding_0;
+    uint _padding_1;
+    uint _padding_2;
+    
     vec4 camera_pos;
     vec4 camera_forward;
     vec4 camera_up;

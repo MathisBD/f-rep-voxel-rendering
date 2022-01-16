@@ -137,13 +137,13 @@ csg::Expr TwistedTower(int level, float angle, float scale)
 int main()
 {
     Application::Params params;
-    params.enableValidationLayers = true;
+    params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
     params.voxelizeRealTime = false;
-    params.printFPS = false;
+    params.printFPS = true;
     params.printHardwareInfo = false;
     params.gridDims = { 16, 4, 4 };
-    params.shape = MengerSponge();
+    params.shape = TangleCube();
     
     csg::Tape tape(params.shape);
     tape.Print();

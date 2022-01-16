@@ -1,0 +1,15 @@
+
+
+float _rand_seed;
+
+void random_seed(float seed)
+{
+    _rand_seed = seed;
+}
+
+float rand()
+{
+    float result = fract(sin(_rand_seed / 100.0f * dot(gl_GlobalInvocationID.xy, vec2(12.9898f, 78.233f))) * 43758.5453f);
+    _rand_seed += 1.0f;
+    return result;
+}

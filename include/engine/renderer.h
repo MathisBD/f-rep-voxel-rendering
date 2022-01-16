@@ -31,6 +31,11 @@ public:
 
     void SetClearColor(glm::vec3 color);
 private:
+    typedef struct {
+        uint32_t temporalSampleCount;
+        uint32_t _padding_[3];
+    } ShaderParams;
+
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
@@ -65,11 +70,15 @@ private:
     uint32_t m_swapCurrImg;
     VkClearValue m_clearValue;
 
+    vkw::Buffer m_shaderParams;
+
     void InitCommands();
     void InitRenderPass();
     void InitSynchronization();
+    void InitBuffers();
     void InitPipeline();
 
+    void UpdateShaderParams();
     void RecordRenderCmd(VkCommandBuffer cmd);
     void SubmitRenderCmd(VkCommandBuffer cmd, VkSemaphore waitSem);
 };

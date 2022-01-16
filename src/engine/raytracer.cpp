@@ -154,6 +154,9 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float time)
     params->tapeInstrCount = m_voxels->tape.instructions.size(); 
     params->time = time;
 
+    params->outImgLayer = m_targetImgLayer;
+    m_targetImgLayer = (m_targetImgLayer + 1) % m_target->temporalSampleCount;
+
     // Grid positions
     params->gridWorldCoords = m_voxels->lowVertex;
     params->gridWorldSize = m_voxels->worldSize;

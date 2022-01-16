@@ -54,6 +54,9 @@ private:
         uint32_t tapeInstrCount;
         float time;
 
+        uint32_t outImgLayer;
+        uint32_t _padding_[3];
+
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
         // The direction the camera is looking in (w unused).
@@ -109,6 +112,7 @@ private:
 
     glm::vec3 m_backgroundColor = { 0.0f, 0.0f, 0.0f };
     vkw::Buffer m_paramsBuffer;
+    uint32_t m_targetImgLayer = 0;
 
     void InitCommands();
     void InitSynchronization();

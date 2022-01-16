@@ -73,7 +73,7 @@ void vkw::Image::ChangeLayout(
 {
     VkImageSubresourceRange range = {};
     range.baseArrayLayer = 0;
-    range.layerCount = 1;
+    range.layerCount = layerCount;
     range.baseMipLevel = 0;
     range.levelCount = 1;
     range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
