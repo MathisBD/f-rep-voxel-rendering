@@ -21,7 +21,7 @@ public:
         RenderTarget* target, VoxelStorage* voxels);
     void Cleanup();
 
-    void Trace(VkSemaphore waitSem, const Camera* camera, float time);
+    void Trace(VkSemaphore waitSem, const Camera* camera, float tapeTime);
     // Returns a semaphore that is signaled 
     // when the raytracing is finished.
     VkSemaphore GetTraceSem() const { return m_semaphore; }
@@ -52,10 +52,11 @@ private:
         uint32_t lightCount;
         uint32_t levelCount;  
         uint32_t tapeInstrCount;
-        float time;
+        float tapeTime;
 
         uint32_t outImgLayer;
-        uint32_t _padding_[3];
+        float time;
+        uint32_t _padding_[2];
 
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
@@ -120,7 +121,7 @@ private:
     void InitBuffers();
     void InitUploadCtxt();
 
-    void UpdateShaderParams(const Camera* camera, float time);
+    void UpdateShaderParams(const Camera* camera, float tapeTime);
 
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);

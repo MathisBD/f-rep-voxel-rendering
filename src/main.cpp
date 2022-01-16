@@ -142,7 +142,7 @@ int main()
     params.voxelizeRealTime = false;
     params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4 };
+    params.gridDims = { 16 };
     params.shape = TangleCube();
     
     csg::Tape tape(params.shape);

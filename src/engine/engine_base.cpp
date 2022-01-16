@@ -48,7 +48,6 @@ void EngineBase::InitVulkanCore()
     vkb::InstanceBuilder builder;
     builder.set_app_name("Vulkan Project")
            .require_api_version(1, 1, 0)
-           .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
            .use_default_debug_messenger();
            
     if (m_enableShaderDebugPrintf) {
@@ -56,7 +55,8 @@ void EngineBase::InitVulkanCore()
         builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
     }
     if (m_enableValidationLayers) {
-        builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
+        builder.enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+               .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
                .enable_validation_layers(true);
     }
     vkb::Instance vkbInst = builder.build().value();

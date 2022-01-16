@@ -30,7 +30,7 @@ float tape_eval_point(vec3 pos)
     slots[0] = pos.x;
     slots[1] = pos.y;
     slots[2] = pos.z;
-    slots[3] = params_buf.time;
+    slots[3] = params_buf.tape_time;
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -122,7 +122,7 @@ Interval tape_eval_interval(vec3 low, vec3 high)
     slots[0] = Interval(low.x, high.x);
     slots[1] = Interval(low.y, high.y);
     slots[2] = Interval(low.z, high.z);
-    slots[3] = Interval(params_buf.time, params_buf.time);
+    slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {
@@ -228,7 +228,7 @@ vec3 tape_eval_gradient(vec3 pos)
     slots[0] = vec4(1, 0, 0, pos.x);
     slots[1] = vec4(0, 1, 0, pos.y);
     slots[2] = vec4(0, 0, 1, pos.z);
-    slots[3] = vec4(0, 0, 0, params_buf.time);
+    slots[3] = vec4(0, 0, 0, params_buf.tape_time);
 
     uint i = 0;
     while (i < params_buf.tape_instr_count) {

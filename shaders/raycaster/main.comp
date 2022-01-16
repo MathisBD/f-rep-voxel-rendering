@@ -159,14 +159,13 @@ void main()
     if (gid.x < params_buf.screen_res.x && 
         gid.y < params_buf.screen_res.y) 
     {
-        //random_seed(1.0f);
+        random_seed(params_buf.time);
 
         // Compute the ray direction.
         // We add a small offset to the pixel position for antialiasing.
-        //vec2 pixel_pos = vec2(gid.x + rand() - 0.5f, gid.y + rand() - 0.5f);
-        //vec2 pixel_pos = gid.xy;
-        float dx = 2.0f * (gid.x / float(params_buf.screen_res.x)) - 1.0f;
-        float dy = 2.0f * (gid.y / float(params_buf.screen_res.y)) - 1.0f;
+        vec2 ofs = 2 * vec2(rand() - 0.5f, rand() - 0.5f);
+        float dx = 2.0f * ((gid.x + ofs.x) / float(params_buf.screen_res.x)) - 1.0f;
+        float dy = 2.0f * ((gid.y + ofs.y) / float(params_buf.screen_res.y)) - 1.0f;
         vec3 dir = normalize(
             params_buf.camera_forward.xyz +
             dx * params_buf.screen_world_size.x * params_buf.camera_right.xyz +

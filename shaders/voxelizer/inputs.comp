@@ -25,7 +25,7 @@ layout (set = 0, binding = 0) uniform ParamsBuffer {
     uint level_count;
     uint level;
     uint tape_instr_count;
-    float time; // the time value used to evaluate the tape.
+    float tape_time; // the time value used to evaluate the tape.
 
     vec3 grid_world_pos;
     float grid_world_size;

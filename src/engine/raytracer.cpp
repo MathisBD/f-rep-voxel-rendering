@@ -3,6 +3,7 @@
 #include "vk_wrapper/initializers.h"
 #include "vk_wrapper/shader.h"
 #include <glm/gtx/norm.hpp>
+#include "utils/timer.h"
 
 
 void Raytracer::Init(
@@ -144,7 +145,7 @@ void Raytracer::InitUploadCtxt()
 }
 
 
-void Raytracer::UpdateShaderParams(const Camera* camera, float time) 
+void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime) 
 {
     assert(m_voxels->gridLevels < MAX_LEVEL_COUNT);
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
@@ -152,11 +153,12 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float time)
     params->lightCount = 2;
     params->levelCount = m_voxels->gridLevels;
     params->tapeInstrCount = m_voxels->tape.instructions.size(); 
-    params->time = time;
+    params->tapeTime = tapeTime;
 
     params->outImgLayer = m_targetImgLayer;
     m_targetImgLayer = (m_targetImgLayer + 1) % m_target->temporalSampleCount;
-
+    params->time = Timer::s_time;
+    
     // Grid positions
     params->gridWorldCoords = m_voxels->lowVertex;
     params->gridWorldSize = m_voxels->worldSize;
