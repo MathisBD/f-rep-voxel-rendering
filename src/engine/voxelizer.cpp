@@ -304,8 +304,12 @@ void Voxelizer::UploadTape()
     tapeStagingBuf.Init(m_device);
     tapeStagingBuf.Allocate(m_voxels->tapeBuffer.size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-    void* tapeContents = tapeStagingBuf.Map();
-    memcpy(tapeContents, m_voxels->tape.instructions.data(),
+    uint32_t* tapeContents = (uint32_t*)tapeStagingBuf.Map();
+    // Tape size
+    uint32_t tapeSize = m_voxels->tape.instructions.size();
+    memcpy(tapeContents, &tapeSize, sizeof(uint32_t));
+    // Tape contents
+    memcpy(tapeContents + 1, m_voxels->tape.instructions.data(),
         m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr));
     tapeStagingBuf.Unmap();  
 

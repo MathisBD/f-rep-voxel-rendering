@@ -139,10 +139,11 @@ int main()
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = false;
+    params.voxelizeRealTime = true;
     params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 16 };
+    params.gridDims = { 16, 4, 4, 4 };
+    params.temporalSampleCount = 3;
     params.shape = TangleCube();
     
     csg::Tape tape(params.shape);

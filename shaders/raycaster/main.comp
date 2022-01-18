@@ -8,13 +8,16 @@
 //#define DEBUG_LOG
 #include "utils.comp"
 #include "raycaster/inputs.comp"
-#include "tape.comp" 
+#include "tape/tape.comp"
+#include "tape/gradient.comp" 
 #include "node.comp"
 #include "random.comp"
 
 
 struct Hit {
     float t;
+    uint node;
+    uint level;
 };
 
 
@@ -109,7 +112,9 @@ bool dda(vec3 orig, vec3 dir, out Hit hit)
 
 vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
 {
-    vec3 normal = normalize(tape_eval_gradient(ray_orig + hit.t * ray_dir));
+    uint tape_pos = params_buf.levels[hit.]
+    uint tape = node_buf.data[tape_pos];
+    vec3 normal = normalize(tape_eval_gradient(tape, ray_orig + hit.t * ray_dir));
 
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < params_buf.light_count; i++) {

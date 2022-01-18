@@ -1,0 +1,73 @@
+
+/*#include "affine.comp"
+
+Affine tape_eval_affine(vec3 low, vec3 high)
+{
+    vec3 middle = (high + low) / 2;
+    vec3 radius = (high - low) / 2;
+
+    Affine slots[MAX_SLOT_COUNT];
+    slots[0] = Affine(middle.x, vec3(radius.x, 0, 0), 0);
+    slots[1] = Affine(middle.y, vec3(0, radius.y, 0), 0);
+    slots[2] = Affine(middle.z, vec3(0, 0, radius.z), 0);
+    slots[3] = ;
+
+    uint i = 0;
+    while (i < params_buf.tape_instr_count) {
+        // Decode the instruction
+        uint inst = tape_buf.instrs[i];
+        uint op      = (inst >> 0)  & 0xFF;
+        uint outSlot = (inst >> 8)  & 0xFF;
+        uint inSlotA = (inst >> 16) & 0xFF;
+        uint inSlotB = (inst >> 24) & 0xFF;
+
+        Affine a = slots[i.inSlotA];
+        Affine b = slots[i.inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            float c = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
+            slots[i.outSlot] = Affine(c, vec3(0, 0, 0), 0);
+            break;
+        case OP_COS:
+            slots[i.outSlot] = affine_cos(a);
+            break;
+        case OP_SIN:
+            slots[i.outSlot] = affine_sin(a);
+            break;
+        case OP_ADD:
+            slots[i.outSlot] = Affine(a.c + b.c, a.axis + b.axis, a.acc + b.acc);
+            break;
+        case OP_SUB:
+            slots[i.outSlot] = Affine(a.c - b.c, a.axis - b.axis, a.acc - b.acc);
+            break;
+        case OP_MUL:
+            slots[i.outSlot] = affine_multiply(a, b);
+            break;
+        case OP_DIV:
+            Affine b_inv = affine_inverse(b);
+            slots[i.outSlot] = affine_multiply(a, b);
+            break;
+        case OP_MIN:
+            slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
+            break;
+        case OP_MAX:
+            slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
+            break;
+        case OP_EXP:
+            slots[i.outSlot] = affine_exp(a);
+            break;
+        case OP_NEG:
+            slots[i.outSlot] = Affine(-a.c, -a.axis, -a.acc);
+            break;
+        case OP_SQRT:
+            slots[i.outSlot] = affine_sqrt(a);
+            break;
+        case OP_COPY:
+            slots[i.outSlot] = a;
+            break;
+        } 
+        i++;
+    }   
+}*/

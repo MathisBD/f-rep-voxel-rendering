@@ -25,6 +25,7 @@ public:
         bool printHardwareInfo = false;
         std::vector<uint32_t> gridDims;
         csg::Expr shape;
+        uint32_t temporalSampleCount = 1;
     };
 
     Application(Params params);

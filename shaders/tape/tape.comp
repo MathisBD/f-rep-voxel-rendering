@@ -1,0 +1,59 @@
+#define MAX_SLOT_COUNT      128
+// When doing interval evaluation,
+// this defines the size of the array that holds
+// the configurations for inputs of min/max ops.
+// Each configuration is 2 bits (because there are 3 possibilities).
+// The maximum number of min/max ops we can process is thus 
+// 16 * MM_ARRAY_SIZE.
+#define MM_ARRAY_SIZE       128
+
+#define MM_BOTH   0
+#define MM_FIRST  1
+#define MM_SECOND 2
+
+
+#define OP_CONSTANT 0
+#define OP_SIN      1
+#define OP_COS      2
+#define OP_ADD      3
+#define OP_SUB      4
+#define OP_MUL      5
+#define OP_DIV      6
+#define OP_MIN      7
+#define OP_MAX      8
+#define OP_EXP      9
+#define OP_NEG      10
+#define OP_SQRT     11
+#define OP_COPY     12
+
+const float infinity = 1. / 0.;
+const float pi = 3.141592653589793238462643383279502884197;
+
+
+// An unpacked tape instruction
+struct Instruction {
+    uint op;
+    uint outSlot;
+    uint inSlotA;
+    uint inSlotB;
+};
+
+
+// Returns the number of instructions in the tape.
+uint read_tape_size(uint tape_idx)
+{
+    return tape_buf.data[tape_idx];
+}
+
+Instruction read_tape_inst(uint tape, uint idx)
+{
+    // Add 1 to skip the tape size.
+    uint data = tape_buf.data[tape + idx + 1];
+
+    Instruction instr;
+    instr.op      = (data >> 0)  & 0xFF;
+    instr.outSlot = (data >> 8)  & 0xFF;
+    instr.inSlotA = (data >> 16) & 0xFF;
+    instr.inSlotB = (data >> 24) & 0xFF;
+    return instr;
+}

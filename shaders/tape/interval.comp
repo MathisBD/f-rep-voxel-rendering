@@ -1,0 +1,155 @@
+
+struct Interval {
+    float low;
+    float high;
+};
+
+
+Interval interval_multiply(Interval a, Interval b)
+{
+    Interval c;
+    c.low = MIN_4(
+        a.low * b.low, a.low * b.high, a.high * b.low, a.high * b.high);
+    c.high = MAX_4(
+        a.low * b.low, a.low * b.high, a.high * b.low, a.high * b.high);
+    return c;
+}
+
+// Returns true if an integral multiple of x lies
+// in the interval i (endpoints included).
+bool contains_multiple(Interval i, float x)
+{
+    return floor(i.low / x) < floor(i.high / x) || 
+           floor(i.low / x) == i.low / x        ||
+           floor(i.high / x) == i.high / x;
+}
+
+
+void mm_store(uint mm_array[MM_ARRAY_SIZE], uint idx, uint choice)
+{
+    uint q = (2*idx) >> 5;
+    uint r = (2*idx) & ((1 << 5) - 1);
+    mm_array[q] |= choice << r;
+}
+
+// How to compute intervals for unary C^1 functions. 
+// If the input interval is [x, y] and we call [f(a), f(b)] the output interval,
+// then it must hold that : 
+// (i) f'(a) == 0 or a == x or a == y
+// (ii) f'(b) == 0 or b == x or b == y
+// Thus, if c_1 ... c_n are the critical points of f in [x, y] (i.e. where f' == 0),
+// the output interval is [min(f(x), f(y), f(c_i)), max(f(x), f(y), f(c_i))].
+// We use this method for sin and cos (for which we know the critical points).
+Interval tape_eval_interval(vec3 low, vec3 high, 
+    out uint mm_array[MM_ARRAY_SIZE], out uint mm_size)
+{
+    Interval slots[MAX_SLOT_COUNT];
+    slots[0] = Interval(low.x, high.x);
+    slots[1] = Interval(low.y, high.y);
+    slots[2] = Interval(low.z, high.z);
+    slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
+
+    uint idx = 0;
+    uint size = read_tape_size(tape);
+    uint mm_idx = 0;
+    while (idx < size) {
+        // Decode the instruction
+        Instruction i = read_tape_inst(tape, idx);
+        Interval a = slots[i.inSlotA];
+        Interval b = slots[i.inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            float c = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
+            slots[i.outSlot] = Interval(c, c);
+            break;
+        case OP_COS:
+            if (contains_multiple(Interval(a.low - pi, a.high - pi), 2*pi)) {
+                slots[i.outSlot].low = -1;
+            }
+            else {
+                slots[i.outSlot].low = min(cos(a.low), cos(a.high));
+            }
+            if (contains_multiple(a, 2*pi)) {
+                slots[i.outSlot].high = 1;
+            }
+            else {
+                slots[i.outSlot].high = max(cos(a.low), cos(a.high));
+            }
+            break;
+        case OP_SIN:
+            if (contains_multiple(Interval(a.low + pi / 2, a.high + pi / 2), 2*pi)) {
+                slots[i.outSlot].low = -1;
+            }
+            else {
+                slots[i.outSlot].low = min(sin(a.low), sin(a.high));
+            }
+            if (contains_multiple(Interval(a.low - pi / 2, a.high - pi / 2), 2*pi)) {
+                slots[i.outSlot].high = 1;
+            }
+            else {
+                slots[i.outSlot].high = max(sin(a.low), sin(a.high));
+            }
+            break;
+        case OP_ADD:
+            slots[i.outSlot] = Interval(a.low + b.low, a.high + b.high);
+            break;
+        case OP_SUB:
+            slots[i.outSlot] = Interval(a.low - b.high, a.high - b.low);
+            break;
+        case OP_MUL:
+            slots[i.outSlot] = interval_multiply(a, b);
+            break;
+        case OP_DIV:
+            if ((b.low == 0 && b.high == 0) || (b.low < 0 && b.high > 0)) {
+                slots[i.outSlot] = Interval(-infinity, infinity);
+            }
+            else if (b.low == 0) {
+                slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, infinity));
+            }
+            else if (b.high == 0) {
+                slots[i.outSlot] = interval_multiply(a, Interval(-infinity, 1. / b.low));
+            }
+            else {
+                slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));
+            }
+            break;
+        case OP_MIN:
+            // Remember which choice we made
+            uint choice = 
+                a.high < b.low ? MM_FIRST  :
+                b.high < a.low ? MM_SECOND :
+                MM_BOTH;
+            mm_store(mm_array, mm_idx, choice);
+            mm_idx++;
+            slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
+            break;
+        case OP_MAX:
+            // Remember which choice we made
+            uint choice = 
+                a.high < b.low ? MM_SECOND :
+                b.high < a.low ? MM_FIRST  :
+                MM_BOTH;
+            mm_store(mm_array, mm_idx, choice);
+            mm_idx++;
+            slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
+            break;
+        case OP_EXP:
+            slots[i.outSlot] = Interval(exp(a.low), exp(a.high));
+            break;
+        case OP_NEG:
+            slots[i.outSlot] = Interval(-a.high, -a.low);
+            break;
+        case OP_SQRT:
+            slots[i.outSlot] = Interval(sqrt(max(0, a.low)), sqrt(max(0, a.high)));
+            break;
+        case OP_COPY:
+            slots[i.outSlot] = a;
+            break;
+        } 
+        idx++;
+    }   
+    mm_size = mm_idx;
+    return slots[0];
+}

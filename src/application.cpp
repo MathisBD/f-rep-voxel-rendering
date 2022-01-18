@@ -24,7 +24,7 @@ void Application::Init()
     m_voxels.Init(&m_device, m_params.shape);
     m_cleanupQueue.AddFunction([=] { m_voxels.Cleanup(); });
     
-    m_target.Init(&m_device, m_windowExtent, 10);
+    m_target.Init(&m_device, m_windowExtent, m_params.temporalSampleCount);
     ImmediateSubmit([=] (VkCommandBuffer cmd) { 
         m_target.ZeroOutImage(cmd); 
     });

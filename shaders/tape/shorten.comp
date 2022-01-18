@@ -1,0 +1,104 @@
+
+
+/*uint mm_load(uint mm_array[MM_ARRAY_SIZE], uint idx)
+{
+    uint q = (2*idx) >> 5;
+    uint r = (2*idx) & ((1 << 5) - 1);
+    return (mm_array[q] >> r) & 0x3;
+}
+
+uint get_choice(uint op, uint mm_array[MM_ARRAY_SIZE], uint mm_idx)
+{
+    switch (op) {
+    case OP_CONSTANT: 
+        choice = MM_NONE; break;
+    case OP_COS:
+    case OP_SIN:
+    case OP_EXP:
+    case OP_NEG:
+    case OP_SQRT:
+    case OP_COPY:
+        choice = MM_FIRST; break;
+    case OP_ADD:
+    case OP_SUB:
+    case OP_MUL:
+    case OP_DIV:
+        choice = MM_BOTH; break;
+    case OP_MIN:
+    case OP_MAX:
+        choice = mm_load(mm_array, mm_idx);
+        break;
+    } 
+    return choice;
+}
+
+
+uint tape_shorten_count(uint tape, 
+    uint mm_array[MM_ARRAY_SIZE], uint mm_size)
+{
+    // This is true if the slot is active.
+    // Initially only the output slot is active.
+    bool slots[MAX_SLOT_COUNT];
+    slots[0] = true;
+    
+    // We iterate in reverse over the tape.
+    int idx = read_tape_size(tape) - 1;
+    uint mm_idx = mm_size - 1;
+    uint count = 0;
+    while (idx >= 0) {
+        // Decode the instruction
+        Instruction i = read_tape_inst(tape, idx);
+
+        if (slots[i.outSlot]) {
+            // We will keep this instruction.
+            count++;
+            // Get which inputs to activate.
+            uint choice = get_choice(op, mm_array, mm_idx);
+            if (op == OP_MIN || op == OP_MAX) { mm_idx--; }
+            // activate the right slots
+            slots[i.outSlot] = false;
+            switch (choice) {
+            case MM_NONE: break;
+            case MM_FIRST: slots[i.inSlotA] = true; break;
+            case MM_SECOND: slots[i.inSlotB] = true; break;
+            case MM_BOTH: slots[i.inSlotA] = slots[i.inSlotB] = true; break;
+            }
+        }
+        idx--;
+    }   
+    return count;
+}
+
+void tape_shorten_copy(uint in_tape, uint out_tape,
+    uint mm_array[MM_ARRAY_SIZE], uint mm_size)
+{
+    // This is true if the slot is active.
+    // Initially only the output slot is active.
+    bool slots[MAX_SLOT_COUNT];
+    slots[0] = true;
+    
+    // We iterate in reverse over the input tape.
+    int idx = params_buf.tape_instr_count - 1;
+    uint mm_idx = mm_size - 1;
+    while (idx >= 0) {
+        // Decode the instruction
+        Instruction i = decode_instr(tape_buf.instrs[idx]);
+
+        if (slots[i.outSlot]) {
+            // We will keep this instruction.
+            count++;
+            // Get which inputs to activate.
+            uint choice = get_choice(op, mm_array, mm_idx);
+            if (op == OP_MIN || op == OP_MAX) { mm_idx--; }
+            // activate the right slots
+            slots[i.outSlot] = false;
+            switch (choice) {
+            case MM_NONE: break;
+            case MM_FIRST: slots[i.inSlotA] = true; break;
+            case MM_SECOND: slots[i.inSlotB] = true; break;
+            case MM_BOTH: slots[i.inSlotA] = slots[i.inSlotB] = true; break;
+            }
+        }
+        idx--;
+    }   
+}*/

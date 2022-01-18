@@ -1,0 +1,63 @@
+
+float tape_eval_point(uint tape, vec3 pos)
+{
+    float slots[MAX_SLOT_COUNT];
+    slots[0] = pos.x;
+    slots[1] = pos.y;
+    slots[2] = pos.z;
+    slots[3] = params_buf.tape_time;
+
+    uint idx = 0;
+    uint size = read_tape_size(tape);
+    while (idx < size) {
+        // Decode the instruction
+        Instruction i = read_tape_inst(tape, idx);
+        float a = slots[i.inSlotA];
+        float b = slots[i.inSlotB];
+
+        // Dispatch        
+        switch (op) {
+        case OP_CONSTANT:
+            slots[i.outSlot] = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
+            break;
+        case OP_SIN:
+            slots[i.outSlot] = sin(a);
+            break;
+        case OP_COS:
+            slots[i.outSlot] = cos(a);       
+            break;
+        case OP_ADD:
+            slots[i.outSlot] = a + b;
+            break;
+        case OP_SUB:
+            slots[i.outSlot] = a - b;
+            break;
+        case OP_MUL:
+            slots[i.outSlot] = a * b;
+            break;
+        case OP_DIV:
+            slots[i.outSlot] = a / b;
+            break;
+        case OP_MIN:
+            slots[i.outSlot] = min(a, b);       
+            break;
+        case OP_MAX:
+            slots[i.outSlot] = max(a, b);       
+            break;
+        case OP_EXP:
+            slots[i.outSlot] = exp(a);       
+            break;
+        case OP_NEG:
+            slots[i.outSlot] = -a;       
+            break;
+        case OP_SQRT:
+            slots[i.outSlot] = sqrt(a);       
+            break;
+        case OP_COPY:
+            slots[i.outSlot] = a;       
+            break;
+        } 
+        idx++;
+    }   
+    return slots[0];
+}

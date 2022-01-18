@@ -8,7 +8,10 @@
 #include "utils.comp"
 #include "voxelizer/inputs.comp"
 #include "node.comp"
-#include "tape.comp"
+#include "tape/tape.comp"
+#include "tape/point.comp"
+#include "tape/interval.comp"
+#include "tape/shorten.comp"
 
 
 #define LVL params_buf.level
@@ -68,6 +71,13 @@ void set_child_coords(uint child, uvec3 coords)
     node_buf.data[coords_pos + 2] = coords.z;
 }
 
+void set_child_tape_idx(uint child, uint tape_idx)
+{
+    uint idx_pos = params_buf.levels[LVL+1].node_ofs +
+        child * NODE_SIZE(LVL+1) + NODE_OFS_TAPE_IDX(LVL+1);
+    node_buf.data[idx_pos] = tape_idx;
+}
+
 void voxelize(uint node, uvec3 cell)
 {
     // node coordinates
@@ -81,9 +91,14 @@ void voxelize(uint node, uvec3 cell)
     vec3 child_pos = params_buf.grid_world_pos + 
         child_coords * params_buf.levels[LVL].cell_size;
     
+    // node tape index
+    uint idx_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL) + NODE_OFS_TAPE_IDX(LVL);
+    uint tape = node_buf.data[idx_pos];
+
     // Point evaluation 
     if (LVL == params_buf.level_count - 1) {
-        float density = tape_eval_point(child_pos);
+        float density = tape_eval_point(tape, child_pos);
         if (density < 0.0f) {
             set_leaf_bit(node, cell, true);
         } 
@@ -93,7 +108,11 @@ void voxelize(uint node, uvec3 cell)
     }
     // Interval evaluation 
     else {
-        Interval density = tape_eval_interval(child_pos, child_pos + params_buf.levels[LVL].cell_size);
+        uint mm_array[MM_ARRAY_SIZE];
+        uint mm_size;
+        Interval density = tape_eval_interval(tape, 
+            child_pos, child_pos + params_buf.levels[LVL].cell_size,
+            mm_array, mm_size);
         // Empty node
         if (density.low > 0) {
             set_leaf_bit(node, cell, false);
@@ -110,9 +129,12 @@ void voxelize(uint node, uvec3 cell)
             set_leaf_bit(node, cell, false);
             set_interior_bit(node, cell, true);
 
+            // TODO : shorten the tape
+
             uint child = atomicAdd(child_count_buf.child_count, 1);
             set_child_list_entry(node, cell, child);
             set_child_coords(child, child_coords);
+            set_child_tape_idx(child, 0);
         }
     }  
 }
