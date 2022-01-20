@@ -102,7 +102,7 @@ uint tape_shorten(uint in_tape,
 
     LOG1("keep count=%u\n", keepCount);
 
-    // The shortened tape is identical to the original tape :
+    // The shortened tape is not much shorter :
     // don't copy it.
     uint in_size = tape_read_size(in_tape);
     if (keepCount >= in_size) {

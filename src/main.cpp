@@ -43,7 +43,7 @@ csg::Expr TangleCube()
     using namespace csg;
     auto shape = Norm2(Axes() * Axes()) - 8 * Norm2(Axes()) + 25;
     shape = ScaleXYZ(shape, 4);
-    shape = shape + 15 * Sin(T());
+    //shape = shape + 15 * Sin(T());
     return shape;
 }
 
@@ -88,7 +88,7 @@ csg::Expr MengerSponge()
     using namespace csg;
     auto shape = Menger(3);
     shape = TranslateXYZ(shape, {-0.5, -0.5, -0.5});
-    shape = ScaleXYZ(shape, {30, 30, 1});
+    shape = ScaleXYZ(shape, {30, 30, 10});
     shape = Diff(shape, Sphere({10, 10, 0}, 10));
     return shape;
 }
@@ -142,11 +142,9 @@ int main()
     params.voxelizeRealTime = true;
     params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 8, 4, 4 };
+    params.gridDims = { 8, 4, 4, 4 };
     params.temporalSampleCount = 3;
-    //params.shape = csg::Diff(
-    //    csg::Box({-10, -10, -10}, {20, 20, 20}),
-    //    csg::Sphere({10, 10, 10}, 15));
+    
     params.shape = MengerSponge();
     
     csg::Tape tape(params.shape);

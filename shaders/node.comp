@@ -60,3 +60,13 @@ uint node_get_tape_index(uint node, uint level)
         node * NODE_SIZE(level) + NODE_OFS_TAPE_IDX(level);
     return node_buf.data[idx_pos];
 }
+
+uvec3 node_get_coords(uint node, uint level)
+{
+    uint coords_pos = params_buf.levels[level].node_ofs +
+        node * NODE_SIZE(level) + NODE_OFS_COORDS(level);
+    return uvec3(
+        node_buf.data[coords_pos + 0],
+        node_buf.data[coords_pos + 1],
+        node_buf.data[coords_pos + 2]);
+}

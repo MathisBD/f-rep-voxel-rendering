@@ -226,23 +226,28 @@ void Voxelizer::VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float tapeTim
     UpdateShaderParams(level, tapeTime);
     UpdateShaderCounters(level);
 
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
-    // Allocate the command buffer.
-    VkCommandBuffer cmd;
-    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
-    VK_CHECK(vkAllocateCommandBuffers(m_device->logicalDevice, &allocInfo, &cmd));
-    // Begin the command.
-    auto beginInfo = vkw::init::CommandBufferBeginInfo(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
-    // Record the command
-    RecordCmd(cmd, level);
-    // End the command
-    VK_CHECK(vkEndCommandBuffer(cmd));
-    // Submit.
-    SubmitCmd(cmd, level, waitSem);
-    
+    m_device->QueueBeginLabel(m_queue, "voxelize level " + std::to_string(level));
+    {
+        // Reset the command pool (and its buffers).
+        VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
+        // Allocate the command buffer.
+        VkCommandBuffer cmd;
+        auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
+        VK_CHECK(vkAllocateCommandBuffers(m_device->logicalDevice, &allocInfo, &cmd));
+        // Begin the command.
+        auto beginInfo = vkw::init::CommandBufferBeginInfo(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+        // Record the command
+        RecordCmd(cmd, level);
+        // End the command
+        VK_CHECK(vkEndCommandBuffer(cmd));
+        // Submit.
+        SubmitCmd(cmd, level, waitSem);
+    }
+    m_device->QueueEndLabel(m_queue);
+
+
     // Wait for the command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
@@ -352,6 +357,7 @@ void Voxelizer::UploadTape()
 
 void Voxelizer::Voxelize(VkSemaphore waitSem, float tapeTime) 
 {
+    m_device->QueueBeginLabel(m_queue, "voxelize");
     // No need to actually create the root node,
     // as 0 initialized fields are correct.
     // However we have to encode the number of nodes on level 0.
@@ -359,4 +365,5 @@ void Voxelizer::Voxelize(VkSemaphore waitSem, float tapeTime)
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
         VoxelizeLevel(i, waitSem, tapeTime);
     }
+    m_device->QueueEndLabel(m_queue);
 }

@@ -30,7 +30,84 @@ bool contains_multiple(Interval i, float x)
     uint q = (2*(idx)) >> 5;              \
     uint r = (2*(idx)) & 0x1F;            \
     mm_array[q] &= ~(0x3 << r);           \
-    mm_array[q] |= (choice) << r;        \
+    mm_array[q] |= (choice) << r;         \
+}
+
+#define INTERVAL_UPDATE_SLOTS()\
+switch (i.op) {\
+case OP_CONSTANT:\
+    float c = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];\
+    slots[i.outSlot] = Interval(c, c);\
+    break;\
+case OP_COS:\
+    if (contains_multiple(Interval(a.low - pi, a.high - pi), 2*pi)) {\
+        slots[i.outSlot].low = -1;\
+    }\
+    else {\
+        slots[i.outSlot].low = min(cos(a.low), cos(a.high));\
+    }\
+    if (contains_multiple(a, 2*pi)) {\
+        slots[i.outSlot].high = 1;\
+    }\
+    else {\
+        slots[i.outSlot].high = max(cos(a.low), cos(a.high));\
+    }\
+    break;\
+case OP_SIN:\
+    if (contains_multiple(Interval(a.low + pi / 2, a.high + pi / 2), 2*pi)) {\
+        slots[i.outSlot].low = -1;\
+    }\
+    else {\
+        slots[i.outSlot].low = min(sin(a.low), sin(a.high));\
+    }\
+    if (contains_multiple(Interval(a.low - pi / 2, a.high - pi / 2), 2*pi)) {\
+        slots[i.outSlot].high = 1;\
+    }\
+    else {\
+        slots[i.outSlot].high = max(sin(a.low), sin(a.high));\
+    }\
+    break;\
+case OP_ADD:\
+    slots[i.outSlot] = Interval(a.low + b.low, a.high + b.high);\
+    break;\
+case OP_SUB:\
+    slots[i.outSlot] = Interval(a.low - b.high, a.high - b.low);\
+    break;\
+case OP_MUL:\
+    slots[i.outSlot] = interval_multiply(a, b);\
+    break;\
+case OP_DIV:\
+    if ((b.low == 0 && b.high == 0) || (b.low < 0 && b.high > 0)) {\
+        slots[i.outSlot] = Interval(-infinity, infinity);\
+    }\
+    else if (b.low == 0) {\
+        slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, infinity));\
+    }\
+    else if (b.high == 0) {\
+        slots[i.outSlot] = interval_multiply(a, Interval(-infinity, 1. / b.low));\
+    }\
+    else {\
+        slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));\
+    }\
+    break;\
+case OP_MIN: \
+    slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));\
+    break;\
+case OP_MAX:\
+    slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));\
+    break;\
+case OP_EXP:\
+    slots[i.outSlot] = Interval(exp(a.low), exp(a.high));\
+    break;\
+case OP_NEG:\
+    slots[i.outSlot] = Interval(-a.high, -a.low);\
+    break;\
+case OP_SQRT:\
+    slots[i.outSlot] = Interval(sqrt(max(0, a.low)), sqrt(max(0, a.high)));\
+    break;\
+case OP_COPY:\
+    slots[i.outSlot] = a;\
+    break;\
 }
 
 // How to compute intervals for unary C^1 functions. 
@@ -44,8 +121,6 @@ bool contains_multiple(Interval i, float x)
 Interval tape_eval_interval(uint tape, vec3 low, vec3 high, 
     out uint mm_array[MM_ARRAY_SIZE], out uint mm_size)
 {
-    LOG0("[+] Interval evaluation:\n");
-    
     Interval slots[MAX_SLOT_COUNT];
     slots[0] = Interval(low.x, high.x);
     slots[1] = Interval(low.y, high.y);
@@ -61,113 +136,47 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
         Interval a = slots[i.inSlotA];
         Interval b = slots[i.inSlotB];
 
-        LOG5("\t%u: op=%u  out=%u  inA=%u  inB=%u\n", 
-            idx, i.op, i.outSlot, i.inSlotA, i.inSlotB);
-        LOG4("\t\ta=(%.2f %.2f)  b=(%.2f %.2f)\n", 
-            a.low, a.high, b.low, b.high);
-
-        // Dispatch        
-        switch (i.op) {
-        case OP_CONSTANT:
-            float c = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
-            slots[i.outSlot] = Interval(c, c);
-            break;
-        case OP_COS:
-            if (contains_multiple(Interval(a.low - pi, a.high - pi), 2*pi)) {
-                slots[i.outSlot].low = -1;
-            }
-            else {
-                slots[i.outSlot].low = min(cos(a.low), cos(a.high));
-            }
-            if (contains_multiple(a, 2*pi)) {
-                slots[i.outSlot].high = 1;
-            }
-            else {
-                slots[i.outSlot].high = max(cos(a.low), cos(a.high));
-            }
-            break;
-        case OP_SIN:
-            if (contains_multiple(Interval(a.low + pi / 2, a.high + pi / 2), 2*pi)) {
-                slots[i.outSlot].low = -1;
-            }
-            else {
-                slots[i.outSlot].low = min(sin(a.low), sin(a.high));
-            }
-            if (contains_multiple(Interval(a.low - pi / 2, a.high - pi / 2), 2*pi)) {
-                slots[i.outSlot].high = 1;
-            }
-            else {
-                slots[i.outSlot].high = max(sin(a.low), sin(a.high));
-            }
-            break;
-        case OP_ADD:
-            slots[i.outSlot] = Interval(a.low + b.low, a.high + b.high);
-            break;
-        case OP_SUB:
-            slots[i.outSlot] = Interval(a.low - b.high, a.high - b.low);
-            break;
-        case OP_MUL:
-            slots[i.outSlot] = interval_multiply(a, b);
-            break;
-        case OP_DIV:
-            if ((b.low == 0 && b.high == 0) || (b.low < 0 && b.high > 0)) {
-                slots[i.outSlot] = Interval(-infinity, infinity);
-            }
-            else if (b.low == 0) {
-                slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, infinity));
-            }
-            else if (b.high == 0) {
-                slots[i.outSlot] = interval_multiply(a, Interval(-infinity, 1. / b.low));
-            }
-            else {
-                slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));
-            }
-            break;
-        case OP_MIN: 
-        {
-            // Remember which choice we made
+        INTERVAL_UPDATE_SLOTS();
+        if (i.op == OP_MIN) {
             uint choice = 
                 a.high < b.low ? MM_FIRST  :
                 b.high < a.low ? MM_SECOND :
                 MM_BOTH;
-            LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
-            break;
         }
-        case OP_MAX:
-        {
-            // Remember which choice we made
+        else if (i.op == OP_MAX) {
             uint choice = 
                 a.high < b.low ? MM_SECOND :
                 b.high < a.low ? MM_FIRST  :
                 MM_BOTH;
-            LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
-            break;
         }
-        case OP_EXP:
-            slots[i.outSlot] = Interval(exp(a.low), exp(a.high));
-            break;
-        case OP_NEG:
-            slots[i.outSlot] = Interval(-a.high, -a.low);
-            break;
-        case OP_SQRT:
-            slots[i.outSlot] = Interval(sqrt(max(0, a.low)), sqrt(max(0, a.high)));
-            break;
-        case OP_COPY:
-            slots[i.outSlot] = a;
-            break;
-        } 
         idx++;
-        LOG2("\t\tout=(%.2f %.2f)\n", 
-            slots[i.outSlot].low, slots[i.outSlot].high);
     }   
     mm_size = mm_idx;
-    LOG1("mm_size=%u\n", mm_size);
-    LOG1("mm_array[0]=0x%x\n", mm_array[0]);
+    return slots[0];
+}
+
+// No tape shortening.
+Interval tape_eval_interval(uint tape, vec3 low, vec3 high)
+{
+    Interval slots[MAX_SLOT_COUNT];
+    slots[0] = Interval(low.x, high.x);
+    slots[1] = Interval(low.y, high.y);
+    slots[2] = Interval(low.z, high.z);
+    slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
+
+    uint idx = 0;
+    uint size = tape_read_size(tape);
+    while (idx < size) {
+        // Decode the instruction
+        Instruction i = tape_read_inst(tape, idx);
+        Interval a = slots[i.inSlotA];
+        Interval b = slots[i.inSlotB];
+        INTERVAL_UPDATE_SLOTS();
+        idx++;
+    }   
     return slots[0];
 }

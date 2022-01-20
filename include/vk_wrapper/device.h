@@ -27,11 +27,24 @@ namespace vkw
         // Extension function pointers
         struct {
             PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
+            PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
+            PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
+            PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT;
+            PFN_vkQueueBeginDebugUtilsLabelEXT vkQueueBeginDebugUtilsLabelEXT;
+            PFN_vkQueueEndDebugUtilsLabelEXT vkQueueEndDebugUtilsLabelEXT;
+            PFN_vkQueueInsertDebugUtilsLabelEXT vkQueueInsertDebugUtilsLabelEXT;
         } pfn;
 
         template <typename T>
         void NameObject(T handle, const std::string& name);
 
+        void CmdBeginLabel(VkCommandBuffer cmd, const std::string& name);
+        void CmdEndLabel(VkCommandBuffer cmd);
+        void CmdInsertLabel(VkCommandBuffer cmd, const std::string& name);
+
+        void QueueBeginLabel(VkQueue queue, const std::string& name);
+        void QueueEndLabel(VkQueue queue);
+        void QueueInsertLabel(VkQueue queue, const std::string& name);
     private:
         void NameObjectHelper(uint64_t handle, const std::string& name, VkObjectType type);
     };

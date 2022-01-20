@@ -118,6 +118,12 @@ void EngineBase::InitVulkanCore()
 
     // Debug utils extension functions
     m_device.pfn.vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkSetDebugUtilsObjectNameEXT");
+    m_device.pfn.vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkCmdBeginDebugUtilsLabelEXT");
+    m_device.pfn.vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkCmdEndDebugUtilsLabelEXT");
+    m_device.pfn.vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkCmdInsertDebugUtilsLabelEXT");
+    m_device.pfn.vkQueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkQueueBeginDebugUtilsLabelEXT");
+    m_device.pfn.vkQueueEndDebugUtilsLabelEXT = (PFN_vkQueueEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkQueueEndDebugUtilsLabelEXT");
+    m_device.pfn.vkQueueInsertDebugUtilsLabelEXT = (PFN_vkQueueInsertDebugUtilsLabelEXT)vkGetDeviceProcAddr(m_device.logicalDevice, "vkQueueInsertDebugUtilsLabelEXT");
     
     // Cleanup
     m_cleanupQueue.AddFunction([=] {

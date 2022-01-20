@@ -256,22 +256,26 @@ void Raytracer::Trace(VkSemaphore waitSem, const Camera* camera, float time)
     // Update the uniform buffer
     UpdateShaderParams(camera, time);
 
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
-    // Allocate the command buffer.
-    VkCommandBuffer cmd;
-    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
-    VK_CHECK(vkAllocateCommandBuffers(m_device->logicalDevice, &allocInfo, &cmd));
-    // Begin the command.
-    auto beginInfo = vkw::init::CommandBufferBeginInfo(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
-    // Record the command
-    RecordComputeCmd(cmd);
-    // End the command
-    VK_CHECK(vkEndCommandBuffer(cmd));
-    // Submit.
-    SubmitComputeCmd(cmd, waitSem);
+    m_device->QueueBeginLabel(m_queue, "raytrace");
+    {
+        // Reset the command pool (and its buffers).
+        VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
+        // Allocate the command buffer.
+        VkCommandBuffer cmd;
+        auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
+        VK_CHECK(vkAllocateCommandBuffers(m_device->logicalDevice, &allocInfo, &cmd));
+        // Begin the command.
+        auto beginInfo = vkw::init::CommandBufferBeginInfo(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+        // Record the command
+        RecordComputeCmd(cmd);
+        // End the command
+        VK_CHECK(vkEndCommandBuffer(cmd));
+        // Submit.
+        SubmitComputeCmd(cmd, waitSem);
+    }
+    m_device->QueueEndLabel(m_queue); // raytrace
 }
 
 void Raytracer::SetBackgroundColor(const glm::vec3& color) 

@@ -285,23 +285,27 @@ void Renderer::Render(VkSemaphore waitSem)
 
     UpdateShaderParams();
 
-    // Reset the command pool (and its buffers).
-    VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
-    // Allocate the command buffer.
-    VkCommandBuffer cmd;
-    auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
-    VK_CHECK(vkAllocateCommandBuffers(
-        m_device->logicalDevice, &allocInfo, &cmd));
-    // Begin the command.
-    auto beginInfo = vkw::init::CommandBufferBeginInfo(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
-    // Record the command
-    RecordRenderCmd(cmd);
-    // End the command
-    VK_CHECK(vkEndCommandBuffer(cmd));
-    // Submit
-    SubmitRenderCmd(cmd, waitSem);
+    m_device->QueueBeginLabel(m_queue, "render");
+    {
+        // Reset the command pool (and its buffers).
+        VK_CHECK(vkResetCommandPool(m_device->logicalDevice, m_cmdPool, 0));
+        // Allocate the command buffer.
+        VkCommandBuffer cmd;
+        auto allocInfo = vkw::init::CommandBufferAllocateInfo(m_cmdPool);
+        VK_CHECK(vkAllocateCommandBuffers(
+            m_device->logicalDevice, &allocInfo, &cmd));
+        // Begin the command.
+        auto beginInfo = vkw::init::CommandBufferBeginInfo(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+        // Record the command
+        RecordRenderCmd(cmd);
+        // End the command
+        VK_CHECK(vkEndCommandBuffer(cmd));
+        // Submit
+        SubmitRenderCmd(cmd, waitSem);
+    }
+    m_device->QueueEndLabel(m_queue);
 }
 
 void Renderer::EndFrame() 
