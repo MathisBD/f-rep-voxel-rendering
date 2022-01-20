@@ -42,10 +42,13 @@ layout (std430, set = 0, binding = 1) buffer NodeBuffer {
     uint data[];
 } node_buf;
 
-layout (std430, set = 0, binding = 2) readonly buffer TapeBuffer {
+layout (std430, set = 0, binding = 2) buffer TapeBuffer {
     uint data[];
 } tape_buf;
 
-layout(std430, set = 0, binding = 3) buffer ChildCountBuffer {
+// This buffer contains counters that are atomically incremented
+// by threads.
+layout(std430, set = 0, binding = 3) buffer CountersBuffer {
     uint child_count;
-} child_count_buf;
+    uint tape_index;
+} counters_buf;

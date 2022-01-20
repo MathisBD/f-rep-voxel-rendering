@@ -25,11 +25,12 @@ bool contains_multiple(Interval i, float x)
 }
 
 
-void mm_store(uint mm_array[MM_ARRAY_SIZE], uint idx, uint choice)
-{
-    uint q = (2*idx) >> 5;
-    uint r = (2*idx) & 0x1F;
-    mm_array[q] |= choice << r;
+// First erase the old choice, then OR with the new choice.
+#define MM_STORE(mm_array, idx, choice) { \
+    uint q = (2*(idx)) >> 5;              \
+    uint r = (2*(idx)) & 0x1F;            \
+    mm_array[q] &= ~(0x3 << r);           \
+    mm_array[q] |= (choice) << r;        \
 }
 
 // How to compute intervals for unary C^1 functions. 
@@ -43,6 +44,8 @@ void mm_store(uint mm_array[MM_ARRAY_SIZE], uint idx, uint choice)
 Interval tape_eval_interval(uint tape, vec3 low, vec3 high, 
     out uint mm_array[MM_ARRAY_SIZE], out uint mm_size)
 {
+    LOG0("[+] Interval evaluation:\n");
+    
     Interval slots[MAX_SLOT_COUNT];
     slots[0] = Interval(low.x, high.x);
     slots[1] = Interval(low.y, high.y);
@@ -50,13 +53,18 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
     slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
 
     uint idx = 0;
-    uint size = read_tape_size(tape);
+    uint size = tape_read_size(tape);
     uint mm_idx = 0;
     while (idx < size) {
         // Decode the instruction
-        Instruction i = read_tape_inst(tape, idx);
+        Instruction i = tape_read_inst(tape, idx);
         Interval a = slots[i.inSlotA];
         Interval b = slots[i.inSlotB];
+
+        LOG5("\t%u: op=%u  out=%u  inA=%u  inB=%u\n", 
+            idx, i.op, i.outSlot, i.inSlotA, i.inSlotB);
+        LOG4("\t\ta=(%.2f %.2f)  b=(%.2f %.2f)\n", 
+            a.low, a.high, b.low, b.high);
 
         // Dispatch        
         switch (i.op) {
@@ -122,7 +130,8 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 a.high < b.low ? MM_FIRST  :
                 b.high < a.low ? MM_SECOND :
                 MM_BOTH;
-            mm_store(mm_array, mm_idx, choice);
+            LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
+            MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
             slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
             break;
@@ -134,7 +143,8 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 a.high < b.low ? MM_SECOND :
                 b.high < a.low ? MM_FIRST  :
                 MM_BOTH;
-            mm_store(mm_array, mm_idx, choice);
+            LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
+            MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
             slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
             break;
@@ -153,7 +163,11 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
             break;
         } 
         idx++;
+        LOG2("\t\tout=(%.2f %.2f)\n", 
+            slots[i.outSlot].low, slots[i.outSlot].high);
     }   
     mm_size = mm_idx;
+    LOG1("mm_size=%u\n", mm_size);
+    LOG1("mm_array[0]=0x%x\n", mm_array[0]);
     return slots[0];
 }

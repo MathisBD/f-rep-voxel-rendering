@@ -4,7 +4,7 @@
 #extension GL_EXT_debug_printf : enable
 
 // Include other files  
-//#define DEBUG_LOG 
+#define DEBUG_LOG 
 #include "utils.comp"
 #include "voxelizer/inputs.comp"
 #include "node.comp"
@@ -116,12 +116,13 @@ void voxelize(uint node, uvec3 cell)
             set_leaf_bit(node, cell, false);
             set_interior_bit(node, cell, true);
 
-            // TODO : shorten the tape
-
-            uint child = atomicAdd(child_count_buf.child_count, 1);
+            // Shorten the tape.
+            uint child_tape = tape_shorten(tape, mm_array, mm_size);
+            
+            uint child = atomicAdd(counters_buf.child_count, 1);
             set_child_list_entry(node, cell, child);
             set_child_coords(child, child_coords);
-            set_child_tape_idx(child, tape);
+            set_child_tape_idx(child, child_tape);
         }
     }  
 }

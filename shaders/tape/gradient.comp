@@ -13,10 +13,10 @@ vec3 tape_eval_gradient(uint tape, vec3 pos)
     slots[3] = vec4(0, 0, 0, params_buf.tape_time);
 
     uint idx = 0;
-    uint size = read_tape_size(tape);
+    uint size = tape_read_size(tape);
     while (idx < size) {
         // Decode the instruction
-        Instruction i = read_tape_inst(tape, idx);
+        Instruction i = tape_read_inst(tape, idx);
         vec4 a = slots[i.inSlotA];
         vec4 b = slots[i.inSlotB];
 

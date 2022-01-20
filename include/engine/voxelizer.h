@@ -18,7 +18,7 @@ public:
         VoxelStorage* voxels);
     void Cleanup();
 
-    void Voxelize(VkSemaphore waitSem, float time);
+    void Voxelize(VkSemaphore waitSem, float tapeTime);
     // Returns a semaphore that is signaled when the voxelization is finished.
     VkSemaphore GetVoxelizeSem() const { return m_voxelizeLevelSems.back(); }
 private:
@@ -39,7 +39,7 @@ private:
         uint32_t levelCount;
         uint32_t level;    
         uint32_t tapeInstrCount;
-        float time;
+        float tapeTime;
 
         // The world positions of the grid bottom left corner.
         glm::vec3 gridWorldCoords;
@@ -48,6 +48,11 @@ private:
         ShaderLevelData levels[MAX_LEVEL_COUNT];
         float constantPool[MAX_CONSTANT_POOL_SIZE];
     } ShaderParams;
+
+    typedef struct {
+        uint32_t childCount;
+        uint32_t tapeIndex;
+    } ShaderCounters;
 
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
@@ -70,7 +75,7 @@ private:
 
     // The shader parameters uniform buffer.
     vkw::Buffer m_paramsBuffer;
-    vkw::Buffer m_childCountBuffer;
+    vkw::Buffer m_countersBuffer;
 
     void InitCommands();
     void InitSynchronization();
@@ -81,12 +86,13 @@ private:
     void ZeroOutNodeBuffer();
     void UploadTape();
 
-    void UpdateShaderParams(uint32_t level, float time);
+    void UpdateShaderParams(uint32_t level, float tapeTime);
+    void UpdateShaderCounters(uint32_t level);
     void RecordCmd(VkCommandBuffer cmd, uint32_t level);
     void SubmitCmd(VkCommandBuffer cmd, uint32_t level, VkSemaphore waitSem);
 
     // This creates the level 'level',
     // assuming the previous level was created.
     // If level==0, then it only assumes an empty root node exists.
-    void VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float time);
+    void VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float tapeTime);
 };

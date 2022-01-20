@@ -1,3 +1,5 @@
+const float infinity = 1. / 0.;
+const float pi = 3.141592653589793238462643383279502884197;
 
 #define CUBE(x) ((x)*(x)*(x))
 
@@ -28,7 +30,7 @@
 
 #ifdef DEBUG_LOG
 
-#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(0))
+#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(0, 2, 2))
 
 #define LOG0(fmt) if (SHOULD_LOG()) {\
     debugPrintfEXT((fmt)); }  
