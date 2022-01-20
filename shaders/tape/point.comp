@@ -16,7 +16,7 @@ float tape_eval_point(uint tape, vec3 pos)
         float b = slots[i.inSlotB];
 
         // Dispatch        
-        switch (op) {
+        switch (i.op) {
         case OP_CONSTANT:
             slots[i.outSlot] = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
             break;

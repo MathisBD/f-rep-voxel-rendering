@@ -28,7 +28,7 @@ bool contains_multiple(Interval i, float x)
 void mm_store(uint mm_array[MM_ARRAY_SIZE], uint idx, uint choice)
 {
     uint q = (2*idx) >> 5;
-    uint r = (2*idx) & ((1 << 5) - 1);
+    uint r = (2*idx) & 0x1F;
     mm_array[q] |= choice << r;
 }
 
@@ -40,7 +40,7 @@ void mm_store(uint mm_array[MM_ARRAY_SIZE], uint idx, uint choice)
 // Thus, if c_1 ... c_n are the critical points of f in [x, y] (i.e. where f' == 0),
 // the output interval is [min(f(x), f(y), f(c_i)), max(f(x), f(y), f(c_i))].
 // We use this method for sin and cos (for which we know the critical points).
-Interval tape_eval_interval(vec3 low, vec3 high, 
+Interval tape_eval_interval(uint tape, vec3 low, vec3 high, 
     out uint mm_array[MM_ARRAY_SIZE], out uint mm_size)
 {
     Interval slots[MAX_SLOT_COUNT];
@@ -59,7 +59,7 @@ Interval tape_eval_interval(vec3 low, vec3 high,
         Interval b = slots[i.inSlotB];
 
         // Dispatch        
-        switch (op) {
+        switch (i.op) {
         case OP_CONSTANT:
             float c = params_buf.const_pool[i.inSlotA / 4][i.inSlotA % 4];
             slots[i.outSlot] = Interval(c, c);
@@ -115,7 +115,8 @@ Interval tape_eval_interval(vec3 low, vec3 high,
                 slots[i.outSlot] = interval_multiply(a, Interval(1. / b.high, 1. / b.low));
             }
             break;
-        case OP_MIN:
+        case OP_MIN: 
+        {
             // Remember which choice we made
             uint choice = 
                 a.high < b.low ? MM_FIRST  :
@@ -125,7 +126,9 @@ Interval tape_eval_interval(vec3 low, vec3 high,
             mm_idx++;
             slots[i.outSlot] = Interval(min(a.low, b.low), min(a.high, b.high));
             break;
+        }
         case OP_MAX:
+        {
             // Remember which choice we made
             uint choice = 
                 a.high < b.low ? MM_SECOND :
@@ -135,6 +138,7 @@ Interval tape_eval_interval(vec3 low, vec3 high,
             mm_idx++;
             slots[i.outSlot] = Interval(max(a.low, b.low), max(a.high, b.high));
             break;
+        }
         case OP_EXP:
             slots[i.outSlot] = Interval(exp(a.low), exp(a.high));
             break;

@@ -7,10 +7,10 @@
 // 16 * MM_ARRAY_SIZE.
 #define MM_ARRAY_SIZE       128
 
-#define MM_BOTH   0
+#define MM_NONE   0
 #define MM_FIRST  1
 #define MM_SECOND 2
-
+#define MM_BOTH   3
 
 #define OP_CONSTANT 0
 #define OP_SIN      1

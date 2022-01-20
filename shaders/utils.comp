@@ -16,6 +16,15 @@
 // returns 1.0f if it is >= 0, and 0.0f otherwise.
 #define SIGN_01(v) vec3(greaterThanEqual((v), vec3(0, 0, 0)))
 
+// 'array' is an array of uints, and the bitmask starts at array[ofs]. 
+#define BITSET_SET(array, ofs, i)          array[(ofs) + ((i) >> 5)] |= (1 << ((i) & 0x1F))
+#define BITSET_ATOMIC_SET(array, ofs, i)   atomicOr(array[(ofs) + ((i) >> 5)], (1 << ((i) & 0x1F)))
+
+#define BITSET_CLEAR(array, ofs, i)        array[(ofs) + ((i) >> 5)] &= ~(1 << ((i) & 0x1F))
+#define BITSET_ATOMIC_CLEAR(array, ofs, i) atomicAnd(array[(ofs) + ((i) >> 5)], ~(1 << ((i) & 0x1F)))
+
+#define BITSET_LOAD(array, ofs, i)         bool(array[(ofs) + ((i) >> 5)] & (1 << ((i) & 0x1F)))
+
 
 #ifdef DEBUG_LOG
 

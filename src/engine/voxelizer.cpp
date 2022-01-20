@@ -248,7 +248,7 @@ void Voxelizer::AllocateGPUBuffers()
 {
     // Start with 1GB
     uint32_t nodeSize = 1 << 30;
-    uint32_t tapeSize = m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
+    uint32_t tapeSize = sizeof(uint32_t) + m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr);
 
     m_voxels->nodeBuffer.Allocate(nodeSize,   
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
@@ -310,7 +310,7 @@ void Voxelizer::UploadTape()
     memcpy(tapeContents, &tapeSize, sizeof(uint32_t));
     // Tape contents
     memcpy(tapeContents + 1, m_voxels->tape.instructions.data(),
-        m_voxels->tape.instructions.size() * sizeof(csg::Tape::Instr));
+        tapeSize * sizeof(csg::Tape::Instr));
     tapeStagingBuf.Unmap();  
 
     // Allocate the command buffer.

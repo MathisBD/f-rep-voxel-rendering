@@ -137,12 +137,12 @@ csg::Expr TwistedTower(int level, float angle, float scale)
 int main()
 {
     Application::Params params;
-    params.enableValidationLayers = false;
+    params.enableValidationLayers = true;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = true;
-    params.printFPS = true;
+    params.voxelizeRealTime = false;
+    params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4, 4 };
+    params.gridDims = { 16, 4 };
     params.temporalSampleCount = 3;
     params.shape = TangleCube();
     

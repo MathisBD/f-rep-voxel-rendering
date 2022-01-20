@@ -20,34 +20,28 @@
 void set_leaf_bit(uint node, uvec3 cell, bool set)
 {
     uint cell_index = INDEX3D(cell, DIM);
-    uint q = cell_index >> 5;
-    uint r = cell_index & ((1 << 5) - 1);
-    
-    uint node_pos = params_buf.levels[LVL].node_ofs +
-        node * NODE_SIZE(LVL);     
+    uint mask_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL) + NODE_OFS_LEAF_MASK(LVL);     
 
-    if (set) {
-        atomicOr(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], 1 << r);
+    if (set) { 
+        BITSET_ATOMIC_SET(node_buf.data, mask_pos, cell_index); 
     }
-    else {
-        atomicAnd(node_buf.data[node_pos + NODE_OFS_LEAF_MASK(LVL) + q], ~(1 << r));
+    else { 
+        BITSET_ATOMIC_CLEAR(node_buf.data, mask_pos, cell_index); 
     }
 }
 
 void set_interior_bit(uint node, uvec3 cell, bool set)
 {
     uint cell_index = INDEX3D(cell, DIM);
-    uint q = cell_index >> 5;
-    uint r = cell_index & ((1 << 5) - 1);
-    
-    uint node_pos = params_buf.levels[LVL].node_ofs +
-        node * NODE_SIZE(LVL);     
+    uint mask_pos = params_buf.levels[LVL].node_ofs +
+        node * NODE_SIZE(LVL) + NODE_OFS_INTERIOR_MASK(LVL);     
 
-    if (set) {
-        atomicOr(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], 1 << r);
+    if (set) { 
+        BITSET_ATOMIC_SET(node_buf.data, mask_pos, cell_index); 
     }
-    else {
-        atomicAnd(node_buf.data[node_pos + NODE_OFS_INTERIOR_MASK(LVL) + q], ~(1 << r));
+    else { 
+        BITSET_ATOMIC_CLEAR(node_buf.data, mask_pos, cell_index); 
     }
 }
 
@@ -92,19 +86,12 @@ void voxelize(uint node, uvec3 cell)
         child_coords * params_buf.levels[LVL].cell_size;
     
     // node tape index
-    uint idx_pos = params_buf.levels[LVL].node_ofs +
-        node * NODE_SIZE(LVL) + NODE_OFS_TAPE_IDX(LVL);
-    uint tape = node_buf.data[idx_pos];
+    uint tape = node_get_tape_index(node, LVL);
 
     // Point evaluation 
     if (LVL == params_buf.level_count - 1) {
         float density = tape_eval_point(tape, child_pos);
-        if (density < 0.0f) {
-            set_leaf_bit(node, cell, true);
-        } 
-        else {
-            set_leaf_bit(node, cell, false);
-        }
+        set_leaf_bit(node, cell, density < 0.0f);
     }
     // Interval evaluation 
     else {
@@ -134,7 +121,7 @@ void voxelize(uint node, uvec3 cell)
             uint child = atomicAdd(child_count_buf.child_count, 1);
             set_child_list_entry(node, cell, child);
             set_child_coords(child, child_coords);
-            set_child_tape_idx(child, 0);
+            set_child_tape_idx(child, tape);
         }
     }  
 }

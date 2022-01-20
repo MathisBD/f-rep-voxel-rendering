@@ -23,12 +23,7 @@ bool node_has_leaf_child(uint node_id, uint level, uint child_index)
         params_buf.levels[level].node_ofs +
         NODE_SIZE(level) * node_id +
         NODE_OFS_LEAF_MASK(level);
-    
-    uint q = child_index >> 5;
-    uint r = child_index & 0x1F;
-
-    uint mask = node_buf.data[mask_pos + q];
-    return bool(mask & (1 << r));
+    return BITSET_LOAD(node_buf.data, mask_pos, child_index);
 }
 
 // child_index == INDEX(local position in the node)
@@ -44,12 +39,7 @@ bool node_has_interior_child(uint node_id, uint level, uint child_index)
         params_buf.levels[level].node_ofs +
         NODE_SIZE(level) * node_id +
         NODE_OFS_INTERIOR_MASK(level);
-    
-    uint q = child_index >> 5;
-    uint r = child_index & 0x1F;
-
-    uint mask = node_buf.data[mask_pos + q];
-    return bool(mask & (1 << r));
+    return BITSET_LOAD(node_buf.data, mask_pos, child_index);
 }
 
 // child_index == INDEX(local position in the node)
@@ -62,4 +52,11 @@ uint node_get_interior_child(uint node_id, uint level, uint child_index)
         NODE_SIZE(level) * node_id +
         NODE_OFS_CHILD_LIST(level);
     return node_buf.data[child_list_pos + child_index];
+}
+
+uint node_get_tape_index(uint node, uint level)
+{
+    uint idx_pos = params_buf.levels[level].node_ofs + 
+        node * NODE_SIZE(level) + NODE_OFS_TAPE_IDX(level);
+    return node_buf.data[idx_pos];
 }

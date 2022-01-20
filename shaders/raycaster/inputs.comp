@@ -75,6 +75,6 @@ layout (std430, set = 0, binding = 2) readonly buffer NodeBuffer {
 } node_buf;
 
 layout (std430, set = 0, binding = 3) readonly buffer TapeBuffer {
-    uint instrs[];
+    uint data[];
 } tape_buf;
 
