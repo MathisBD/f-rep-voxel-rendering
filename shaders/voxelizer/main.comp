@@ -2,6 +2,7 @@
 
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
+#extension GL_EXT_shader_atomic_float : require 
 
 // Include other files  
 #define DEBUG_LOG 
@@ -113,8 +114,15 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
         set_interior_bit(node, cell, true);
         uint child = atomicAdd(counters_buf.child_count, 1);
         
+        // Collect some stats
         uint child_tape = tape_shorten(tape, mm_array, mm_size);
-        
+        if (child_tape != tape) {
+            uint child_size = tape_read_size(child_tape);
+            //atomicAdd(stats_buf.tape_count[LVL+1], 1);
+            //atomicAdd(stats_buf.tape_size_sum[LVL+1], child_size);
+            atomicMax(stats_buf.max_tape_size[LVL+1], child_size);
+        }
+
         set_child_list_entry(node, cell, child);
         set_child_coords(child, child_coords);
         set_child_tape_idx(child, child_tape);
@@ -157,6 +165,7 @@ void main()
     }
     else {
         bool shorten = LVL < (params_buf.level_count - 2);
+        //bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 

@@ -86,6 +86,26 @@ void Voxelizer::InitBuffers()
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_device->NameObject(m_countersBuffer.buffer, "voxelizer counters buffer");
     m_cleanupQueue.AddFunction([=] { m_countersBuffer.Cleanup(); });
+
+    // Stats buffer
+    m_statsBuffer.Init(m_device);
+    m_statsBuffer.Allocate(
+        sizeof(ShaderStats),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    m_device->NameObject(m_statsBuffer.buffer, "voxelizer stats buffer");
+    m_cleanupQueue.AddFunction([=] { m_statsBuffer.Cleanup(); });
+
+    ShaderStats* stats = (ShaderStats*)m_statsBuffer.Map();
+    for (uint32_t i = 0; i < MAX_LEVEL_COUNT; i++) {
+        stats->tapeCount[i] = 0;
+        stats->tapeSizeMax[i] = 0;
+        stats->tapeSizeSum[i] = 0;
+    }
+    stats->tapeCount[0] = 1;
+    stats->tapeSizeSum[0] = m_voxels->tape.instructions.size();
+    stats->tapeSizeMax[0] = m_voxels->tape.instructions.size();
+    m_statsBuffer.Unmap();
 }
 
 void Voxelizer::InitPipeline() 
@@ -107,11 +127,14 @@ void Voxelizer::InitPipeline()
         m_voxels->tapeBuffer.buffer, 0, m_voxels->tapeBuffer.size);
     auto countersInfo = vkw::init::DescriptorBufferInfo(
         m_countersBuffer.buffer, 0, m_countersBuffer.size);
+    auto statsInfo = vkw::init::DescriptorBufferInfo(
+        m_statsBuffer.buffer, 0, m_statsBuffer.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindBuffer(0, &paramsInfo,     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(1, &nodeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(2, &tapeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &countersInfo,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .BindBuffer(4, &statsInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
     m_device->NameObject(m_descSets[0], "voxelizer descriptor set 0");
 
@@ -182,6 +205,7 @@ void Voxelizer::UpdateShaderCounters(uint32_t level)
     m_countersBuffer.Unmap();
 }
 
+
 void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level) 
 {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
@@ -246,7 +270,6 @@ void Voxelizer::VoxelizeLevel(uint32_t level, VkSemaphore waitSem, float tapeTim
         SubmitCmd(cmd, level, waitSem);
     }
     m_device->QueueEndLabel(m_queue);
-
 
     // Wait for the command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, true, 1000000000));
@@ -366,4 +389,49 @@ void Voxelizer::Voxelize(VkSemaphore waitSem, float tapeTime)
         VoxelizeLevel(i, waitSem, tapeTime);
     }
     m_device->QueueEndLabel(m_queue);
+}
+
+void Voxelizer::PrintStats() 
+{
+    ShaderCounters* counters = (ShaderCounters*)m_countersBuffer.Map();
+    ShaderStats* stats = (ShaderStats*)m_statsBuffer.Map();
+    
+    uint32_t totalNodeCount = 0;
+    uint32_t totalNodeSize = 0;
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        totalNodeCount += m_voxels->interiorNodeCount[i];
+        totalNodeSize += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i);
+    }
+    printf("[+] Total interior nodes :\n\tcount=%u\tnode buf bytes=%u\n",
+        totalNodeCount, totalNodeSize);
+
+    uint totalTapeCount = 0;
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        totalTapeCount += stats->tapeCount[i];
+    }
+    printf("[+] Total tapes :\n\tcount=%u  tape buf bytes=%u\n",
+        totalTapeCount, 4 * counters->tapeIndex);
+    
+    printf("[+] Interior nodes per level :\n");
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        uint32_t nodes = m_voxels->interiorNodeCount[i];
+        printf("\tlevel %u:\tcount=%6u(%2.1f%%)\tnode buf bytes=%10u(%2.1f%%)\n", 
+            i, 
+            nodes, 100.0f * nodes / (float)totalNodeCount,
+            nodes * m_voxels->NodeSize(i), 100.0f * nodes * m_voxels->NodeSize(i) / (float)totalNodeSize);
+    }
+
+    printf("[+] Tape stats per level :\n");
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        printf("\t%u: count=%6u(%2.1f%%)  avg size=%2.1f  max size=%u  tape buf bytes=%10u(%2.1f%%)\n",
+            i, 
+            stats->tapeCount[i], 100.0f * stats->tapeCount[i] / (float)totalTapeCount,
+            stats->tapeSizeSum[i] / (float)stats->tapeCount[i], 
+            stats->tapeSizeMax[i],
+            4 * (stats->tapeSizeSum[i] + stats->tapeCount[i]), 
+            100.0f * (stats->tapeSizeSum[i] + stats->tapeCount[i]) / (float)counters->tapeIndex);
+    }
+
+    m_countersBuffer.Unmap();
+    m_statsBuffer.Unmap();    
 }

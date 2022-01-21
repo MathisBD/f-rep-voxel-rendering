@@ -20,7 +20,9 @@ public:
 
     void Voxelize(VkSemaphore waitSem, float tapeTime);
     // Returns a semaphore that is signaled when the voxelization is finished.
-    VkSemaphore GetVoxelizeSem() const { return m_voxelizeLevelSems.back(); }
+    VkSemaphore GetVoxelizeSem() const { return m_voxelizeLevelSems.back(); }    
+    
+    void PrintStats();
 private:
     static const uint32_t THREAD_GROUP_SIZE_X    = 4;
     static const uint32_t THREAD_GROUP_SIZE_Y    = 4;
@@ -54,6 +56,12 @@ private:
         uint32_t tapeIndex;
     } ShaderCounters;
 
+    typedef struct {
+        uint32_t tapeCount[MAX_LEVEL_COUNT];
+        uint32_t tapeSizeSum[MAX_LEVEL_COUNT];
+        uint32_t tapeSizeMax[MAX_LEVEL_COUNT];
+    } ShaderStats;
+
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
     vkw::DescriptorLayoutCache* m_descCache;
@@ -73,9 +81,10 @@ private:
     // This fence is used to wait on every voxelize stage.
     VkFence m_fence;
 
-    // The shader parameters uniform buffer.
+    // Shader buffers.
     vkw::Buffer m_paramsBuffer;
     vkw::Buffer m_countersBuffer;
+    vkw::Buffer m_statsBuffer;
 
     void InitCommands();
     void InitSynchronization();

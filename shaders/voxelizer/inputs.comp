@@ -48,7 +48,13 @@ layout (std430, set = 0, binding = 2) buffer TapeBuffer {
 
 // This buffer contains counters that are atomically incremented
 // by threads.
-layout(std430, set = 0, binding = 3) buffer CountersBuffer {
+layout (std430, set = 0, binding = 3) buffer CountersBuffer {
     uint child_count;
     uint tape_index;
 } counters_buf;
+
+layout (std430, set = 0, binding = 4) buffer StatsBuffer {
+    uint tape_count[MAX_LEVEL_COUNT];
+    uint tape_size_sum[MAX_LEVEL_COUNT];
+    uint max_tape_size[MAX_LEVEL_COUNT];
+} stats_buf;

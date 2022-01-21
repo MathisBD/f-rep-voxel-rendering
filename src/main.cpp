@@ -108,32 +108,6 @@ csg::Expr TwistedTower(int level, float angle, float scale)
     return Union(shape, box);
 }
     
-/*int main()
-{
-    auto e = Menger(3);
-    printf("\n[+] e size=%lu\n", e.NodeCount());
-    csg::Tape(e).Print();
-    
-    auto e1 = csg::ConstantFold(e);
-    printf("\n[+] e1 size=%lu\n", e1.NodeCount());
-    csg::Tape(e1).Print();
-    
-    auto e2 = csg::MergeDuplicates(csg::ConstantFold(e));
-    printf("\n[+] e2 size=%lu\n", e2.NodeCount());
-    csg::Tape(e2).Print();
-    
-    DotGraph graph = e.ToDotGraph(true);
-    graph.Merge(e1.ToDotGraph(true));
-    graph.Merge(e2.ToDotGraph(true));
-
-    std::fstream file;
-    file.open("expr.dot", std::ios::out);
-    assert(file.good());
-    file << graph.Build() << std::endl;
-    file.close();
-}*/
-
-
 int main()
 {
     Application::Params params;
@@ -142,7 +116,7 @@ int main()
     params.voxelizeRealTime = true;
     params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 8, 4, 4, 4 };
+    params.gridDims = { 16, 8, 4, 4 };
     params.temporalSampleCount = 3;
     
     params.shape = MengerSponge();

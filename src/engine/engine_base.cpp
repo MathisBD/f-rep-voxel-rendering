@@ -67,11 +67,17 @@ void EngineBase::InitVulkanCore()
     SDL_Vulkan_CreateSurface(m_window, m_instance, &m_surface);
     
     // Choose a GPU
+    //VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures = {};
+    //floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+    //floatFeatures.shaderBufferFloat32AtomicAdd = true;
+
     vkb::PhysicalDeviceSelector selector(vkbInst);
     vkb::PhysicalDevice vkbPhysDev = selector 
         .set_minimum_version(1, 1)
         .set_surface(m_surface)
         .add_required_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
+        .add_required_extension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME)
+        //.add_required_extension_features(&floatFeatures)
         .select()
         .value();
     m_device.physicalDevice = vkbPhysDev.physical_device;
