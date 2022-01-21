@@ -3,6 +3,8 @@
 #include "vk_wrapper/vk_check.h"
 #include "vk_wrapper/shader.h"
 #include <cstring>
+#include "vk_wrapper/spec_constants.h"
+#include <vector>
 
 
 void Voxelizer::Init(
@@ -113,7 +115,7 @@ void Voxelizer::InitPipeline()
     // Load the shader
     vkw::Shader shader;
     shader.Init(m_device->logicalDevice, "../shaders/voxelizer/main.comp.spv");
-
+    
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
     auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
@@ -151,7 +153,14 @@ void Voxelizer::InitPipeline()
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
         VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
-
+    
+    // Specialization constants
+    auto spec = vkw::SpecConsts();
+    spec.AddEntry<uint32_t>(0, 256);    // MAX_SLOT_COUNT
+    spec.AddEntry<uint32_t>(1, 32*256); // MAX_TAPE_SIZE
+    spec.Build();
+    pipelineInfo.stage.pSpecializationInfo = spec.GetInfo();
+    
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
     m_device->NameObject(m_pipeline, "voxelizer pipeline");

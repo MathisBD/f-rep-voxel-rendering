@@ -157,6 +157,8 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
 // All the other book-keeping operations are performed in the second stage. 
 void main()
 { 
+    LOG1("c=%f\n", c);
+
     uvec3 cell = gl_GlobalInvocationID.xyz % DIM;
     uint node = gl_GlobalInvocationID.x / DIM;
 
