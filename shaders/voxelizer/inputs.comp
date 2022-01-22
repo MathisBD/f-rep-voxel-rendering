@@ -6,6 +6,11 @@
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
 #constant LEVEL_COUNT
+// The maximum number of tape slots.
+#constant MAX_SLOT_COUNT
+// The maximum number of instructions per tape.
+#constant MAX_TAPE_SIZE
+
 
 #define MAX_LEVEL_COUNT 8
 #define MAX_CONST_POOL_SIZE 256

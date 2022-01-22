@@ -1,7 +1,5 @@
 #version 450
 
-
-#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
 
 // Include other files  
@@ -86,15 +84,18 @@ const float pi = 3.141592653589793238462643383279502884197;
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
-#define LEVEL_COUNT 3
-#define LIGHT_COUNT 2
-
-// Kernel group size.
-layout (local_size_x = THREAD_GROUP_SIZE_X, local_size_y = THREAD_GROUP_SIZE_Y) in;
- 
-#define MAX_LEVEL_COUNT 8
+// The maximum number of tape slots.
+#define MAX_SLOT_COUNT 128
 #define MAX_CONST_POOL_SIZE 256
 #define MAX_LIGHT_COUNT 8
+#define LEVEL_COUNT 3
+
+// Kernel group size.
+layout (
+    local_size_x = THREAD_GROUP_SIZE_X, 
+    local_size_y = THREAD_GROUP_SIZE_Y) in;
+ 
+#define MAX_LEVEL_COUNT 8
 
 struct VoxelData {
     vec3 normal;
@@ -131,7 +132,7 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
     // which image we are going to right to in the image array
     // (for temporal supersampling).
     uint out_img_layer;
-    uint _padding_0;
+    uint light_count;
 
     vec4 camera_pos;
     vec4 camera_forward;
@@ -145,10 +146,10 @@ layout (set = 0, binding = 1) uniform ParamsBuffer {
     vec2 screen_world_size;
     vec4 background_color;
 
-    LevelData levels[MAX_LEVEL_COUNT];
     DirectionalLight lights[MAX_LIGHT_COUNT]; 
     // The tape constant pool.
     vec4 const_pool[MAX_CONST_POOL_SIZE / 4];
+    LevelData levels[MAX_LEVEL_COUNT];
 } params_buf;
 
 // We need the std430 layout here so that the array stride is 4 bytes.
@@ -162,11 +163,6 @@ layout (std430, set = 0, binding = 3) readonly buffer TapeBuffer {
 } tape_buf;
 
 
-
-// The maximum tape slots.
-#define MAX_SLOT_COUNT 128
-// The maximum number of instructions per tape.
-#define MAX_TAPE_SIZE  (32*128)
 
 // The maximum number of min/max instructions per tape.
 #define MAX_MM_OPS          MAX_TAPE_SIZE
@@ -402,7 +398,6 @@ float rand()
 }
 
 
-
 struct Hit {
     float t;
     uint node;
@@ -510,7 +505,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
     vec3 normal = normalize(tape_eval_gradient(tape, ray_orig + hit.t * ray_dir));
 
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint i = 0; i < LIGHT_COUNT; i++) {
+    for (uint i = 0; i < params_buf.light_count; i++) {
         DirectionalLight light = params_buf.lights[i];
         
         // Check the light illuminates the voxel

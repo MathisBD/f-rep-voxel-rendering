@@ -1,8 +1,6 @@
 #version 450
 
-#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
-#extension GL_EXT_shader_atomic_float : require 
 
 // Include other files  
 #define DEBUG_LOG 
@@ -88,6 +86,11 @@ const float pi = 3.141592653589793238462643383279502884197;
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
 #define LEVEL_COUNT 3
+// The maximum number of tape slots.
+#define MAX_SLOT_COUNT 128
+// The maximum number of instructions per tape.
+#define MAX_TAPE_SIZE 4096
+
 
 #define MAX_LEVEL_COUNT 8
 #define MAX_CONST_POOL_SIZE 256
@@ -223,11 +226,6 @@ uvec3 node_get_coords(uint node, uint level)
         node_buf.data[coords_pos + 1],
         node_buf.data[coords_pos + 2]);
 }
-
-// The maximum tape slots.
-#define MAX_SLOT_COUNT 128
-// The maximum number of instructions per tape.
-#define MAX_TAPE_SIZE  (32*128)
 
 // The maximum number of min/max instructions per tape.
 #define MAX_MM_OPS          MAX_TAPE_SIZE

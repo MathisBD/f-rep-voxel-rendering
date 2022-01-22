@@ -45,11 +45,11 @@ namespace vkw
         // Execute a shell command and returns the exit status code.
         static int ExecuteCommand(const std::string& cmd, std::string& output);
 
-        std::string Preprocess(const std::string& glslSource);
+        std::string Preprocess(
+            const std::string& glslSource,
+            const std::string& file);
         std::vector<uint32_t> CompileToSpirv(
             const std::string& glslSource, Stage stage,
             const std::string& fileName);
     };
-
-
 }

@@ -118,6 +118,9 @@ void Voxelizer::InitPipeline()
     compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
     compiler.SetConstant("THREAD_GROUP_SIZE_Z", (uint32_t)THREAD_GROUP_SIZE_Z);
     compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
+    compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)MAX_SLOT_COUNT);
+    compiler.SetConstant("MAX_TAPE_SIZE", (uint32_t)MAX_TAPE_SIZE);
+    
     VkShaderModule shader = compiler.Compile(
         "voxelizer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
@@ -158,13 +161,6 @@ void Voxelizer::InitPipeline()
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
         VK_SHADER_STAGE_COMPUTE_BIT, shader);
-    
-    // Specialization constants
-    /*auto spec = vkw::SpecConsts();
-    spec.AddEntry<uint32_t>(0, 256);    // MAX_SLOT_COUNT
-    spec.AddEntry<uint32_t>(1, 32*256); // MAX_TAPE_SIZE
-    spec.Build();
-    pipelineInfo.stage.pSpecializationInfo = spec.GetInfo();*/
     
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));

@@ -1,8 +1,6 @@
 #version 450
 
-#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
-#extension GL_EXT_shader_atomic_float : require 
 
 // Include other files  
 #define DEBUG_LOG 

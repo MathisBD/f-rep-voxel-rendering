@@ -82,7 +82,10 @@ void Raytracer::InitPipeline()
     compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
     compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
     compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
-    compiler.SetConstant("LIGHT_COUNT", 2);
+    compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)MAX_SLOT_COUNT);
+    compiler.SetConstant("MAX_LIGHT_COUNT", (uint32_t)MAX_LIGHT_COUNT);
+    compiler.SetConstant("MAX_CONST_POOL_SIZE", (uint32_t)MAX_CONST_POOL_SIZE);
+    compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
     VkShaderModule shader = compiler.Compile(
         "raytracer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
@@ -179,7 +182,19 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime)
     
     // Background color
     params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
+    
+    // Lights
+    params->lightCount = 2;
+    params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
+    params->lights[0].color = { 1, 0, 0, 0 };
 
+    params->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, -0.2, 0 }));
+    params->lights[1].color = { 0, 0, 2, 0 };
+
+    // Tape constant pool
+    memcpy(&params->constPool, m_voxels->tape.constantPool.data(), 
+        m_voxels->tape.constantPool.size() * sizeof(float));
+    
     // Levels
     uint32_t nodeOfs = 0;
     float cellSize = m_voxels->worldSize;
@@ -193,58 +208,6 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime)
         // Remember : the shader-side offsets are in uints (not in bytes).
         nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
     }
-    
-    // Lights
-    params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
-    params->lights[0].color = { 1, 0, 0, 0 };
-
-    params->lights[1].direction = glm::normalize(glm::vec4({ 1, -1, -0.2, 0 }));
-    params->lights[1].color = { 0, 0, 2, 0 };
-
-    // Tape constant pool
-    memcpy(&params->constPool, m_voxels->tape.constantPool.data(), 
-        m_voxels->tape.constantPool.size() * sizeof(float));
-    
-
-    // Now copy the arrays
-    //uint8_t* paramsEnd = (uint8_t*)&params[1];
-
-    // Level data
-    /*std::vector<ShaderLevelData> levels(m_voxels->gridLevels);
-    uint32_t nodeOfs = 0;
-    float cellSize = m_voxels->worldSize;
-    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        cellSize /= m_voxels->gridDims[i];
-
-        levels[i].dim = m_voxels->gridDims[i];
-        levels[i].nodeOfs = nodeOfs;
-        levels[i].cellSize = cellSize;
-
-        // Remember : the shader-side offsets are in uints (not in bytes).
-        nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
-    }
-    memcpy(paramsEnd, levels.data(), levels.size() * sizeof(ShaderLevelData));
-    paramsEnd += levels.size() * sizeof(ShaderLevelData);
-
-    // Lights
-    std::vector<ShaderLight> lights(2);
-    lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
-    lights[0].color = { 1, 0, 0, 0 };
-
-    lights[1].direction = glm::normalize(glm::vec4({ 1, -1, -0.2, 0 }));
-    lights[1].color = { 0, 0, 2, 0 };
-
-    memcpy(paramsEnd, lights.data(), lights.size() * sizeof(ShaderLight));
-    paramsEnd += lights.size() * sizeof(ShaderLight);
-
-    // Tape constant pool
-    memcpy(paramsEnd, m_voxels->tape.constantPool.data(), 
-        m_voxels->tape.constantPool.size() * sizeof(float));
-    // Round the size up to the nearest multiple of 4,
-    // because the tape is stored as vec4s on the gpu.
-    paramsEnd += NumUtils::RoundUpToMultiple(
-        m_voxels->tape.constantPool.size(), 4) * sizeof(float);*/
-
     m_paramsBuffer.Unmap(); 
 }
 

@@ -29,6 +29,9 @@ public:
 private:
     static const uint32_t THREAD_GROUP_SIZE_X = 16;
     static const uint32_t THREAD_GROUP_SIZE_Y = 16;
+    static const uint32_t MAX_SLOT_COUNT      = 128;
+    static const uint32_t MAX_LIGHT_COUNT     = 8;
+    static const uint32_t MAX_CONST_POOL_SIZE = 256;
     
     // A single point light.
     typedef struct {
@@ -48,7 +51,7 @@ private:
         float time;
         float tapeTime;
         uint32_t outImgLayer;
-        uint32_t _padding_;
+        uint32_t lightCount;
 
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
@@ -70,9 +73,9 @@ private:
         glm::vec2 screenWorldSize;  
         glm::vec4 backgroundColor;
     
+        ShaderLight lights[MAX_LIGHT_COUNT];
+        float constPool[MAX_CONST_POOL_SIZE];
         ShaderLevelData levels[8];
-        ShaderLight lights[8];
-        float constPool[256];
     } ShaderParams;
 
     

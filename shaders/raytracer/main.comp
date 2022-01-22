@@ -1,7 +1,5 @@
 #version 450
 
-
-#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : enable
 
 // Include other files  
@@ -12,7 +10,6 @@
 #include "tape/gradient.comp" 
 #include "node.comp"
 #include "random.comp"
-
 
 struct Hit {
     float t;
@@ -121,7 +118,7 @@ vec4 shade(vec3 ray_orig, vec3 ray_dir, Hit hit)
     vec3 normal = normalize(tape_eval_gradient(tape, ray_orig + hit.t * ray_dir));
 
     vec4 diffuse = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    for (uint i = 0; i < LIGHT_COUNT; i++) {
+    for (uint i = 0; i < params_buf.light_count; i++) {
         DirectionalLight light = params_buf.lights[i];
         
         // Check the light illuminates the voxel

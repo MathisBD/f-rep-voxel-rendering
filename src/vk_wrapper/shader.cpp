@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "utils/string_utils.h"
 #include "vk_wrapper/vk_check.h"
+#include <unordered_set>
 
 
 vkw::ShaderCompiler::ShaderCompiler(
@@ -74,37 +75,70 @@ void vkw::ShaderCompiler::ClearConstants()
 }
 
 std::string vkw::ShaderCompiler::Preprocess(
-    const std::string& glslSource) 
+    const std::string& glslSource, const std::string& file) 
 {
     std::stringstream input(glslSource);
     std::stringstream output;
     
+    std::string line;
+    auto error = [&] (const std::string& msg) {
+        std::stringstream e;
+        e << "[-] Shader compile error in file " << file << "\n"; 
+        e << "\t" << line << "\n";
+        e << "\t--> " << msg << "\n";
+        throw std::runtime_error(e.str());
+    };
+
+    std::unordered_set<std::string> definedConstants;
     while (!input.eof()) {
-        std::string line;
         getline(input, line);
 
-        auto words = StringUtils::Split(line, {' ', '\n', '\t'});
+        auto words = StringUtils::Split(line, {' ', '\t'});
         // #include
         if (words.size() > 0 && words[0] == "#include") {
             // Get the file name 
-            assert(words.size() == 2);
+            if (words.size() == 1) {
+                error("syntax error : unexpected end of line.");
+            }
+            if (words.size() > 2) {
+                error("syntax error : expected a newline.");
+            }
             std::string file = words[1];
-            assert(file.front() == '"' && file.back() == '"');
+            if(file.front() != '"' || file.back() != '"') {
+                error("syntax error : expected a quote-enclosed file name.");
+            }
             file = file.substr(1, file.size() - 2);
             file = m_shaderDir + file;
             
             // Insert the file contents
-            std::string contents = ReadFile(file) + "\n";
-            input.str(contents + input.str().substr(input.tellg()));
+            try {
+                std::string contents = ReadFile(file) + "\n";
+                input.str(contents + input.str().substr(input.tellg()));
+            } catch (...) {
+                error("failed to read file " + file);
+            }
         }
         // #constant
         else if (words.size() > 0 && words[0] == "#constant") {
             // Get the constant name
-            assert(words.size() == 2);
+            if (words.size() == 1) {
+                error("syntax error : unexpected end of line.");
+            }
+            if (words.size() > 2) {
+                error("syntax error : expected a newline.");
+            }
             std::string name = words[1];
 
+            // Check for constant redefinition
+            if (definedConstants.find(name) != definedConstants.end()) {
+                error("redeclaration of constant " + name);
+            }
+            definedConstants.insert(name);
+            
             // Get the constant value
-            assert(m_constants.find(name) != m_constants.end());
+            if (m_constants.find(name) == m_constants.end()) {
+                error("the value of constant " + name + " has not been set.");
+            }
             std::string value = m_constants[name];
 
             // Insert the #define macro
@@ -121,7 +155,7 @@ std::string vkw::ShaderCompiler::Preprocess(
 VkShaderModule vkw::ShaderCompiler::Compile(const std::string& file, Stage stage) 
 {
     std::string glslSource = ReadFile(m_shaderDir + file);
-    std::string ppSource = Preprocess(glslSource);
+    std::string ppSource = Preprocess(glslSource, m_shaderDir + file);
     std::vector<uint32_t> spirv = CompileToSpirv(ppSource, stage, file);
     
     auto info = vkw::init::ShaderModuleCreateInfo(

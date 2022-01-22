@@ -29,6 +29,9 @@ private:
     static const uint32_t THREAD_GROUP_SIZE_Z    = 4;
     static const uint32_t MAX_LEVEL_COUNT        = 8;
     static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
+    static const uint32_t MAX_SLOT_COUNT         = 128;
+    static const uint32_t MAX_TAPE_SIZE          = 32*128;
+    
 
     typedef struct {
         uint32_t dim;
