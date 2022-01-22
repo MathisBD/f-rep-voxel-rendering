@@ -85,7 +85,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
-#define LEVEL_COUNT 3
+#define LEVEL_COUNT 4
 // The maximum number of tape slots.
 #define MAX_SLOT_COUNT 128
 // The maximum number of instructions per tape.
