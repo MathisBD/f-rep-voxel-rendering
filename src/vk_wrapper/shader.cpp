@@ -6,6 +6,7 @@
 #include <sstream>
 #include <array>
 #include <stdlib.h>
+#include "utils/string_utils.h"
 
 
 vkw::ShaderCompiler::ShaderCompiler(
@@ -25,9 +26,10 @@ std::string vkw::ShaderCompiler::ReadFile(const std::string& path)
     size_t fileByteSize = file.tellg();
     file.seekg(0);
 
-    char buf[fileByteSize];
+    char buf[fileByteSize+1];
     file.read(buf, fileByteSize);
     file.close();
+    buf[fileByteSize] = 0;
 
     return std::string(buf);
 }
@@ -78,13 +80,28 @@ std::string vkw::ShaderCompiler::Preprocess(
     std::stringstream output;
     
     while (!input.eof()) {
-        char line[glslSource.size()];
-        input.getline(line, glslSource.size());
+        std::string line;
+        getline(input, line);
 
-        // TODO : include the #included files.
-        // TODO : replace the constant lines.
+        auto words = StringUtils::Split(line, {' ', '\n', '\t'});
+        // #include
+        if (words.size() > 0 && words[0] == "#include") {
+            assert(words.size() == 2);
+            std::string file = words[1];
+            assert(file.front() == '"' && file.back() == '"');
+            file = file.substr(1, file.size() - 2);
 
-        output << line << "\n";
+            printf("[+] Included file : %s\tsource=\n%s\n\n", 
+                file.c_str(), ReadFile(file).c_str());
+            input.str(ReadFile(file) + input.str().substr(input.tellg()));
+        }
+        /*// #constant
+        else if (words.size() > 0 && words[0] == "#constant") {
+
+        }*/
+        else {
+            output << line << "\n";
+        }
     }
     return output.str();
 }
@@ -132,10 +149,9 @@ std::vector<uint32_t> vkw::ShaderCompiler::CompileToSpirv(
     std::string output;
     int e = ExecuteCommand(cmd, output);  
     if (e) {
-        printf("[-] Shader compilation error (%d) in file %s\n%s\n", 
-            e, fileName.c_str(), output.c_str());
+        printf("[-] Shader compilation error (%d) in file %s\n\t%s\n", 
+            e, fileName.c_str(), StringUtils::Replace(output, "\n", "\n\t").c_str());
         DeleteFile(glslTmpFile);
-        DeleteFile(spirvTmpFile);
         exit(-1);
     }
     std::vector<uint32_t> spirv = ReadFileBinary(spirvTmpFile);

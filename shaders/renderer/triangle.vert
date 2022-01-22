@@ -2,6 +2,8 @@
 
 layout (location = 0) out vec2 texCoords;
 
+#include "../shaders/renderer/triangle.frag"
+
 void main()
 {
 	// positions for the 2-triangle quad

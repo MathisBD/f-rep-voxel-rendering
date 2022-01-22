@@ -1,6 +1,8 @@
 #include "application.h"
 #include "shapes.h"
 #include "vk_wrapper/shader.h"
+#include "utils/string_utils.h"
+#include <sstream>
 
     
 /*int main()
@@ -41,5 +43,6 @@ int main()
         "../shaders/renderer/triangle.vert", 
         vkw::ShaderCompiler::Stage::VERT);
     compiler.Compile({});
+
     return 0;
 }
