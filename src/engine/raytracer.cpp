@@ -76,7 +76,7 @@ void Raytracer::InitBuffers()
 
 void Raytracer::InitPipeline() 
 {
-    // Load the shader
+    /*// Load the shader
     vkw::Shader shader;
     shader.Init(m_device->logicalDevice, "../shaders/raycaster/main.comp.spv");
     
@@ -123,7 +123,7 @@ void Raytracer::InitPipeline()
     m_cleanupQueue.AddFunction([=] {
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr);
-    });
+    });*/
 }
 
 void Raytracer::InitUploadCtxt() 

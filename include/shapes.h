@@ -1,12 +1,10 @@
 #pragma once
-#include <glm/glm.hpp>
-#include "csg/expression.h"
+#include "csg/lib.h"
 
 
-class Shapes
-{
-public:
-    static csg::Expr Sphere(const glm::vec3& center, float radius);
-    static csg::Expr TangleCube(const glm::vec3& center, float scale);
-    static csg::Expr BarthSextic(const glm::vec3& center, float scale);
-};
+csg::Expr Screw();
+csg::Expr ElasticCube();
+csg::Expr TangleCube();
+csg::Expr Morph();
+csg::Expr MengerSponge(int level);
+csg::Expr TwistedTower(int level, float angle, float scale);

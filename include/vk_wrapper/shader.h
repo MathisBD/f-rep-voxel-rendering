@@ -16,7 +16,13 @@ namespace vkw
     class ShaderCompiler
     {
     public:
-        ShaderCompiler(vkw::Device* device, const std::string& file);
+        enum class Stage {
+            COMP,
+            VERT,
+            FRAG
+        };
+
+        ShaderCompiler(vkw::Device* device, const std::string& file, Stage stage);
         void DefineConstant(const std::string& name, const std::string& value);
         VkShaderModule Compile(const std::vector<std::string>& includeDirs);
     private:
@@ -24,14 +30,25 @@ namespace vkw
         std::unordered_map<std::string, std::string> m_constants;
 
         vkw::Device* m_device;
+        Stage m_stage;
         std::string m_file;
         std::string m_glslSource;
         
         static std::string ReadFile(const std::string& file);
-        static std::string ReplaceConstants(
-            const std::string& glslSource, 
+        static std::vector<uint32_t> ReadFileBinary(const std::string& file);
+        static void WriteFile(const std::string& file, const std::string& contents);
+        static void DeleteFile(const std::string& file);
+
+        // Execute a shell command and returns the exit status code.
+        static int ExecuteCommand(const std::string& cmd, std::string& output);
+
+        static std::string Preprocess(
+            const std::string& glslSource,
+            const std::vector<std::string>& includeDirs, 
             const std::unordered_map<std::string, std::string>& constants);
-        static std::vector<uint32_t> CompileToSpirv(const std::string& glslSource);
+        static std::vector<uint32_t> CompileToSpirv(
+            const std::string& glslSource, Stage stage,
+            const std::string& fileName);
     };
 
 

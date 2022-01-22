@@ -140,7 +140,7 @@ void Renderer::InitBuffers()
 
 void Renderer::InitPipeline() 
 {    
-    // Load the shaders
+    /*// Load the shaders
     vkw::Shader vertexShader, fragmentShader;
     vertexShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.vert.spv");
     fragmentShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.frag.spv");
@@ -215,7 +215,7 @@ void Renderer::InitPipeline()
     m_cleanupQueue.AddFunction([=] { 
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr); 
-    });
+    });*/
 }
 
 void Renderer::BeginFrame() 

@@ -112,7 +112,7 @@ void Voxelizer::InitBuffers()
 
 void Voxelizer::InitPipeline() 
 {
-    // Load the shader
+    /*// Load the shader
     vkw::Shader shader;
     shader.Init(m_device->logicalDevice, "../shaders/voxelizer/main.comp.spv");
     
@@ -170,7 +170,7 @@ void Voxelizer::InitPipeline()
     m_cleanupQueue.AddFunction([=] {
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr);
-    });
+    });*/
 }
 
 void Voxelizer::UpdateShaderParams(uint32_t level, float tapeTime) 
