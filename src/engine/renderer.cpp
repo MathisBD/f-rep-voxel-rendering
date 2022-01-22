@@ -140,11 +140,13 @@ void Renderer::InitBuffers()
 
 void Renderer::InitPipeline() 
 {    
-    /*// Load the shaders
-    vkw::Shader vertexShader, fragmentShader;
-    vertexShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.vert.spv");
-    fragmentShader.Init(m_device->logicalDevice, "../shaders/renderer/triangle.frag.spv");
-
+    // Compile the shaders
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    VkShaderModule vertShader = compiler.Compile(
+        "renderer/triangle.vert", vkw::ShaderCompiler::Stage::VERT);
+    VkShaderModule fragShader = compiler.Compile(
+        "renderer/triangle.frag", vkw::ShaderCompiler::Stage::FRAG);
+    
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
     auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
@@ -171,10 +173,10 @@ void Renderer::InitPipeline()
     vkw::GraphicsPipelineBuilder builder;
     builder.shaderStages.push_back(
         vkw::init::PipelineShaderStageCreateInfo(
-            VK_SHADER_STAGE_VERTEX_BIT, vertexShader.shader));
+            VK_SHADER_STAGE_VERTEX_BIT, vertShader));
     builder.shaderStages.push_back(
         vkw::init::PipelineShaderStageCreateInfo(
-            VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader.shader));
+            VK_SHADER_STAGE_FRAGMENT_BIT, fragShader));
     
     builder.vertexInputInfo = vkw::init::PipelineVertexInputStateCreateInfo();
     builder.inputAssembly = vkw::init::PipelineInputAssemblyStateCreateInfo(
@@ -210,12 +212,12 @@ void Renderer::InitPipeline()
     m_device->NameObject(m_pipeline, "renderer pipeline");
 
     // We can destroy the shaders right after creating the pipeline.
-    vertexShader.Cleanup();
-    fragmentShader.Cleanup();
+    vkDestroyShaderModule(m_device->logicalDevice, vertShader, nullptr);
+    vkDestroyShaderModule(m_device->logicalDevice, fragShader, nullptr);
     m_cleanupQueue.AddFunction([=] { 
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr); 
-    });*/
+    });
 }
 
 void Renderer::BeginFrame() 

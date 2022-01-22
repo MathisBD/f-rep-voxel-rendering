@@ -22,17 +22,15 @@ namespace vkw
             FRAG
         };
 
-        ShaderCompiler(vkw::Device* device, const std::string& file, Stage stage);
+        ShaderCompiler(vkw::Device* device, const std::string& shaderDir);
         void DefineConstant(const std::string& name, const std::string& value);
-        VkShaderModule Compile(const std::vector<std::string>& includeDirs);
+        VkShaderModule Compile(const std::string& file, Stage stage);
     private:
         // Maps from name to value.
         std::unordered_map<std::string, std::string> m_constants;
 
         vkw::Device* m_device;
-        Stage m_stage;
-        std::string m_file;
-        std::string m_glslSource;
+        std::string m_shaderDir;
         
         static std::string ReadFile(const std::string& file);
         static std::vector<uint32_t> ReadFileBinary(const std::string& file);
@@ -42,11 +40,10 @@ namespace vkw
         // Execute a shell command and returns the exit status code.
         static int ExecuteCommand(const std::string& cmd, std::string& output);
 
-        static std::string Preprocess(
+        std::string Preprocess(
             const std::string& glslSource,
-            const std::vector<std::string>& includeDirs, 
             const std::unordered_map<std::string, std::string>& constants);
-        static std::vector<uint32_t> CompileToSpirv(
+        std::vector<uint32_t> CompileToSpirv(
             const std::string& glslSource, Stage stage,
             const std::string& fileName);
     };

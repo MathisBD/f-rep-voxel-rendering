@@ -1,15 +1,9 @@
 #define MAX_LEVEL_COUNT     8
 #define MAX_CONST_POOL_SIZE 256
 
-
 // Each node of the previous level is handled by
 // several thread groups.
 layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
-
-// The maximum tape slots.
-layout (constant_id = 0) const uint MAX_SLOT_COUNT = 128;
-// The maximum number of instructions per tape.
-layout (constant_id = 1) const uint MAX_TAPE_SIZE = (32*128);
 
 struct LevelData {
     uint dim;

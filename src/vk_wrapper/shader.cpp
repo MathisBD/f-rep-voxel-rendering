@@ -7,21 +7,22 @@
 #include <array>
 #include <stdlib.h>
 #include "utils/string_utils.h"
+#include "vk_wrapper/vk_check.h"
 
 
 vkw::ShaderCompiler::ShaderCompiler(
-    vkw::Device* device, const std::string& file, Stage stage) 
+    vkw::Device* device, const std::string& shaderDir) 
 {
     m_device = device;
-    m_file = file;
-    m_stage = stage;
-    m_glslSource = ReadFile(m_file);
+    m_shaderDir = shaderDir;
 }
 
 std::string vkw::ShaderCompiler::ReadFile(const std::string& path) 
 {
     std::ifstream file(path, std::ios::ate);
-    assert(file.good() && file.is_open());
+    if(!file.good() || !file.is_open()) {
+        throw std::runtime_error("could not open file " + path);
+    }
 
     size_t fileByteSize = file.tellg();
     file.seekg(0);
@@ -37,13 +38,14 @@ std::string vkw::ShaderCompiler::ReadFile(const std::string& path)
 std::vector<uint32_t> vkw::ShaderCompiler::ReadFileBinary(const std::string& path) 
 {
     std::ifstream file(path, std::ios::ate | std::ios::binary);
-    assert(file.good() && file.is_open());
-
+    if(!file.good() || !file.is_open()) {
+        throw std::runtime_error("could not open file " + path);
+    }
     size_t fileByteSize = file.tellg();
     file.seekg(0);
 
-    //size_t bufSize = (fileByteSize + sizeof(uint32_t) - 1) / sizeof(uint32_t);
-    size_t bufSize = fileByteSize / sizeof(uint32_t);
+    size_t bufSize = (fileByteSize + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    //size_t bufSize = fileByteSize / sizeof(uint32_t);
     std::vector<uint32_t> buf(bufSize, 0);
     file.read((char*)buf.data(), fileByteSize);
     file.close();
@@ -72,8 +74,7 @@ void vkw::ShaderCompiler::DefineConstant(const std::string& name, const std::str
 }
 
 std::string vkw::ShaderCompiler::Preprocess(
-    const std::string& glslSource, 
-    const std::vector<std::string>& includeDirs,
+    const std::string& glslSource,
     const std::unordered_map<std::string, std::string>& constants) 
 {
     std::stringstream input(glslSource);
@@ -90,13 +91,12 @@ std::string vkw::ShaderCompiler::Preprocess(
             std::string file = words[1];
             assert(file.front() == '"' && file.back() == '"');
             file = file.substr(1, file.size() - 2);
-
-            printf("[+] Included file : %s\tsource=\n%s\n\n", 
-                file.c_str(), ReadFile(file).c_str());
-            input.str(ReadFile(file) + input.str().substr(input.tellg()));
+            file = m_shaderDir + file;
+            
+            input.str(ReadFile(file) + "\n" + input.str().substr(input.tellg()));
         }
-        /*// #constant
-        else if (words.size() > 0 && words[0] == "#constant") {
+        // #constant
+        /*else if (words.size() > 0 && words[0] == "#constant") {
 
         }*/
         else {
@@ -106,20 +106,17 @@ std::string vkw::ShaderCompiler::Preprocess(
     return output.str();
 }
 
-VkShaderModule vkw::ShaderCompiler::Compile(const std::vector<std::string>& includeDirs) 
+VkShaderModule vkw::ShaderCompiler::Compile(const std::string& file, Stage stage) 
 {
-    std::string ppSource = Preprocess(m_glslSource, includeDirs, m_constants);
-    std::vector<uint32_t> spirv = CompileToSpirv(ppSource, m_stage, m_file);
+    std::string glslSource = ReadFile(m_shaderDir + file);
+    std::string ppSource = Preprocess(glslSource, m_constants);
+    std::vector<uint32_t> spirv = CompileToSpirv(ppSource, stage, file);
     
-    //auto info = vkw::init::ShaderModuleCreateInfo(
-    //    spirv.size() * sizeof(uint32_t), spirv.data());
+    auto info = vkw::init::ShaderModuleCreateInfo(
+        spirv.size() * sizeof(uint32_t), spirv.data());
 
-    VkShaderModule shader = 0;
-    /*VkResult res = vkCreateShaderModule(m_device->logicalDevice, &info, nullptr, &shader);
-    if (res != VK_SUCCESS) {
-        printf("[-] Error creating shader in file %s\n", m_file.c_str());
-        assert(false);
-    }*/
+    VkShaderModule shader;
+    VK_CHECK(vkCreateShaderModule(m_device->logicalDevice, &info, nullptr, &shader));
     return shader;
 }
 
@@ -127,8 +124,8 @@ std::vector<uint32_t> vkw::ShaderCompiler::CompileToSpirv(
     const std::string& glslSource, Stage stage,
     const std::string& fileName) 
 {
-    std::string glslTmpFile = fileName + ".pp";
-    std::string spirvTmpFile = fileName + ".spv";
+    std::string glslTmpFile = m_shaderDir + fileName + ".pp";
+    std::string spirvTmpFile = m_shaderDir + fileName + ".spv";
 
     std::string cmd = "glslangValidator -V " + glslTmpFile + " -o " + spirvTmpFile;
     // We redirect stderr to stdout.
@@ -141,17 +138,15 @@ std::vector<uint32_t> vkw::ShaderCompiler::CompileToSpirv(
     default: assert(false);
     }
 
-    printf("[+] Glsl source =\n%s", glslSource.c_str());
-    printf("[+] Compile cmd = %s\n", cmd.c_str());
-
     WriteFile(glslTmpFile, glslSource);  
 
     std::string output;
     int e = ExecuteCommand(cmd, output);  
     if (e) {
         printf("[-] Shader compilation error (%d) in file %s\n\t%s\n", 
-            e, fileName.c_str(), StringUtils::Replace(output, "\n", "\n\t").c_str());
-        DeleteFile(glslTmpFile);
+            e, (m_shaderDir + fileName).c_str(), 
+            StringUtils::Replace(output, "\n", "\n\t").c_str());
+        //DeleteFile(glslTmpFile);
         exit(-1);
     }
     std::vector<uint32_t> spirv = ReadFileBinary(spirvTmpFile);

@@ -1,3 +1,9 @@
+
+// The maximum tape slots.
+#define MAX_SLOT_COUNT 128
+// The maximum number of instructions per tape.
+#define MAX_TAPE_SIZE  (32*128)
+
 // The maximum number of min/max instructions per tape.
 #define MAX_MM_OPS          MAX_TAPE_SIZE
 // When doing interval evaluation,

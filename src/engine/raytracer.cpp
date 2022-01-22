@@ -76,9 +76,10 @@ void Raytracer::InitBuffers()
 
 void Raytracer::InitPipeline() 
 {
-    /*// Load the shader
-    vkw::Shader shader;
-    shader.Init(m_device->logicalDevice, "../shaders/raycaster/main.comp.spv");
+    // Load the shader
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    VkShaderModule shader = compiler.Compile(
+        "raytracer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
@@ -113,17 +114,17 @@ void Raytracer::InitPipeline()
     pipelineInfo.pNext = nullptr;
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
-        VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
+        VK_SHADER_STAGE_COMPUTE_BIT, shader);
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
     m_device->NameObject(m_pipeline, "raytracer pipeline");
     
     // We can destroy the shader right away.
-    shader.Cleanup();
+    vkDestroyShaderModule(m_device->logicalDevice, shader, nullptr);
     m_cleanupQueue.AddFunction([=] {
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr);
-    });*/
+    });
 }
 
 void Raytracer::InitUploadCtxt() 

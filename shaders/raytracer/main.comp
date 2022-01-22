@@ -7,7 +7,7 @@
 // Include other files  
 //#define DEBUG_LOG
 #include "utils.comp"
-#include "raycaster/inputs.comp"
+#include "raytracer/inputs.comp"
 #include "tape/tape.comp"
 #include "tape/gradient.comp" 
 #include "node.comp"

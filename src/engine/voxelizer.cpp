@@ -112,9 +112,10 @@ void Voxelizer::InitBuffers()
 
 void Voxelizer::InitPipeline() 
 {
-    /*// Load the shader
-    vkw::Shader shader;
-    shader.Init(m_device->logicalDevice, "../shaders/voxelizer/main.comp.spv");
+    // Load the shader
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    VkShaderModule shader = compiler.Compile(
+        "voxelizer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
@@ -152,25 +153,25 @@ void Voxelizer::InitPipeline()
     pipelineInfo.pNext = nullptr;
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
-        VK_SHADER_STAGE_COMPUTE_BIT, shader.shader);
+        VK_SHADER_STAGE_COMPUTE_BIT, shader);
     
     // Specialization constants
-    auto spec = vkw::SpecConsts();
+    /*auto spec = vkw::SpecConsts();
     spec.AddEntry<uint32_t>(0, 256);    // MAX_SLOT_COUNT
     spec.AddEntry<uint32_t>(1, 32*256); // MAX_TAPE_SIZE
     spec.Build();
-    pipelineInfo.stage.pSpecializationInfo = spec.GetInfo();
+    pipelineInfo.stage.pSpecializationInfo = spec.GetInfo();*/
     
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
         1, &pipelineInfo, nullptr, &m_pipeline));
     m_device->NameObject(m_pipeline, "voxelizer pipeline");
 
     // We can destroy the shader right away.
-    shader.Cleanup();
+    vkDestroyShaderModule(m_device->logicalDevice, shader, nullptr);
     m_cleanupQueue.AddFunction([=] {
         vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
         vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr);
-    });*/
+    });
 }
 
 void Voxelizer::UpdateShaderParams(uint32_t level, float tapeTime) 
