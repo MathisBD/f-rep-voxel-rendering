@@ -1,6 +1,6 @@
 #version 450
 
-#constant TEMPORAL_SAMPLE_COUNT
+#define TEMPORAL_SAMPLE_COUNT 5
 
 // input
 layout (location = 0) in vec2 texCoords;
@@ -21,3 +21,4 @@ void main()
 	}
 	outFragColor = color / TEMPORAL_SAMPLE_COUNT;
 }
+

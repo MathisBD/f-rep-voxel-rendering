@@ -14,7 +14,7 @@ int main()
     params.printFPS = false;
     params.printHardwareInfo = false;
     params.gridDims = { 4, 4, 4 };
-    params.temporalSampleCount = 3;
+    params.temporalSampleCount = 5;
     
     params.shape = TangleCube();
     

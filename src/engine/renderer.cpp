@@ -28,7 +28,6 @@ void Renderer::Init(
     m_cleanupQueue.AddFunction([=] { m_swapchain.Cleanup(); });
     
     InitSynchronization();
-    InitBuffers();
     InitPipeline();
 
     SetClearColor({ 0.0f, 0.0f, 0.0f });
@@ -129,21 +128,13 @@ void Renderer::SignalRenderSem()
     VK_CHECK(vkQueueWaitIdle(m_queue));
 }
 
-void Renderer::InitBuffers() 
-{
-    m_shaderParams.Init(m_device);
-    m_shaderParams.Allocate(sizeof(ShaderParams),
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-    m_device->NameObject(m_shaderParams.buffer, "renderer params buffer");
-    m_cleanupQueue.AddFunction([=] { m_shaderParams.Cleanup(); });    
-}
-
 void Renderer::InitPipeline() 
 {    
     // Compile the shaders
     vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
     VkShaderModule vertShader = compiler.Compile(
         "renderer/triangle.vert", vkw::ShaderCompiler::Stage::VERT);
+    compiler.SetConstant("TEMPORAL_SAMPLE_COUNT", m_target->temporalSampleCount);
     VkShaderModule fragShader = compiler.Compile(
         "renderer/triangle.frag", vkw::ShaderCompiler::Stage::FRAG);
     
@@ -155,11 +146,8 @@ void Renderer::InitPipeline()
     auto imageInfo = vkw::init::DescriptorImageInfo(
         //m_sampler, m_imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         m_target->sampler, m_target->view, VK_IMAGE_LAYOUT_GENERAL);
-    auto paramsInfo = vkw::init::DescriptorBufferInfo(
-        m_shaderParams.buffer, 0, m_shaderParams.size);
     vkw::DescriptorBuilder(m_descCache, m_descAllocator)
         .BindImage(0, &imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .BindBuffer(1, &paramsInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
         .Build(&m_descSets[0], &dSetLayouts[0]);
     m_device->NameObject(m_descSets[0], "renderer descriptor set 0");
 
@@ -226,14 +214,6 @@ void Renderer::BeginFrame()
     m_swapCurrImg = m_swapchain.AcquireNewImage(m_imageReadySem);
 }
 
-
-void Renderer::UpdateShaderParams() 
-{
-    ShaderParams* params = (ShaderParams*)m_shaderParams.Map();   
-    params->temporalSampleCount = m_target->temporalSampleCount;
-    m_shaderParams.Unmap();
-}
-
 void Renderer::RecordRenderCmd(VkCommandBuffer cmd) 
 {
     /*m_image.ChangeLayout(cmd,
@@ -284,8 +264,6 @@ void Renderer::Render(VkSemaphore waitSem)
     // Wait for the previous command to finish.
     VK_CHECK(vkWaitForFences(m_device->logicalDevice, 1, &m_fence, VK_TRUE, 1000000000));
     VK_CHECK(vkResetFences(m_device->logicalDevice, 1, &m_fence));
-
-    UpdateShaderParams();
 
     m_device->QueueBeginLabel(m_queue, "render");
     {

@@ -68,14 +68,13 @@ void vkw::ShaderCompiler::DeleteFile(const std::string& file)
     }    
 }
 
-void vkw::ShaderCompiler::DefineConstant(const std::string& name, const std::string& value) 
+void vkw::ShaderCompiler::ClearConstants() 
 {
-    m_constants[name] = value;    
+    m_constants.clear();    
 }
 
 std::string vkw::ShaderCompiler::Preprocess(
-    const std::string& glslSource,
-    const std::unordered_map<std::string, std::string>& constants) 
+    const std::string& glslSource) 
 {
     std::stringstream input(glslSource);
     std::stringstream output;
@@ -87,18 +86,31 @@ std::string vkw::ShaderCompiler::Preprocess(
         auto words = StringUtils::Split(line, {' ', '\n', '\t'});
         // #include
         if (words.size() > 0 && words[0] == "#include") {
+            // Get the file name 
             assert(words.size() == 2);
             std::string file = words[1];
             assert(file.front() == '"' && file.back() == '"');
             file = file.substr(1, file.size() - 2);
             file = m_shaderDir + file;
             
-            input.str(ReadFile(file) + "\n" + input.str().substr(input.tellg()));
+            // Insert the file contents
+            std::string contents = ReadFile(file) + "\n";
+            input.str(contents + input.str().substr(input.tellg()));
         }
         // #constant
-        /*else if (words.size() > 0 && words[0] == "#constant") {
+        else if (words.size() > 0 && words[0] == "#constant") {
+            // Get the constant name
+            assert(words.size() == 2);
+            std::string name = words[1];
 
-        }*/
+            // Get the constant value
+            assert(m_constants.find(name) != m_constants.end());
+            std::string value = m_constants[name];
+
+            // Insert the #define macro
+            std::string macro = "#define " + name + " " + value + "\n";
+            input.str(macro + input.str().substr(input.tellg()));
+        }
         else {
             output << line << "\n";
         }
@@ -109,7 +121,7 @@ std::string vkw::ShaderCompiler::Preprocess(
 VkShaderModule vkw::ShaderCompiler::Compile(const std::string& file, Stage stage) 
 {
     std::string glslSource = ReadFile(m_shaderDir + file);
-    std::string ppSource = Preprocess(glslSource, m_constants);
+    std::string ppSource = Preprocess(glslSource);
     std::vector<uint32_t> spirv = CompileToSpirv(ppSource, stage, file);
     
     auto info = vkw::init::ShaderModuleCreateInfo(
@@ -127,7 +139,7 @@ std::vector<uint32_t> vkw::ShaderCompiler::CompileToSpirv(
     std::string glslTmpFile = m_shaderDir + fileName + ".pp";
     std::string spirvTmpFile = m_shaderDir + fileName + ".spv";
 
-    std::string cmd = "glslangValidator -V " + glslTmpFile + " -o " + spirvTmpFile;
+    std::string cmd = "glslangValidator -g -V " + glslTmpFile + " -o " + spirvTmpFile;
     // We redirect stderr to stdout.
     cmd += " 2>&1";
     // Specify the shader stage
@@ -150,7 +162,7 @@ std::vector<uint32_t> vkw::ShaderCompiler::CompileToSpirv(
         exit(-1);
     }
     std::vector<uint32_t> spirv = ReadFileBinary(spirvTmpFile);
-    DeleteFile(glslTmpFile);
+    //DeleteFile(glslTmpFile);
     DeleteFile(spirvTmpFile);
     return spirv;
 }
@@ -169,36 +181,3 @@ int vkw::ShaderCompiler::ExecuteCommand(const std::string& cmd, std::string& out
     }
     return pclose(pipe);
 }
-
-
-/*void vkw::Shader::Init(VkDevice dev_, const std::string& path) 
-{
-    device = dev_;    
-
-    // load the SPIRV source code
-    std::ifstream file(path, std::ios::ate | std::ios::binary);
-    assert(file.good() && file.is_open());
-
-    size_t fileByteSize = file.tellg();
-    size_t bufSize = fileByteSize / sizeof(uint32_t);
-    uint32_t* buf = new uint32_t[bufSize];
-
-    file.seekg(0);
-    file.read((char*)buf, fileByteSize);
-    file.close();
-
-    // create the shader
-    auto info = vkw::init::ShaderModuleCreateInfo(
-        (uint32_t)(bufSize * sizeof(uint32_t)), buf);
-
-    VkResult res = vkCreateShaderModule(device, &info, nullptr, &shader);
-    if (res != VK_SUCCESS) {
-        printf("Error creating shader in file %s\n", path.c_str());
-        assert(false);
-    }
-}
-
-void vkw::Shader::Cleanup() 
-{
-    vkDestroyShaderModule(device, shader, nullptr);    
-}*/

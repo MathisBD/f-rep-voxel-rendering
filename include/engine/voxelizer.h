@@ -38,10 +38,9 @@ private:
     } ShaderLevelData;
 
     typedef struct {
-        uint32_t levelCount;
         uint32_t level;    
-        uint32_t tapeInstrCount;
         float tapeTime;
+        uint32_t _padding_[2];
 
         // The world positions of the grid bottom left corner.
         glm::vec3 gridWorldCoords;

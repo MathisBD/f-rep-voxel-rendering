@@ -2,7 +2,7 @@
 // Node structure.
 // Sizes are given in uints rather than bytes.
 #define NODE_SIZE(level)                                    \
-    ((level) == params_buf.level_count - 1 ?                \
+    ((level) == LEVEL_COUNT - 1 ?                \
     4 + (CUBE(params_buf.levels[(level)].dim) >> 4) :       \
     4 + 17 * (CUBE(params_buf.levels[(level)].dim) >> 4))
 
@@ -30,7 +30,7 @@ bool node_has_leaf_child(uint node_id, uint level, uint child_index)
 bool node_has_interior_child(uint node_id, uint level, uint child_index)
 {
     // Make sure we don't read from a non-existant interior mask.
-    if (level >= params_buf.level_count - 1) {
+    if (level >= LEVEL_COUNT - 1) {
         return false;
     }
 

@@ -23,7 +23,12 @@ namespace vkw
         };
 
         ShaderCompiler(vkw::Device* device, const std::string& shaderDir);
-        void DefineConstant(const std::string& name, const std::string& value);
+        template <typename T>
+        void SetConstant(const std::string& name, const T& value)
+        {
+            m_constants[name] = std::to_string(value);
+        }
+        void ClearConstants();
         VkShaderModule Compile(const std::string& file, Stage stage);
     private:
         // Maps from name to value.
@@ -40,9 +45,7 @@ namespace vkw
         // Execute a shell command and returns the exit status code.
         static int ExecuteCommand(const std::string& cmd, std::string& output);
 
-        std::string Preprocess(
-            const std::string& glslSource,
-            const std::unordered_map<std::string, std::string>& constants);
+        std::string Preprocess(const std::string& glslSource);
         std::vector<uint32_t> CompileToSpirv(
             const std::string& glslSource, Stage stage,
             const std::string& fileName);

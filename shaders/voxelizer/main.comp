@@ -160,11 +160,11 @@ void main()
     uvec3 cell = gl_GlobalInvocationID.xyz % DIM;
     uint node = gl_GlobalInvocationID.x / DIM;
 
-    if (LVL == params_buf.level_count - 1) {
+    if (LVL == LEVEL_COUNT - 1) {
         voxelize_point(node, cell);
     }
     else {
-        bool shorten = LVL < (params_buf.level_count - 2);
+        bool shorten = LVL < (LEVEL_COUNT - 2);
         //bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }

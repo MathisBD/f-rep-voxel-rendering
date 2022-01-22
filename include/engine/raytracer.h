@@ -27,13 +27,9 @@ public:
     VkSemaphore GetTraceSem() const { return m_semaphore; }
     void SetBackgroundColor(const glm::vec3& color);
 private:
-    static const uint32_t THREAD_GROUP_SIZE_X    = 16;
-    static const uint32_t THREAD_GROUP_SIZE_Y    = 16;
-    static const uint32_t MAX_LIGHT_COUNT        = 8;
-    static const uint32_t MAX_MATERIAL_COUNT     = 8;
-    static const uint32_t MAX_LEVEL_COUNT        = 8;
-    static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
-
+    static const uint32_t THREAD_GROUP_SIZE_X = 16;
+    static const uint32_t THREAD_GROUP_SIZE_Y = 16;
+    
     // A single point light.
     typedef struct {
         glm::vec4 color;
@@ -49,14 +45,10 @@ private:
     } ShaderLevelData;
 
     typedef struct {
-        uint32_t lightCount;
-        uint32_t levelCount;  
-        uint32_t tapeInstrCount;
-        float tapeTime;
-
-        uint32_t outImgLayer;
         float time;
-        uint32_t _padding_[2];
+        float tapeTime;
+        uint32_t outImgLayer;
+        uint32_t _padding_;
 
         // The camera world position (w unused).
         glm::vec4 cameraPosition;
@@ -75,18 +67,15 @@ private:
         glm::uvec2 screenResolution;
         // The world size of the screen boundaries
         // at one unit away from the camera position.
-        glm::vec2 screenWorldSize;
-
-        ShaderLevelData levels[MAX_LEVEL_COUNT];
-
-        // The color we use for rays that don't intersect any voxel (w unused).
+        glm::vec2 screenWorldSize;  
         glm::vec4 backgroundColor;
-        ShaderLight lights[MAX_LIGHT_COUNT];
-        // The tape's constant pool.
-        float constantPool[MAX_CONSTANT_POOL_SIZE];
+    
+        ShaderLevelData levels[8];
+        ShaderLight lights[8];
+        float constPool[256];
     } ShaderParams;
 
-
+    
     FunctionQueue m_cleanupQueue;
     vkw::Device* m_device;
     RenderTarget* m_target;
@@ -126,7 +115,4 @@ private:
     void RecordComputeCmd(VkCommandBuffer cmd);
     void SubmitComputeCmd(VkCommandBuffer cmd, VkSemaphore renderSem);
     void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record);
-
-    uint32_t SplitBy3(uint32_t x);
-    uint32_t MortonEncode(glm::u32vec3 cell);
 };

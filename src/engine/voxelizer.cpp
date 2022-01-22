@@ -114,6 +114,10 @@ void Voxelizer::InitPipeline()
 {
     // Load the shader
     vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
+    compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
+    compiler.SetConstant("THREAD_GROUP_SIZE_Z", (uint32_t)THREAD_GROUP_SIZE_Z);
+    compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
     VkShaderModule shader = compiler.Compile(
         "voxelizer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
@@ -177,9 +181,7 @@ void Voxelizer::InitPipeline()
 void Voxelizer::UpdateShaderParams(uint32_t level, float tapeTime) 
 {
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
-    params->levelCount = m_voxels->gridLevels;
     params->level = level;
-    params->tapeInstrCount = m_voxels->tape.instructions.size();
     params->tapeTime = tapeTime;
 
     params->gridWorldCoords = m_voxels->lowVertex;

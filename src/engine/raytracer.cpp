@@ -4,7 +4,8 @@
 #include "vk_wrapper/shader.h"
 #include <glm/gtx/norm.hpp>
 #include "utils/timer.h"
-
+#include "utils/num_utils.h"
+#include <vector>
 
 void Raytracer::Init(
     vkw::Device* device, 
@@ -78,6 +79,10 @@ void Raytracer::InitPipeline()
 {
     // Load the shader
     vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
+    compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
+    compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
+    compiler.SetConstant("LIGHT_COUNT", 2);
     VkShaderModule shader = compiler.Compile(
         "raytracer/main.comp", vkw::ShaderCompiler::Stage::COMP);
     
@@ -148,19 +153,18 @@ void Raytracer::InitUploadCtxt()
 
 void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime) 
 {
-    assert(m_voxels->gridLevels < MAX_LEVEL_COUNT);
     ShaderParams* params = (ShaderParams*)m_paramsBuffer.Map();
     
-    params->lightCount = 2;
-    params->levelCount = m_voxels->gridLevels;
-    params->tapeInstrCount = m_voxels->tape.instructions.size(); 
+    params->time = Timer::s_time;
     params->tapeTime = tapeTime;
-
     params->outImgLayer = m_targetImgLayer;
     m_targetImgLayer = (m_targetImgLayer + 1) % m_target->temporalSampleCount;
-    params->time = Timer::s_time;
-    
-    // Grid positions
+
+    params->cameraPosition = glm::vec4(camera->position, 0.0f);
+    params->cameraForward  = glm::vec4(camera->forward, 0.0f);
+    params->cameraUp       = glm::vec4(camera->Up(), 0.0f);
+    params->cameraRight    = glm::vec4(camera->Right(), 0.0f);
+
     params->gridWorldCoords = m_voxels->lowVertex;
     params->gridWorldSize = m_voxels->worldSize;
     
@@ -173,16 +177,13 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime)
     params->screenWorldSize.y = params->screenWorldSize.x * 
         (params->screenResolution.y / (float)params->screenResolution.x);
     
-    // A dummy camera looking down the Z axis, with the Y axis facing up.
-    params->cameraPosition = glm::vec4(camera->position, 0.0f);
-    params->cameraForward  = glm::vec4(camera->forward, 0.0f);
-    params->cameraUp       = glm::vec4(camera->Up(), 0.0f);
-    params->cameraRight    = glm::vec4(camera->Right(), 0.0f);
+    // Background color
+    params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
 
-    // Level data
+    // Levels
     uint32_t nodeOfs = 0;
     float cellSize = m_voxels->worldSize;
-    for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
         cellSize /= m_voxels->gridDims[i];
 
         params->levels[i].dim = m_voxels->gridDims[i];
@@ -193,17 +194,6 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime)
         nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
     }
     
-    /*for (uint32_t i = 0; i < m_voxels->gridDims.size(); i++) {
-        printf("\n");
-        printf("node count[%u] = %u\n", i, m_voxels->nodeCount[i]);
-        printf("node ofs[%u] = %u\n", i, params->levels[i].nodeOfs);
-        printf("child ofs[%u] = %u\n", i, params->levels[i].childOfs);
-        printf("node size(%u)=%u\n", i, m_voxels->NodeSize(i));
-    }*/
-
-    // Background color
-    params->backgroundColor = glm::vec4(m_backgroundColor, 1.0f);
-
     // Lights
     params->lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
     params->lights[0].color = { 1, 0, 0, 0 };
@@ -212,9 +202,48 @@ void Raytracer::UpdateShaderParams(const Camera* camera, float tapeTime)
     params->lights[1].color = { 0, 0, 2, 0 };
 
     // Tape constant pool
-    assert(m_voxels->tape.constantPool.size() <= MAX_CONSTANT_POOL_SIZE);
-    memcpy(params->constantPool, m_voxels->tape.constantPool.data(), 
+    memcpy(&params->constPool, m_voxels->tape.constantPool.data(), 
         m_voxels->tape.constantPool.size() * sizeof(float));
+    
+
+    // Now copy the arrays
+    //uint8_t* paramsEnd = (uint8_t*)&params[1];
+
+    // Level data
+    /*std::vector<ShaderLevelData> levels(m_voxels->gridLevels);
+    uint32_t nodeOfs = 0;
+    float cellSize = m_voxels->worldSize;
+    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
+        cellSize /= m_voxels->gridDims[i];
+
+        levels[i].dim = m_voxels->gridDims[i];
+        levels[i].nodeOfs = nodeOfs;
+        levels[i].cellSize = cellSize;
+
+        // Remember : the shader-side offsets are in uints (not in bytes).
+        nodeOfs += m_voxels->interiorNodeCount[i] * m_voxels->NodeSize(i) / sizeof(uint32_t);
+    }
+    memcpy(paramsEnd, levels.data(), levels.size() * sizeof(ShaderLevelData));
+    paramsEnd += levels.size() * sizeof(ShaderLevelData);
+
+    // Lights
+    std::vector<ShaderLight> lights(2);
+    lights[0].direction = glm::normalize(glm::vec4({ -1, -1, -0.2, 0 }));
+    lights[0].color = { 1, 0, 0, 0 };
+
+    lights[1].direction = glm::normalize(glm::vec4({ 1, -1, -0.2, 0 }));
+    lights[1].color = { 0, 0, 2, 0 };
+
+    memcpy(paramsEnd, lights.data(), lights.size() * sizeof(ShaderLight));
+    paramsEnd += lights.size() * sizeof(ShaderLight);
+
+    // Tape constant pool
+    memcpy(paramsEnd, m_voxels->tape.constantPool.data(), 
+        m_voxels->tape.constantPool.size() * sizeof(float));
+    // Round the size up to the nearest multiple of 4,
+    // because the tape is stored as vec4s on the gpu.
+    paramsEnd += NumUtils::RoundUpToMultiple(
+        m_voxels->tape.constantPool.size(), 4) * sizeof(float);*/
 
     m_paramsBuffer.Unmap(); 
 }
@@ -311,19 +340,4 @@ void Raytracer::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& record)
 
     VK_CHECK(vkResetCommandPool(
         m_device->logicalDevice, m_uploadCtxt.cmdPool, 0));
-}
-
-
-uint32_t Raytracer::SplitBy3(uint32_t x) 
-{
-    x &= 0xFF;                     // 0000 0000 0000 0000 1111 1111
-    x = (x | (x << 8)) & 0x00F00F; // 0000 0000 1111 0000 0000 1111
-    x = (x | (x << 4)) & 0x0c30c3; // 0000 1100 0011 0000 1100 0011
-    x = (x | (x << 2)) & 0x249249; // 0010 0100 1001 0010 0100 1001
-    return x;
-}
-
-uint32_t Raytracer::MortonEncode(glm::u32vec3 cell) 
-{
-    return SplitBy3(cell.x) | (SplitBy3(cell.y) << 1) | (SplitBy3(cell.z) << 2);
 }
