@@ -125,27 +125,22 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
             child_pos, child_pos + params_buf.levels[LVL].cell_size,
             mm_array, mm_size);
         ambiguous = set_mask_bits(density, node, cell);
-        if (ambiguous) {
-            child = atomicAdd(counters_buf.child_count, 1);
-            child_tape = tape_shorten(tape, mm_array, mm_size);
-        }
+        child_tape = tape_shorten(ambiguous, tape, mm_array, mm_size);
     }
     else {
         Interval density = tape_eval_interval(tape, 
             child_pos, child_pos + params_buf.levels[LVL].cell_size);
         ambiguous = set_mask_bits(density, node, cell);
-        if (ambiguous) {
-            child = atomicAdd(counters_buf.child_count, 1);
-            child_tape = tape;
-        }
+        child_tape = tape;
     }  
 
     if (ambiguous) {
+        // Claim a child node index
+        child = atomicAdd(counters_buf.child_count, 1);
         // Setup the child node
         set_child_list_entry(node, cell, child);
         set_child_coords(child, child_coords);
         set_child_tape_idx(child, child_tape);
-
         // Collect some stats
         uint child_size = tape_read_size(child_tape);
         atomicAdd(stats_buf.tape_size_sum[LVL+1], child_size);

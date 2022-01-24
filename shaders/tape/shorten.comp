@@ -1,18 +1,21 @@
 
+#define CHUNK_SIZE 64
+shared uint chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
+shared int out_pos[THREAD_GROUP_SIZE];
+
 
 void tape_write_size(uint tape_idx, uint size)
 {
     tape_buf.data[tape_idx] = size;
 }
 
-void tape_write_inst(uint tape, uint idx, Instruction inst)
+uint encode_inst(Instruction inst)
 {
-    uint data = 
+    return 
         ((inst.op      & 0xFF) << 0)  |
         ((inst.outSlot & 0xFF) << 8)  |
         ((inst.inSlotA & 0xFF) << 16) |
         ((inst.inSlotB & 0xFF) << 24);
-    tape_buf.data[tape + idx + 1] = data;
 }
 
 
@@ -49,14 +52,40 @@ uint get_choice(uint op, uint mm_array[MM_ARRAY_SIZE], uint mm_idx)
     return choice;
 }
 
+uint thread_index()
+{
+    return gl_LocalInvocationID.x + 
+           gl_LocalInvocationID.y * THREAD_GROUP_SIZE_X + 
+           gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;
+}
 
+void copy_chunks()
+{
+    uint t_idx = thread_index();
+    for (uint copy_t_idx = 0; copy_t_idx < THREAD_GROUP_SIZE; copy_t_idx++) {
+        // Copy the chunk of thread copy_t_idx,
+        // but only if the thread copy_t_idx is shortening its tape.
+        if (out_pos[copy_t_idx] >= 0) {   
+            // Get the instruction to copy
+            uint data = chunks[copy_t_idx * CHUNK_SIZE + t_idx];
+            // The chunk might not be full : copy only the
+            // instructions that were filled.
+            if (data != 0) {
+                tape_buf.data[out_pos[copy_t_idx] + t_idx] = data;
+                chunks[copy_t_idx * CHUNK_SIZE + t_idx] = 0;
+            } 
+        }
+    }
+}
+
+
+// Only the threads with shorten==true will shorten their tape.
+// The others are only used to copy the chunks from shader memory to global memory.
 // Returns the tape index of the output tape
 // (this can be equal to the input tape if there is nothing to shorten).
-uint tape_shorten(uint in_tape, 
+uint tape_shorten(bool shorten, uint in_tape, 
     uint mm_array[MM_ARRAY_SIZE], uint mm_size)
 {
-    LOG0("[+] Tape shortening\n");
-    LOG1("mm_array[0]=0x%x\n", mm_array[0]);
     // The i-th bit is set if the i-th slot is active.
     // Initially only the output slot is active.
     uint slots[MAX_SLOT_COUNT / 32];
@@ -72,76 +101,87 @@ uint tape_shorten(uint in_tape,
     }
     // This counts the number of kept instructions.
     uint keepCount = 0;
-
     // First iterate in reverse over the tape and 
     // record which instructions to keep.
-    int idx = int(tape_read_size(in_tape) - 1);
-    uint mm_idx = mm_size - 1;
-    while (idx >= 0) {
-        // Decode the instruction
-        Instruction i = tape_read_inst(in_tape, idx);
-        
-        LOG5("\t%d: op=%u  out=%u  inA=%u  inB=%u\n", 
-            idx, i.op, i.outSlot, i.inSlotA, i.inSlotB);
-
-        if (BITSET_LOAD(slots, 0, i.outSlot)) {
-            LOG0("\t\tkeep\n");
-            // We will keep this instruction.
-            BITSET_SET(keep, 0, idx);
-            keepCount++;
-            // Activate the right slots.
-            uint choice = get_choice(i.op, mm_array, mm_idx);
-            LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
-            BITSET_CLEAR(slots, 0, i.outSlot);
-            if (bool(choice & MM_FIRST))  { BITSET_SET(slots, 0, i.inSlotA); }
-            if (bool(choice & MM_SECOND)) { BITSET_SET(slots, 0, i.inSlotB); }
-        }
-        if (i.op == OP_MIN || i.op == OP_MAX) { mm_idx--; }    
-        idx--;
-    }   
-
-    LOG1("keep count=%u\n", keepCount);
-
-    // The shortened tape is not much shorter :
-    // don't copy it.
     uint in_size = tape_read_size(in_tape);
-    if (keepCount >= in_size) {
-        return in_tape;
+    if (shorten) {
+        int idx = int(in_size - 1);
+        uint mm_idx = mm_size - 1;
+        while (idx >= 0) {
+            // Decode the instruction
+            Instruction i = tape_read_inst(in_tape, idx);
+            if (BITSET_LOAD(slots, 0, i.outSlot)) {
+                // We will keep this instruction.
+                BITSET_SET(keep, 0, idx);
+                keepCount++;
+                // Activate the right slots.
+                uint choice = get_choice(i.op, mm_array, mm_idx);
+                BITSET_CLEAR(slots, 0, i.outSlot);
+                if (bool(choice & MM_FIRST))  { BITSET_SET(slots, 0, i.inSlotA); }
+                if (bool(choice & MM_SECOND)) { BITSET_SET(slots, 0, i.inSlotB); }
+            }
+            if (i.op == OP_MIN || i.op == OP_MAX) { mm_idx--; }    
+            idx--;
+        }   
+    }
+    if (shorten) {
+        // The shortened tape is not much shorter :
+        // don't copy it.
+        shorten = keepCount < in_size;
     }
 
-    // Claim space for the output tape.
-    uint out_tape = atomicAdd(counters_buf.tape_index, 1 + keepCount);
-    tape_write_size(out_tape, keepCount);
+    uint out_tape = in_tape;
+    if (shorten) {
+        // Claim space for the output tape.
+        out_tape = atomicAdd(counters_buf.tape_index, 1 + keepCount);
+        tape_write_size(out_tape, keepCount);
+    }
 
-    // Then forward iterate over the tape and copy the relevant instructions.
-    idx = 0;
-    mm_idx = 0;
-    uint out_idx = 0;
-    while (idx < in_size) {
-        // Decode the input instruction.
-        Instruction i = tape_read_inst(in_tape, idx);
-        
-        LOG5("\t%d: op=%u  out=%u  inA=%u  inB=%u\n", 
-            idx, i.op, i.outSlot, i.inSlotA, i.inSlotB);
-        
-        // We have to store this as i.op will be overwritten.
-        bool is_mm_op = (i.op == OP_MIN || i.op == OP_MAX);
-        if (BITSET_LOAD(keep, 0, idx)) {
-            LOG0("\t\tkeep\n");
-            // Change the min/max operation to a copy operation.
-            if (i.op == OP_MIN || i.op == OP_MAX) {
-                uint choice = mm_load(mm_array, mm_idx);
-                LOG2("\t\tchoice=%u  mm_idx=%u\n", choice, mm_idx);
-                // A copy operation only uses its first input (A).
-                if      (choice == MM_FIRST)  { i.op = OP_COPY; }
-                else if (choice == MM_SECOND) { i.op = OP_COPY; i.inSlotA = i.inSlotB; }
+    uint chunk_idx = 0;
+    uint mm_idx = 0;
+    int out_idx = shorten ? 0 : -1;
+    const uint t_idx = thread_index();
+    while (chunk_idx < (in_size + CHUNK_SIZE - 1) / CHUNK_SIZE) {
+        // Generate the chunk in shared memory
+        if (shorten) {
+            uint idx = chunk_idx * CHUNK_SIZE;
+            while (idx < (chunk_idx + 1) * CHUNK_SIZE && idx < in_size) {
+                // Decode the input instruction.
+                Instruction i = tape_read_inst(in_tape, idx);
+                
+                // We have to store this as i.op will be overwritten.
+                bool is_mm_op = (i.op == OP_MIN || i.op == OP_MAX);
+                if (BITSET_LOAD(keep, 0, idx)) {
+                    // Change the min/max operation to a copy operation.
+                    if (i.op == OP_MIN || i.op == OP_MAX) {
+                        uint choice = mm_load(mm_array, mm_idx);
+                        // A copy operation only uses its first input (A).
+                        if      (choice == MM_FIRST)  { i.op = OP_COPY; }
+                        else if (choice == MM_SECOND) { i.op = OP_COPY; i.inSlotA = i.inSlotB; }
+                    }
+                    // Copy the instruction to shared memory
+                    chunks[out_idx % CHUNK_SIZE] = encode_inst(i);
+                    out_idx++;
+                }
+                if (is_mm_op) { mm_idx++; }
+                idx++;
             }
-            // Copy the instruction.
-            tape_write_inst(out_tape, out_idx, i);
-            out_idx++;
         }
-        if (is_mm_op) { mm_idx++; }
-        idx++;
+        // Copy the chunk to global memory
+        out_pos[t_idx] = out_tape + out_idx + 1;
+        BARRIER(); // make out_pos visible to all threads
+        copy_chunks();
+        BARRIER(); // make the new, cleaned chunks 
+        chunk_idx++;
+    }
+    if (shorten) {
+        // Then forward iterate over the tape and copy the relevant instructions.
+        uint idx = 0;
+        uint mm_idx = 0;
+        uint out_idx = 0;
+        while (idx < in_size) {
+            
+        }
     }
     return out_tape;
 }

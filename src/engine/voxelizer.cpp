@@ -28,8 +28,8 @@ void Voxelizer::Init(
 
     InitDescSets();
 
-    for (size_t tapeSize = 32; tapeSize <= 4096; tapeSize *= 2) {
-        for (size_t slotCount = 64; slotCount <= 256; slotCount *= 2) {
+    for (size_t tapeSize = 128; tapeSize <= 4096; tapeSize *= 2) {
+        for (size_t slotCount = 64; slotCount <= 128; slotCount *= 2) {
             m_shaders.push_back(CreateShaderVariant(slotCount, tapeSize));
         }
     }
