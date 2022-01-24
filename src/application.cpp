@@ -80,7 +80,7 @@ void Application::Draw()
     else {
         traceWaitSem = m_renderer.GetRenderSem();    
     }
-    m_voxelizer.PrintStats();
+    //m_voxelizer.PrintStats();
 
     // Raytrace
     m_camera.Update(m_inputManager);

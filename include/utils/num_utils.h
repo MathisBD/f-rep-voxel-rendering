@@ -11,4 +11,9 @@ public:
     {
         return ((n + k - 1) / k) * k;
     }
+
+    static bool IsPowerOf2(uint64_t n)
+    {
+        return (n & (n-1)) == 0 && n != 0;
+    }
 };

@@ -45,6 +45,7 @@ namespace csg
         Tape(Expr e);
 
         static std::string OpName(uint16_t op);
+        uint32_t GetSlotCount() const;
         void Print(bool detailed = false) const;
         float Eval(float x, float y, float z, float t) const;
     private:

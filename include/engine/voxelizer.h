@@ -29,9 +29,6 @@ private:
     static const uint32_t THREAD_GROUP_SIZE_Z    = 4;
     static const uint32_t MAX_LEVEL_COUNT        = 8;
     static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
-    static const uint32_t MAX_SLOT_COUNT         = 128;
-    static const uint32_t MAX_TAPE_SIZE          = 32*128;
-    
 
     typedef struct {
         uint32_t dim;
@@ -59,10 +56,16 @@ private:
     } ShaderCounters;
 
     typedef struct {
-        uint32_t tapeCount[MAX_LEVEL_COUNT];
         uint32_t tapeSizeSum[MAX_LEVEL_COUNT];
         uint32_t tapeSizeMax[MAX_LEVEL_COUNT];
     } ShaderStats;
+
+    typedef struct {
+        uint32_t maxSlotCount;
+        uint32_t maxTapeSize;
+        VkPipeline pipeline;
+        VkPipelineLayout pipelineLayout;
+    } ShaderVariant;
 
     vkw::Device* m_device;
     vkw::DescriptorAllocator* m_descAllocator;
@@ -70,9 +73,9 @@ private:
     VoxelStorage* m_voxels;
     FunctionQueue m_cleanupQueue;
 
-    VkPipeline m_pipeline;
-    VkPipelineLayout m_pipelineLayout;
+    std::vector<VkDescriptorSetLayout> m_descSetLayouts;
     std::vector<VkDescriptorSet> m_descSets;
+    std::vector<ShaderVariant> m_shaders;
 
     VkQueue m_queue;
     VkCommandPool m_cmdPool;
@@ -91,7 +94,10 @@ private:
     void InitCommands();
     void InitSynchronization();
     void InitBuffers();
-    void InitPipeline();
+    void InitDescSets();
+    
+    ShaderVariant CreateShaderVariant(uint32_t maxSlotCount, uint32_t maxTapeSize);
+    ShaderVariant FindShaderVariant(uint32_t slotCount, uint32_t tapeSize);
 
     void AllocateGPUBuffers();
     void ZeroOutNodeBuffer();

@@ -21,6 +21,10 @@ void vkw::Device::NameObject(VkPipeline pipeline, const std::string& name) {
     NameObjectHelper((uint64_t)pipeline, name, VK_OBJECT_TYPE_PIPELINE);
 }
 template <>
+void vkw::Device::NameObject(VkPipelineLayout pipelineLayout, const std::string& name) {
+    NameObjectHelper((uint64_t)pipelineLayout, name, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+}
+template <>
 void vkw::Device::NameObject(VkBuffer buffer, const std::string& name) {
     NameObjectHelper((uint64_t)buffer, name, VK_OBJECT_TYPE_BUFFER);
 }
@@ -39,6 +43,10 @@ void vkw::Device::NameObject(VkImageView view, const std::string& name) {
 template <>
 void vkw::Device::NameObject(VkSampler sampler, const std::string& name) {
     NameObjectHelper((uint64_t)sampler, name, VK_OBJECT_TYPE_SAMPLER);
+}
+template <>
+void vkw::Device::NameObject(VkShaderModule shader, const std::string& name) {
+    NameObjectHelper((uint64_t)shader, name, VK_OBJECT_TYPE_SHADER_MODULE);
 }
 
 void vkw::Device::CmdBeginLabel(VkCommandBuffer cmd, const std::string& name) 

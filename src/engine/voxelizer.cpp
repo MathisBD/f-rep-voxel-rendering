@@ -5,6 +5,7 @@
 #include <cstring>
 #include "vk_wrapper/spec_constants.h"
 #include <vector>
+#include "utils/num_utils.h"
 
 
 void Voxelizer::Init(
@@ -25,7 +26,13 @@ void Voxelizer::Init(
     ZeroOutNodeBuffer();
     UploadTape();
 
-    InitPipeline();
+    InitDescSets();
+
+    for (size_t tapeSize = 32; tapeSize <= 4096; tapeSize *= 2) {
+        for (size_t slotCount = 64; slotCount <= 256; slotCount *= 2) {
+            m_shaders.push_back(CreateShaderVariant(slotCount, tapeSize));
+        }
+    }
 }
 
 void Voxelizer::Cleanup() 
@@ -97,36 +104,13 @@ void Voxelizer::InitBuffers()
         VMA_MEMORY_USAGE_CPU_TO_GPU);
     m_device->NameObject(m_statsBuffer.buffer, "voxelizer stats buffer");
     m_cleanupQueue.AddFunction([=] { m_statsBuffer.Cleanup(); });
-
-    ShaderStats* stats = (ShaderStats*)m_statsBuffer.Map();
-    for (uint32_t i = 0; i < MAX_LEVEL_COUNT; i++) {
-        stats->tapeCount[i] = 0;
-        stats->tapeSizeMax[i] = 0;
-        stats->tapeSizeSum[i] = 0;
-    }
-    stats->tapeCount[0] = 1;
-    stats->tapeSizeSum[0] = m_voxels->tape.instructions.size();
-    stats->tapeSizeMax[0] = m_voxels->tape.instructions.size();
-    m_statsBuffer.Unmap();
 }
 
-void Voxelizer::InitPipeline() 
+void Voxelizer::InitDescSets() 
 {
-    // Load the shader
-    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
-    compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
-    compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
-    compiler.SetConstant("THREAD_GROUP_SIZE_Z", (uint32_t)THREAD_GROUP_SIZE_Z);
-    compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
-    compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)MAX_SLOT_COUNT);
-    compiler.SetConstant("MAX_TAPE_SIZE", (uint32_t)MAX_TAPE_SIZE);
-    
-    VkShaderModule shader = compiler.Compile(
-        "voxelizer/main.comp", vkw::ShaderCompiler::Stage::COMP);
-    
     // Descriptor Sets
     m_descSets = std::vector<VkDescriptorSet>(1);
-    auto dSetLayouts = std::vector<VkDescriptorSetLayout>(1);
+    m_descSetLayouts = std::vector<VkDescriptorSetLayout>(1);
 
     // Descriptor Set 0.
     auto paramsInfo = vkw::init::DescriptorBufferInfo(
@@ -145,33 +129,74 @@ void Voxelizer::InitPipeline()
         .BindBuffer(2, &tapeInfo,       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(3, &countersInfo,   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .BindBuffer(4, &statsInfo,      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .Build(&m_descSets[0], &dSetLayouts[0]);
+        .Build(&m_descSets[0], &m_descSetLayouts[0]);
     m_device->NameObject(m_descSets[0], "voxelizer descriptor set 0");
+}
 
+Voxelizer::ShaderVariant Voxelizer::CreateShaderVariant(uint32_t maxSlotCount, uint32_t maxTapeSize) 
+{
+    assert(NumUtils::IsPowerOf2(maxSlotCount));
+    assert(NumUtils::IsPowerOf2(maxTapeSize));
+    ShaderVariant variant;
+    variant.maxSlotCount = maxSlotCount;
+    variant.maxTapeSize = maxTapeSize;
+
+    // Load the shader
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
+    compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
+    compiler.SetConstant("THREAD_GROUP_SIZE_Z", (uint32_t)THREAD_GROUP_SIZE_Z);
+    compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
+    compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)maxSlotCount);
+    compiler.SetConstant("MAX_TAPE_SIZE", (uint32_t)maxTapeSize);
+    VkShaderModule shader = compiler.Compile(
+        "voxelizer/main.comp", vkw::ShaderCompiler::Stage::COMP);
+    
     // Pipeline layout
     auto layoutInfo = vkw::init::PipelineLayoutCreateInfo();
-    layoutInfo.setLayoutCount = (uint32_t)dSetLayouts.size();
-    layoutInfo.pSetLayouts = dSetLayouts.data();
-    VK_CHECK(vkCreatePipelineLayout(m_device->logicalDevice, &layoutInfo, nullptr, &m_pipelineLayout));
+    layoutInfo.setLayoutCount = (uint32_t)m_descSetLayouts.size();
+    layoutInfo.pSetLayouts = m_descSetLayouts.data();
+    VK_CHECK(vkCreatePipelineLayout(m_device->logicalDevice, &layoutInfo, nullptr, &variant.pipelineLayout));
+    m_device->NameObject(variant.pipelineLayout, "voxelizer pipeline layout");
 
     // Pipeline
     VkComputePipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineInfo.pNext = nullptr;
-    pipelineInfo.layout = m_pipelineLayout;
+    pipelineInfo.layout = variant.pipelineLayout;
     pipelineInfo.stage = vkw::init::PipelineShaderStageCreateInfo(
         VK_SHADER_STAGE_COMPUTE_BIT, shader);
     
     VK_CHECK(vkCreateComputePipelines(m_device->logicalDevice, VK_NULL_HANDLE, 
-        1, &pipelineInfo, nullptr, &m_pipeline));
-    m_device->NameObject(m_pipeline, "voxelizer pipeline");
+        1, &pipelineInfo, nullptr, &variant.pipeline));
+    m_device->NameObject(variant.pipeline, "voxelizer pipeline");
 
     // We can destroy the shader right away.
     vkDestroyShaderModule(m_device->logicalDevice, shader, nullptr);
     m_cleanupQueue.AddFunction([=] {
-        vkDestroyPipelineLayout(m_device->logicalDevice, m_pipelineLayout, nullptr);
-        vkDestroyPipeline(m_device->logicalDevice, m_pipeline, nullptr);
+        vkDestroyPipelineLayout(m_device->logicalDevice, variant.pipelineLayout, nullptr);
+        vkDestroyPipeline(m_device->logicalDevice, variant.pipeline, nullptr);
     });
+    return variant;
+}
+
+Voxelizer::ShaderVariant Voxelizer::FindShaderVariant(uint32_t slotCount, uint32_t tapeSize) 
+{
+    int best = -1;
+    for (size_t i = 0; i < m_shaders.size(); i++) {
+        if (slotCount <= m_shaders[i].maxSlotCount && 
+            tapeSize <= m_shaders[i].maxTapeSize) 
+        {
+            if (best < 0 || 
+                m_shaders[i].maxTapeSize < m_shaders[best].maxTapeSize ||
+                (m_shaders[i].maxTapeSize == m_shaders[best].maxTapeSize && 
+                m_shaders[i].maxSlotCount < m_shaders[best].maxSlotCount)) {
+                best = i;
+            }
+        }
+    }
+    assert(best >= 0);
+    return m_shaders[best];
 }
 
 void Voxelizer::UpdateShaderParams(uint32_t level, float tapeTime) 
@@ -200,6 +225,18 @@ void Voxelizer::UpdateShaderParams(uint32_t level, float tapeTime)
         m_voxels->tape.constantPool.size() * sizeof(csg::Tape::Instr));
 
     m_paramsBuffer.Unmap();
+
+    // Also update the stats buffer.
+    if (level == 0) {
+        ShaderStats* stats = (ShaderStats*)m_statsBuffer.Map();
+        for (uint32_t i = 0; i < MAX_LEVEL_COUNT; i++) {
+            stats->tapeSizeMax[i] = 0;
+            stats->tapeSizeSum[i] = 0;
+        }
+        stats->tapeSizeSum[0] = m_voxels->tape.instructions.size();
+        stats->tapeSizeMax[0] = m_voxels->tape.instructions.size();
+        m_statsBuffer.Unmap();
+    }
 }
 
 void Voxelizer::UpdateShaderCounters(uint32_t level)
@@ -216,9 +253,16 @@ void Voxelizer::UpdateShaderCounters(uint32_t level)
 
 void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level) 
 {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
+    ShaderStats* stats = (ShaderStats*)m_statsBuffer.Map();
+    uint32_t tapeSize = stats->tapeSizeMax[level];
+    m_statsBuffer.Unmap();
+    auto shader = FindShaderVariant(m_voxels->tape.GetSlotCount(), tapeSize);
+    //printf("[+] level=%u  tapeSize=%u  shader.maxSlotCount=%u  shader.maxTapeSize=%u\n",
+    //    level, tapeSize, shader.maxSlotCount, shader.maxTapeSize);
+    
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, shader.pipeline);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_pipelineLayout, 
+        shader.pipelineLayout, 
         0, m_descSets.size(), m_descSets.data(), 
         0, nullptr);
 
@@ -413,12 +457,8 @@ void Voxelizer::PrintStats()
     printf("[+] Total interior nodes :\n\tcount=%u\tnode buf bytes=%u\n",
         totalNodeCount, totalNodeSize);
 
-    uint totalTapeCount = 0;
-    for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        totalTapeCount += stats->tapeCount[i];
-    }
-    printf("[+] Total tapes :\n\tcount=%u  tape buf bytes=%u\n",
-        totalTapeCount, 4 * counters->tapeIndex);
+    printf("[+] Total tapes :\n\ttape buf bytes=%u\n",
+        4 * counters->tapeIndex);
     
     printf("[+] Interior nodes per level :\n");
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
@@ -431,13 +471,10 @@ void Voxelizer::PrintStats()
 
     printf("[+] Tape stats per level :\n");
     for (uint32_t i = 0; i < m_voxels->gridLevels; i++) {
-        printf("\t%u: count=%6u(%2.1f%%)  avg size=%2.1f  max size=%u  tape buf bytes=%10u(%2.1f%%)\n",
+        printf("\t%u: avg size=%2.1f  max size=%u\n",
             i, 
-            stats->tapeCount[i], 100.0f * stats->tapeCount[i] / (float)totalTapeCount,
-            stats->tapeSizeSum[i] / (float)stats->tapeCount[i], 
-            stats->tapeSizeMax[i],
-            4 * (stats->tapeSizeSum[i] + stats->tapeCount[i]), 
-            100.0f * (stats->tapeSizeSum[i] + stats->tapeCount[i]) / (float)counters->tapeIndex);
+            stats->tapeSizeSum[i] / (float)m_voxels->interiorNodeCount[i], 
+            stats->tapeSizeMax[i]);
     }
 
     m_countersBuffer.Unmap();

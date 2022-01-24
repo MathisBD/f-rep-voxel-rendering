@@ -10,10 +10,10 @@ int main()
     Application::Params params;
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = false;
-    params.printFPS = false;
+    params.voxelizeRealTime = true;
+    params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4, 4 };
+    params.gridDims = { 16, 8, 4, 4 };
     params.temporalSampleCount = 5;
     
     params.shape = MengerSponge(3);
@@ -36,10 +36,3 @@ int main()
     app.Cleanup();
     return 0;
 }
-
-/*int main()
-{
-    vkw::ShaderCompiler compiler(nullptr, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
-    compiler.Compile("renderer/triangle.vert", vkw::ShaderCompiler::Stage::VERT);    
-    return 0;
-}*/

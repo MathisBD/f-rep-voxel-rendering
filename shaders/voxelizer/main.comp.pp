@@ -87,7 +87,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 // whose only children are leafs (and empty nodes).
 #define LEVEL_COUNT 4
 // The maximum number of tape slots.
-#define MAX_SLOT_COUNT 128
+#define MAX_SLOT_COUNT 256
 // The maximum number of instructions per tape.
 #define MAX_TAPE_SIZE 4096
 
@@ -149,7 +149,6 @@ layout (std430, set = 0, binding = 3) buffer CountersBuffer {
 } counters_buf;
 
 layout (std430, set = 0, binding = 4) buffer StatsBuffer {
-    uint tape_count[MAX_LEVEL_COUNT];
     uint tape_size_sum[MAX_LEVEL_COUNT];
     uint max_tape_size[MAX_LEVEL_COUNT];
 } stats_buf;
@@ -747,6 +746,32 @@ void voxelize_point(uint node, uvec3 cell)
     set_leaf_bit(node, cell, density < 0.0f);
 }
 
+// Returns true if the child node is ambiguous,
+// i.e. interval evalution didn't classify it as 
+// a leaf or empty node.
+bool set_mask_bits(Interval density, uint node, uvec3 cell)
+{
+    // Empty node
+    if (density.low > 0) {
+        set_leaf_bit(node, cell, false);
+        set_interior_bit(node, cell, false);
+        return false;
+    }  
+    // Leaf node
+    else if (density.high < 0) {
+        set_leaf_bit(node, cell, true);
+        set_interior_bit(node, cell, false);
+        return false;
+    }
+    // Ambiguous node    
+    else {
+        set_leaf_bit(node, cell, false);
+        set_interior_bit(node, cell, true);
+        return true;
+    }
+}
+
+
 void voxelize_interval(uint node, uvec3 cell, bool shorten)
 {
     uint tape = node_get_tape_index(node, LVL);
@@ -754,65 +779,42 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
     vec3 child_pos = params_buf.grid_world_pos + 
         child_coords * params_buf.levels[LVL].cell_size;
     
+    bool ambiguous;
+    uint child;
+    uint child_tape;
     if (shorten) {
         uint mm_array[MM_ARRAY_SIZE];
         uint mm_size;
         Interval density = tape_eval_interval(tape, 
             child_pos, child_pos + params_buf.levels[LVL].cell_size,
             mm_array, mm_size);
-        // Empty node
-        if (density.low > 0) {
-            set_leaf_bit(node, cell, false);
-            set_interior_bit(node, cell, false);
-            return;
-        }  
-        // Leaf node
-        if (density.high < 0) {
-            set_leaf_bit(node, cell, true);
-            set_interior_bit(node, cell, false);
-            return;
+        ambiguous = set_mask_bits(density, node, cell);
+        if (ambiguous) {
+            child = atomicAdd(counters_buf.child_count, 1);
+            child_tape = tape_shorten(tape, mm_array, mm_size);
         }
-        // Ambiguous node
-        set_leaf_bit(node, cell, false);
-        set_interior_bit(node, cell, true);
-        uint child = atomicAdd(counters_buf.child_count, 1);
-        
-        // Collect some stats
-        uint child_tape = tape_shorten(tape, mm_array, mm_size);
-        if (child_tape != tape) {
-            uint child_size = tape_read_size(child_tape);
-            //atomicAdd(stats_buf.tape_count[LVL+1], 1);
-            //atomicAdd(stats_buf.tape_size_sum[LVL+1], child_size);
-            atomicMax(stats_buf.max_tape_size[LVL+1], child_size);
-        }
-
-        set_child_list_entry(node, cell, child);
-        set_child_coords(child, child_coords);
-        set_child_tape_idx(child, child_tape);
     }
     else {
         Interval density = tape_eval_interval(tape, 
             child_pos, child_pos + params_buf.levels[LVL].cell_size);
-        // Empty node
-        if (density.low > 0) {
-            set_leaf_bit(node, cell, false);
-            set_interior_bit(node, cell, false);
-            return;
-        }  
-        // Leaf node
-        if (density.high < 0) {
-            set_leaf_bit(node, cell, true);
-            set_interior_bit(node, cell, false);
-            return;
+        ambiguous = set_mask_bits(density, node, cell);
+        if (ambiguous) {
+            child = atomicAdd(counters_buf.child_count, 1);
+            child_tape = tape;
         }
-        // Ambiguous node
-        set_leaf_bit(node, cell, false);
-        set_interior_bit(node, cell, true);
-        uint child = atomicAdd(counters_buf.child_count, 1);
+    }  
+
+    if (ambiguous) {
+        // Setup the child node
         set_child_list_entry(node, cell, child);
         set_child_coords(child, child_coords);
-        set_child_tape_idx(child, tape);
-    }  
+        set_child_tape_idx(child, child_tape);
+
+        // Collect some stats
+        uint child_size = tape_read_size(child_tape);
+        atomicAdd(stats_buf.tape_size_sum[LVL+1], child_size);
+        atomicMax(stats_buf.max_tape_size[LVL+1], child_size);
+    }
 }
 
 
@@ -827,8 +829,8 @@ void main()
         voxelize_point(node, cell);
     }
     else {
-        bool shorten = LVL < (LEVEL_COUNT - 2);
-        //bool shorten = true;
+        //bool shorten = LVL < (LEVEL_COUNT - 2);
+        bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 

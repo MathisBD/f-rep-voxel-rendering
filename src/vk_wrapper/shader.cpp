@@ -163,6 +163,8 @@ VkShaderModule vkw::ShaderCompiler::Compile(const std::string& file, Stage stage
 
     VkShaderModule shader;
     VK_CHECK(vkCreateShaderModule(m_device->logicalDevice, &info, nullptr, &shader));
+    m_device->NameObject(shader, "shader (compiled from " + m_shaderDir + file + ")");
+
     return shader;
 }
 

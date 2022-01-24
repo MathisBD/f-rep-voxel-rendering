@@ -247,6 +247,11 @@ std::string csg::Tape::OpName(uint16_t op)
     }
 }
 
+uint32_t csg::Tape::GetSlotCount() const 
+{
+    return m_slots.size();    
+}
+
 void csg::Tape::Print(bool detailed /*=false*/) const 
 {
     printf("[+] Tape : instr count=%lu   slot cout = %lu\n", 
