@@ -245,7 +245,9 @@ void Voxelizer::UpdateShaderCounters(uint32_t level)
     counters->childCount = 0;
     // The tape index isn't reset between levels.
     if (level == 0) {
-        counters->tapeIndex = m_voxels->tape.instructions.size() + 1;
+        // We pad the tape size up to a multiple of 32 bytes 
+        // to allow coalescing shader memory accesses.
+        counters->tapeIndex = NumUtils::RoundUpToMultiple(m_voxels->tape.instructions.size() + 1, 32);
     }
     m_countersBuffer.Unmap();
 }

@@ -7,6 +7,10 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #define IS_BIT_SET(x, bit) ((x) & (1 << (bit)))
 
+// returns the smallest multiple of k that is 
+// greater or equal to n.
+#define ALIGN(n, k) ((((n) + (k) - 1) / (k)) * (k))
+
 #define MAX_3(x, y, z) max((x), max((y), (z)))
 #define MIN_3(x, y, z) min((x), min((y), (z)))
 #define MAX_4(x, y, z, w) max(max((x), (y)), max((z), (w)))
@@ -27,6 +31,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #define BITSET_LOAD(array, ofs, i)         bool(array[(ofs) + ((i) >> 5)] & (1 << ((i) & 0x1F)))
 
+#define ZERO_ARRAY(array, ofs, size) for (uint i = 0; i < (size); i++) { array[(ofs) + i] = 0; }
 
 #ifdef DEBUG_LOG
 

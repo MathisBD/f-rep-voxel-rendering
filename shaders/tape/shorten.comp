@@ -1,13 +1,12 @@
 
-#define CHUNK_SIZE 64
-shared uint chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
-shared int out_pos[THREAD_GROUP_SIZE];
+// The thread group size must be >= to the half chunk size
+#define CHUNK_SIZE THREAD_GROUP_SIZE
+#define HALF_CHUNK_SIZE (CHUNK_SIZE / 2)
 
+shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
+shared uint s_out_pos[THREAD_GROUP_SIZE];
+shared uint s_ch_idx[THREAD_GROUP_SIZE];
 
-void tape_write_size(uint tape_idx, uint size)
-{
-    tape_buf.data[tape_idx] = size;
-}
 
 uint encode_inst(Instruction inst)
 {
@@ -59,25 +58,85 @@ uint thread_index()
            gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;
 }
 
-void copy_chunks()
+#define COMPACT_HALF_CHUNK()  \
+{ \
+    uint ch_idx = s_ch_idx[t_idx]; \
+    for (uint in_idx = half_chunk * HALF_CHUNK_SIZE; \
+        in_idx < (half_chunk + 1) * HALF_CHUNK_SIZE && in_idx < in_size; \
+        in_idx++)  \
+    { \
+        /* Decode the input instruction.*/ \
+        Instruction i = tape_read_inst(in_tape, in_idx); \
+         \
+        /* We have to store this as i.op will be overwritten.*/ \
+        const bool is_mm_op = (i.op == OP_MIN || i.op == OP_MAX); \
+        if (BITSET_LOAD(keep, 0, in_idx)) { \
+            /* Change the min/max operation to a copy operation.*/ \
+            if (i.op == OP_MIN || i.op == OP_MAX) { \
+                const uint choice = mm_load(mm_array, mm_idx); \
+                /* A copy operation only uses its first input (A).*/ \
+                if      (choice == MM_FIRST)  { i.op = OP_COPY; } \
+                else if (choice == MM_SECOND) { i.op = OP_COPY; i.inSlotA = i.inSlotB; } \
+            } \
+            /* Copy the instruction to shared memory*/ \
+            s_chunks[t_idx * CHUNK_SIZE + ch_idx] = encode_inst(i); \
+            ch_idx++; \
+        } \
+        if (is_mm_op) { mm_idx++; } \
+    } \
+    s_ch_idx[t_idx] = ch_idx; \
+}
+
+void flush_half_chunks()
 {
-    uint t_idx = thread_index();
+    // Make sure all threads have the same copy of the chunks
+    memoryBarrierShared();
+    barrier();
+    // Copy the chunks that are more than half full
+    const uint t_idx = thread_index();
     for (uint copy_t_idx = 0; copy_t_idx < THREAD_GROUP_SIZE; copy_t_idx++) {
-        // Copy the chunk of thread copy_t_idx,
-        // but only if the thread copy_t_idx is shortening its tape.
-        if (out_pos[copy_t_idx] >= 0) {   
-            // Get the instruction to copy
-            uint data = chunks[copy_t_idx * CHUNK_SIZE + t_idx];
-            // The chunk might not be full : copy only the
-            // instructions that were filled.
-            if (data != 0) {
-                tape_buf.data[out_pos[copy_t_idx] + t_idx] = data;
-                chunks[copy_t_idx * CHUNK_SIZE + t_idx] = 0;
-            } 
+        // Copy the first half of the chunk of thread copy_t_idx.
+        if (s_ch_idx[copy_t_idx] >= HALF_CHUNK_SIZE && t_idx < HALF_CHUNK_SIZE) {
+            // Copy the instruction
+            uint data = s_chunks[copy_t_idx * CHUNK_SIZE + t_idx];
+            tape_buf.data[s_out_pos[copy_t_idx] + t_idx] = data;
         }
+    }
+    // Update the indices
+    memoryBarrierShared();
+    barrier();
+    if (s_ch_idx[t_idx] >= HALF_CHUNK_SIZE) {
+        s_ch_idx[t_idx] -= HALF_CHUNK_SIZE;
+        s_out_pos[t_idx] += HALF_CHUNK_SIZE;
     }
 }
 
+// This is called only once to write the last half chunk to the out tape.
+void flush_end_chunks()
+{
+    // Make sure all threads have the same copy of the chunks
+    memoryBarrierShared();
+    barrier();
+    const uint t_idx = thread_index();
+    for (uint copy_t_idx = 0; copy_t_idx < THREAD_GROUP_SIZE; copy_t_idx++) {
+        // Copy up to the first half of the chunk of thread copy_t_idx.
+        if (t_idx < s_ch_idx[copy_t_idx]) {
+            // Copy the instruction
+            uint data = s_chunks[copy_t_idx * CHUNK_SIZE + t_idx];
+            tape_buf.data[s_out_pos[copy_t_idx] + t_idx] = data;
+        }
+    }
+    // No need to update shared variables as we
+    // are finished shortening.
+}
+
+uint claim_out_tape(uint out_size)
+{
+    // We pad the tape up to a multiple of 32 bytes,
+    // to allow coalesced access to the tape's memory.
+    uint buf_size = ALIGN(out_size + 1, 32);
+    return atomicAdd(counters_buf.tape_index, buf_size);
+}
 
 // Only the threads with shorten==true will shorten their tape.
 // The others are only used to copy the chunks from shader memory to global memory.
@@ -89,21 +148,18 @@ uint tape_shorten(bool shorten, uint in_tape,
     // The i-th bit is set if the i-th slot is active.
     // Initially only the output slot is active.
     uint slots[MAX_SLOT_COUNT / 32];
-    for (uint i = 0; i < (MAX_SLOT_COUNT / 32); i++) {
-        slots[i] = 0;
-    }
+    ZERO_ARRAY(slots, 0, MAX_SLOT_COUNT / 32);
     BITSET_SET(slots, 0, 0);
-    
+
     // The i-th bit is set if the i-th instruction is kept in the shortened tape.
     uint keep[MAX_TAPE_SIZE / 32];
-    for (uint i = 0; i < (MAX_TAPE_SIZE / 32); i++) {
-        keep[i] = 0;
-    }
+    ZERO_ARRAY(keep, 0, MAX_TAPE_SIZE / 32);
     // This counts the number of kept instructions.
-    uint keepCount = 0;
+    uint out_size = 0;
+
     // First iterate in reverse over the tape and 
     // record which instructions to keep.
-    uint in_size = tape_read_size(in_tape);
+    const uint in_size = tape_read_size(in_tape);
     if (shorten) {
         int idx = int(in_size - 1);
         uint mm_idx = mm_size - 1;
@@ -113,7 +169,7 @@ uint tape_shorten(bool shorten, uint in_tape,
             if (BITSET_LOAD(slots, 0, i.outSlot)) {
                 // We will keep this instruction.
                 BITSET_SET(keep, 0, idx);
-                keepCount++;
+                out_size++;
                 // Activate the right slots.
                 uint choice = get_choice(i.op, mm_array, mm_idx);
                 BITSET_CLEAR(slots, 0, i.outSlot);
@@ -124,64 +180,35 @@ uint tape_shorten(bool shorten, uint in_tape,
             idx--;
         }   
     }
-    if (shorten) {
-        // The shortened tape is not much shorter :
-        // don't copy it.
-        shorten = keepCount < in_size;
-    }
 
-    uint out_tape = in_tape;
-    if (shorten) {
-        // Claim space for the output tape.
-        out_tape = atomicAdd(counters_buf.tape_index, 1 + keepCount);
-        tape_write_size(out_tape, keepCount);
-    }
+    // The shortened tape is not shorter :
+    // don't copy it.
+    shorten = shorten && out_size < in_size;
+    const uint out_tape = shorten ? claim_out_tape(out_size) : in_tape;
 
-    uint chunk_idx = 0;
+    // Then iterate forward over the tape and 
+    // copy instructions to global memory, using
+    // a staging chunk buffer in shared memory
+    // to allow coalescing writes to global memory.
     uint mm_idx = 0;
-    int out_idx = shorten ? 0 : -1;
     const uint t_idx = thread_index();
-    while (chunk_idx < (in_size + CHUNK_SIZE - 1) / CHUNK_SIZE) {
-        // Generate the chunk in shared memory
+    // Initialize the shared variables.
+    // We also buffer the writing of the out tape size.
+    ZERO_ARRAY(s_chunks, t_idx * CHUNK_SIZE, CHUNK_SIZE);
+    s_chunks[t_idx * CHUNK_SIZE] = out_size;
+    s_ch_idx[t_idx] = 1;
+    s_out_pos[t_idx] = out_tape;
+    // Iterate forward over the input tape in blocks of half chunk size.
+    for (uint half_chunk = 0; half_chunk < (in_size + HALF_CHUNK_SIZE - 1) / HALF_CHUNK_SIZE; half_chunk++) {
+        // Go over half a chunk of input tape
+        // and compact it to shared memory.
         if (shorten) {
-            uint idx = chunk_idx * CHUNK_SIZE;
-            while (idx < (chunk_idx + 1) * CHUNK_SIZE && idx < in_size) {
-                // Decode the input instruction.
-                Instruction i = tape_read_inst(in_tape, idx);
-                
-                // We have to store this as i.op will be overwritten.
-                bool is_mm_op = (i.op == OP_MIN || i.op == OP_MAX);
-                if (BITSET_LOAD(keep, 0, idx)) {
-                    // Change the min/max operation to a copy operation.
-                    if (i.op == OP_MIN || i.op == OP_MAX) {
-                        uint choice = mm_load(mm_array, mm_idx);
-                        // A copy operation only uses its first input (A).
-                        if      (choice == MM_FIRST)  { i.op = OP_COPY; }
-                        else if (choice == MM_SECOND) { i.op = OP_COPY; i.inSlotA = i.inSlotB; }
-                    }
-                    // Copy the instruction to shared memory
-                    chunks[out_idx % CHUNK_SIZE] = encode_inst(i);
-                    out_idx++;
-                }
-                if (is_mm_op) { mm_idx++; }
-                idx++;
-            }
+            COMPACT_HALF_CHUNK();
         }
-        // Copy the chunk to global memory
-        out_pos[t_idx] = out_tape + out_idx + 1;
-        BARRIER(); // make out_pos visible to all threads
-        copy_chunks();
-        BARRIER(); // make the new, cleaned chunks 
-        chunk_idx++;
+        // Copy the chunks that are more than half full to global memory
+        flush_half_chunks();
+        half_chunk++;
     }
-    if (shorten) {
-        // Then forward iterate over the tape and copy the relevant instructions.
-        uint idx = 0;
-        uint mm_idx = 0;
-        uint out_idx = 0;
-        while (idx < in_size) {
-            
-        }
-    }
+    flush_end_chunks();
     return out_tape;
 }
