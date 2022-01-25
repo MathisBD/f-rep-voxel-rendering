@@ -90,7 +90,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
-#define LEVEL_COUNT 3
+#define LEVEL_COUNT 2
 // The maximum number of tape slots.
 #define MAX_SLOT_COUNT 128
 // The maximum number of instructions per tape.
@@ -480,6 +480,8 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
     slots[2] = Interval(low.z, high.z);
     slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
 
+    LOG0("[+] interval eval:\n");
+
     uint idx = 0;
     uint size = tape_read_size(tape);
     uint mm_idx = 0;
@@ -491,21 +493,24 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
 
         INTERVAL_UPDATE_SLOTS();
         if (i.op == OP_MIN) {
-            uint choice = 
+            const uint choice = 
                 a.high < b.low ? MM_FIRST  :
                 b.high < a.low ? MM_SECOND :
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
+            LOG1("\tchoice=%u", choice);
         }
         else if (i.op == OP_MAX) {
-            uint choice = 
+            const uint choice = 
                 a.high < b.low ? MM_SECOND :
                 b.high < a.low ? MM_FIRST  :
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
+            LOG1("\tchoice=%u", choice);
         }
+        LOG3("\t%u: (%.2f  %.2f)\n", idx, slots[i.outSlot].low, slots[i.outSlot].high);
         idx++;
     }   
     mm_size = mm_idx;
@@ -541,7 +546,6 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high)
 shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
 shared uint s_out_pos[THREAD_GROUP_SIZE];
 shared uint s_ch_idx[THREAD_GROUP_SIZE];
-
 
 uint encode_inst(Instruction inst)
 {
@@ -680,6 +684,8 @@ uint claim_out_tape(uint out_size)
 uint tape_shorten(bool shorten, uint in_tape, 
     uint mm_array[MM_ARRAY_SIZE], uint mm_size)
 {
+    LOG1("[+] shorten=%u\n", uint(shorten));
+
     // The i-th bit is set if the i-th slot is active.
     // Initially only the output slot is active.
     uint slots[MAX_SLOT_COUNT / 32];
@@ -706,7 +712,7 @@ uint tape_shorten(bool shorten, uint in_tape,
                 BITSET_SET(keep, 0, idx);
                 out_size++;
                 // Activate the right slots.
-                uint choice = get_choice(i.op, mm_array, mm_idx);
+                const uint choice = get_choice(i.op, mm_array, mm_idx);
                 BITSET_CLEAR(slots, 0, i.outSlot);
                 if (bool(choice & MM_FIRST))  { BITSET_SET(slots, 0, i.inSlotA); }
                 if (bool(choice & MM_SECOND)) { BITSET_SET(slots, 0, i.inSlotB); }
@@ -715,6 +721,24 @@ uint tape_shorten(bool shorten, uint in_tape,
             idx--;
         }   
     }
+
+    LOG1("[+] in tape=%u\n", in_tape);
+    for (uint i = 0; i < in_size; i++) {
+        Instruction inst = tape_read_inst(in_tape, i);
+        LOG5("\t%u: op=%u  out=%u inA=%u inB=%u\n", 
+            i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
+    }
+
+    LOG0("[+] keep=");
+    for (uint i = 0; i < in_size; i++) {
+        if (BITSET_LOAD(keep, 0, i)) {
+            LOG0("1");
+        }
+        else {
+            LOG0("0");
+        }
+    }
+    LOG0("\n");
 
     // The shortened tape is not shorter :
     // don't copy it.
@@ -728,13 +752,20 @@ uint tape_shorten(bool shorten, uint in_tape,
     uint mm_idx = 0;
     const uint t_idx = thread_index();
     // Initialize the shared variables.
-    // We also buffer the writing of the out tape size.
     ZERO_ARRAY(s_chunks, t_idx * CHUNK_SIZE, CHUNK_SIZE);
-    s_chunks[t_idx * CHUNK_SIZE] = out_size;
-    s_ch_idx[t_idx] = 1;
-    s_out_pos[t_idx] = out_tape;
+    if (shorten) {
+        // buffer the write of the tape size.
+        s_chunks[t_idx * CHUNK_SIZE] = out_size;
+        s_ch_idx[t_idx] = 1;
+        s_out_pos[t_idx] = out_tape;
+    }
+    else {
+        // the buffer is empty
+        s_ch_idx[t_idx] = 0;
+    }
     // Iterate forward over the input tape in blocks of half chunk size.
     for (uint half_chunk = 0; half_chunk < (in_size + HALF_CHUNK_SIZE - 1) / HALF_CHUNK_SIZE; half_chunk++) {
+        LOG1("half_chunk=%u\n", half_chunk);
         // Go over half a chunk of input tape
         // and compact it to shared memory.
         if (shorten) {
@@ -742,9 +773,27 @@ uint tape_shorten(bool shorten, uint in_tape,
         }
         // Copy the chunks that are more than half full to global memory
         flush_half_chunks();
-        half_chunk++;
+
+        groupMemoryBarrier();
+        barrier();
+        LOG1("[+] out tape=%u\n", out_tape);
+        for (uint i = 0; i < out_size; i++) {
+            Instruction inst = tape_read_inst(out_tape, i);
+            LOG5("\t%u: op=%u  ou=%u inA=%u inB=%u\n", 
+                i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
+        }
     }
     flush_end_chunks();
+
+    groupMemoryBarrier();
+    barrier();
+    LOG1("[+] out tape=%u\n", out_tape);
+    for (uint i = 0; i < out_size; i++) {
+        Instruction inst = tape_read_inst(out_tape, i);
+        LOG5("\t%u: op=%u  ou=%u inA=%u inB=%u\n", 
+            i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
+    }
+
     return out_tape;
 }
 
@@ -898,7 +947,7 @@ void main()
     }
     else {
         //bool shorten = LVL < (LEVEL_COUNT - 2);
-        bool shorten = false;
+        bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 

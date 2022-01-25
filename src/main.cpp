@@ -13,10 +13,10 @@ int main()
     params.voxelizeRealTime = false;
     params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4 };
+    params.gridDims = { 4, 4 };
     params.temporalSampleCount = 5;
     
-    params.shape = MengerSponge(3);
+    params.shape = MengerSponge(1);
     
     csg::Tape tape(params.shape);
     tape.Print();
