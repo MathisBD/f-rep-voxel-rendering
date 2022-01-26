@@ -8,15 +8,15 @@
 int main()
 {
     Application::Params params;
-    params.enableValidationLayers = true;
+    params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
-    params.voxelizeRealTime = false;
-    params.printFPS = false;
+    params.voxelizeRealTime = true;
+    params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 4, 4 };
+    params.gridDims = { 16, 8, 4, 4 };
     params.temporalSampleCount = 5;
     
-    params.shape = MengerSponge(1);
+    params.shape = MengerSponge(3);
     
     csg::Tape tape(params.shape);
     tape.Print();

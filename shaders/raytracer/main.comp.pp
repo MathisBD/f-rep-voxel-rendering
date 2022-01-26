@@ -41,7 +41,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #ifdef DEBUG_LOG
 
-#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(0, 2, 2))
+#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(1, 3, 2))
 
 #define LOG0(fmt) if (SHOULD_LOG()) {\
     debugPrintfEXT((fmt)); }  
@@ -93,7 +93,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 #define MAX_SLOT_COUNT 128
 #define MAX_CONST_POOL_SIZE 256
 #define MAX_LIGHT_COUNT 8
-#define LEVEL_COUNT 2
+#define LEVEL_COUNT 4
 
 // Kernel group size.
 layout (

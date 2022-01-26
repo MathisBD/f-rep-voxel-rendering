@@ -127,8 +127,6 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
     slots[2] = Interval(low.z, high.z);
     slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
 
-    LOG0("[+] interval eval:\n");
-
     uint idx = 0;
     uint size = tape_read_size(tape);
     uint mm_idx = 0;
@@ -146,7 +144,6 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            LOG1("\tchoice=%u", choice);
         }
         else if (i.op == OP_MAX) {
             const uint choice = 
@@ -155,9 +152,7 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            LOG1("\tchoice=%u", choice);
         }
-        LOG3("\t%u: (%.2f  %.2f)\n", idx, slots[i.outSlot].low, slots[i.outSlot].high);
         idx++;
     }   
     mm_size = mm_idx;

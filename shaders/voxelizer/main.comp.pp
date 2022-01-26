@@ -3,7 +3,7 @@
 #extension GL_EXT_debug_printf : enable
 
 // Include other files  
-#define DEBUG_LOG 
+//#define DEBUG_LOG 
 const float infinity = 1. / 0.;
 const float pi = 3.141592653589793238462643383279502884197;
 
@@ -41,7 +41,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #ifdef DEBUG_LOG
 
-#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(0, 2, 2))
+#define SHOULD_LOG() (gl_GlobalInvocationID.xyz == vec3(1, 3, 2))
 
 #define LOG0(fmt) if (SHOULD_LOG()) {\
     debugPrintfEXT((fmt)); }  
@@ -90,7 +90,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
-#define LEVEL_COUNT 2
+#define LEVEL_COUNT 4
 // The maximum number of tape slots.
 #define MAX_SLOT_COUNT 128
 // The maximum number of instructions per tape.
@@ -480,8 +480,6 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
     slots[2] = Interval(low.z, high.z);
     slots[3] = Interval(params_buf.tape_time, params_buf.tape_time);
 
-    LOG0("[+] interval eval:\n");
-
     uint idx = 0;
     uint size = tape_read_size(tape);
     uint mm_idx = 0;
@@ -499,7 +497,6 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            LOG1("\tchoice=%u", choice);
         }
         else if (i.op == OP_MAX) {
             const uint choice = 
@@ -508,9 +505,7 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high,
                 MM_BOTH;
             MM_STORE(mm_array, mm_idx, choice);
             mm_idx++;
-            LOG1("\tchoice=%u", choice);
         }
-        LOG3("\t%u: (%.2f  %.2f)\n", idx, slots[i.outSlot].low, slots[i.outSlot].high);
         idx++;
     }   
     mm_size = mm_idx;
@@ -540,7 +535,7 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high)
 }
 
 // The thread group size must be >= to the half chunk size
-#define CHUNK_SIZE THREAD_GROUP_SIZE
+#define CHUNK_SIZE (4)
 #define HALF_CHUNK_SIZE (CHUNK_SIZE / 2)
 
 shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
@@ -637,8 +632,11 @@ void flush_half_chunks()
         // Copy the first half of the chunk of thread copy_t_idx.
         if (s_ch_idx[copy_t_idx] >= HALF_CHUNK_SIZE && t_idx < HALF_CHUNK_SIZE) {
             // Copy the instruction
-            uint data = s_chunks[copy_t_idx * CHUNK_SIZE + t_idx];
-            tape_buf.data[s_out_pos[copy_t_idx] + t_idx] = data;
+            tape_buf.data[s_out_pos[copy_t_idx] + t_idx] = 
+                s_chunks[copy_t_idx * CHUNK_SIZE + t_idx];
+            // Shift the second half chunk into the first half chunk
+            s_chunks[copy_t_idx * CHUNK_SIZE + t_idx] = 
+                s_chunks[copy_t_idx * CHUNK_SIZE + HALF_CHUNK_SIZE + t_idx];
         }
     }
     // Update the indices
@@ -682,10 +680,9 @@ uint claim_out_tape(uint out_size)
 // Returns the tape index of the output tape
 // (this can be equal to the input tape if there is nothing to shorten).
 uint tape_shorten(bool shorten, uint in_tape, 
-    uint mm_array[MM_ARRAY_SIZE], uint mm_size)
+    uint mm_array[MM_ARRAY_SIZE], uint mm_size,
+    out uint out_size)
 {
-    LOG1("[+] shorten=%u\n", uint(shorten));
-
     // The i-th bit is set if the i-th slot is active.
     // Initially only the output slot is active.
     uint slots[MAX_SLOT_COUNT / 32];
@@ -696,7 +693,7 @@ uint tape_shorten(bool shorten, uint in_tape,
     uint keep[MAX_TAPE_SIZE / 32];
     ZERO_ARRAY(keep, 0, MAX_TAPE_SIZE / 32);
     // This counts the number of kept instructions.
-    uint out_size = 0;
+    out_size = 0;
 
     // First iterate in reverse over the tape and 
     // record which instructions to keep.
@@ -721,24 +718,6 @@ uint tape_shorten(bool shorten, uint in_tape,
             idx--;
         }   
     }
-
-    LOG1("[+] in tape=%u\n", in_tape);
-    for (uint i = 0; i < in_size; i++) {
-        Instruction inst = tape_read_inst(in_tape, i);
-        LOG5("\t%u: op=%u  out=%u inA=%u inB=%u\n", 
-            i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
-    }
-
-    LOG0("[+] keep=");
-    for (uint i = 0; i < in_size; i++) {
-        if (BITSET_LOAD(keep, 0, i)) {
-            LOG0("1");
-        }
-        else {
-            LOG0("0");
-        }
-    }
-    LOG0("\n");
 
     // The shortened tape is not shorter :
     // don't copy it.
@@ -765,7 +744,6 @@ uint tape_shorten(bool shorten, uint in_tape,
     }
     // Iterate forward over the input tape in blocks of half chunk size.
     for (uint half_chunk = 0; half_chunk < (in_size + HALF_CHUNK_SIZE - 1) / HALF_CHUNK_SIZE; half_chunk++) {
-        LOG1("half_chunk=%u\n", half_chunk);
         // Go over half a chunk of input tape
         // and compact it to shared memory.
         if (shorten) {
@@ -773,27 +751,8 @@ uint tape_shorten(bool shorten, uint in_tape,
         }
         // Copy the chunks that are more than half full to global memory
         flush_half_chunks();
-
-        groupMemoryBarrier();
-        barrier();
-        LOG1("[+] out tape=%u\n", out_tape);
-        for (uint i = 0; i < out_size; i++) {
-            Instruction inst = tape_read_inst(out_tape, i);
-            LOG5("\t%u: op=%u  ou=%u inA=%u inB=%u\n", 
-                i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
-        }
     }
     flush_end_chunks();
-
-    groupMemoryBarrier();
-    barrier();
-    LOG1("[+] out tape=%u\n", out_tape);
-    for (uint i = 0; i < out_size; i++) {
-        Instruction inst = tape_read_inst(out_tape, i);
-        LOG5("\t%u: op=%u  ou=%u inA=%u inB=%u\n", 
-            i, inst.op, inst.outSlot, inst.inSlotA, inst.inSlotB);
-    }
-
     return out_tape;
 }
 
@@ -902,8 +861,8 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
         child_coords * params_buf.levels[LVL].cell_size;
     
     bool ambiguous;
-    uint child;
     uint child_tape;
+    uint child_tape_size;
     if (shorten) {
         uint mm_array[MM_ARRAY_SIZE];
         uint mm_size;
@@ -911,26 +870,26 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
             child_pos, child_pos + params_buf.levels[LVL].cell_size,
             mm_array, mm_size);
         ambiguous = set_mask_bits(density, node, cell);
-        child_tape = tape_shorten(ambiguous, tape, mm_array, mm_size);
+        child_tape = tape_shorten(ambiguous, tape, mm_array, mm_size, child_tape_size);
     }
     else {
         Interval density = tape_eval_interval(tape, 
             child_pos, child_pos + params_buf.levels[LVL].cell_size);
         ambiguous = set_mask_bits(density, node, cell);
         child_tape = tape;
+        child_tape_size = tape_read_size(tape);
     }  
 
     if (ambiguous) {
         // Claim a child node index
-        child = atomicAdd(counters_buf.child_count, 1);
+        uint child = atomicAdd(counters_buf.child_count, 1);
         // Setup the child node
         set_child_list_entry(node, cell, child);
         set_child_coords(child, child_coords);
         set_child_tape_idx(child, child_tape);
         // Collect some stats
-        uint child_size = tape_read_size(child_tape);
-        atomicAdd(stats_buf.tape_size_sum[LVL+1], child_size);
-        atomicMax(stats_buf.max_tape_size[LVL+1], child_size);
+        atomicAdd(stats_buf.tape_size_sum[LVL+1], child_tape_size);
+        atomicMax(stats_buf.max_tape_size[LVL+1], child_tape_size);
     }
 }
 
@@ -946,8 +905,8 @@ void main()
         voxelize_point(node, cell);
     }
     else {
-        //bool shorten = LVL < (LEVEL_COUNT - 2);
-        bool shorten = true;
+        bool shorten = LVL < (LEVEL_COUNT - 2);
+        //bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 
