@@ -153,15 +153,18 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
 // All the other book-keeping operations are performed in the second stage. 
 void main()
 { 
-    uvec3 cell = gl_GlobalInvocationID.xyz % DIM;
-    uint node = gl_GlobalInvocationID.x / DIM;
-
+    uint node = gl_GlobalInvocationID.x / (DIM*DIM*DIM);
+    uint cell_index = gl_GlobalInvocationID.x % (DIM*DIM*DIM);
+    uvec3 cell = uvec3(
+        cell_index % DIM,
+        (cell_index / DIM) % DIM,
+        (cell_index / (DIM*DIM)) % DIM);
+        
     if (LVL == LEVEL_COUNT - 1) {
         voxelize_point(node, cell);
     }
     else {
-        bool shorten = LVL < (LEVEL_COUNT - 2);
-        //bool shorten = true;
+        bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 

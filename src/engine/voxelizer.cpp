@@ -143,9 +143,7 @@ Voxelizer::ShaderVariant Voxelizer::CreateShaderVariant(uint32_t maxSlotCount, u
 
     // Load the shader
     vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
-    compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
-    compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
-    compiler.SetConstant("THREAD_GROUP_SIZE_Z", (uint32_t)THREAD_GROUP_SIZE_Z);
+    compiler.SetConstant("THREAD_GROUP_SIZE", (uint32_t)THREAD_GROUP_SIZE);
     compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
     compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)maxSlotCount);
     compiler.SetConstant("MAX_TAPE_SIZE", (uint32_t)maxTapeSize);
@@ -269,13 +267,9 @@ void Voxelizer::RecordCmd(VkCommandBuffer cmd, uint32_t level)
         0, nullptr);
 
     uint32_t dim = m_voxels->gridDims[level];
-    assert(dim % THREAD_GROUP_SIZE_X == 0);
-    assert(dim % THREAD_GROUP_SIZE_Y == 0);
-    assert(dim % THREAD_GROUP_SIZE_Z == 0);
-    vkCmdDispatch(cmd, 
-        (dim / THREAD_GROUP_SIZE_X) * m_voxels->interiorNodeCount[level], 
-        dim / THREAD_GROUP_SIZE_Y, 
-        dim / THREAD_GROUP_SIZE_Z);
+    assert((dim*dim*dim) % THREAD_GROUP_SIZE == 0);
+    uint32_t threadCount = dim*dim*dim * m_voxels->interiorNodeCount[level];
+    vkCmdDispatch(cmd, threadCount / THREAD_GROUP_SIZE, 1, 1);
 }
 
 void Voxelizer::SubmitCmd(VkCommandBuffer cmd, uint32_t level, VkSemaphore waitSem) 

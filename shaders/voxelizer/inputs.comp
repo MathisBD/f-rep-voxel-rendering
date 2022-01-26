@@ -1,7 +1,5 @@
 
-#constant THREAD_GROUP_SIZE_X
-#constant THREAD_GROUP_SIZE_Y
-#constant THREAD_GROUP_SIZE_Z
+#constant THREAD_GROUP_SIZE
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
@@ -14,14 +12,10 @@
 
 #define MAX_LEVEL_COUNT 8
 #define MAX_CONST_POOL_SIZE 256
-#define THREAD_GROUP_SIZE (THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y * THREAD_GROUP_SIZE_Z)
 
 // Each node of the previous level is handled by
 // several thread groups.
-layout (
-    local_size_x = THREAD_GROUP_SIZE_X, 
-    local_size_y = THREAD_GROUP_SIZE_Y, 
-    local_size_z = THREAD_GROUP_SIZE_Z) in;
+layout (local_size_x = THREAD_GROUP_SIZE) in;
 
 struct LevelData {
     uint dim;

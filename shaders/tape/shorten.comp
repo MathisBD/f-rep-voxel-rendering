@@ -52,9 +52,10 @@ uint get_choice(uint op, uint mm_array[MM_ARRAY_SIZE], uint mm_idx)
 
 uint thread_index()
 {
-    return gl_LocalInvocationID.x + 
+    /*return gl_LocalInvocationID.x + 
            gl_LocalInvocationID.y * THREAD_GROUP_SIZE_X + 
-           gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;
+           gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;*/
+    return gl_LocalInvocationID.x;
 }
 
 #define COMPACT_HALF_CHUNK()  \

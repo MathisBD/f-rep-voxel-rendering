@@ -84,9 +84,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #endif
 
-#define THREAD_GROUP_SIZE_X 4
-#define THREAD_GROUP_SIZE_Y 4
-#define THREAD_GROUP_SIZE_Z 4
+#define THREAD_GROUP_SIZE 64
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
@@ -99,14 +97,10 @@ const float pi = 3.141592653589793238462643383279502884197;
 
 #define MAX_LEVEL_COUNT 8
 #define MAX_CONST_POOL_SIZE 256
-#define THREAD_GROUP_SIZE (THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y * THREAD_GROUP_SIZE_Z)
 
 // Each node of the previous level is handled by
 // several thread groups.
-layout (
-    local_size_x = THREAD_GROUP_SIZE_X, 
-    local_size_y = THREAD_GROUP_SIZE_Y, 
-    local_size_z = THREAD_GROUP_SIZE_Z) in;
+layout (local_size_x = THREAD_GROUP_SIZE) in;
 
 struct LevelData {
     uint dim;
@@ -535,7 +529,7 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high)
 }
 
 // The thread group size must be >= to the half chunk size
-#define CHUNK_SIZE (4)
+#define CHUNK_SIZE (THREAD_GROUP_SIZE / 2)
 #define HALF_CHUNK_SIZE (CHUNK_SIZE / 2)
 
 shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
@@ -587,9 +581,10 @@ uint get_choice(uint op, uint mm_array[MM_ARRAY_SIZE], uint mm_idx)
 
 uint thread_index()
 {
-    return gl_LocalInvocationID.x + 
+    /*return gl_LocalInvocationID.x + 
            gl_LocalInvocationID.y * THREAD_GROUP_SIZE_X + 
-           gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;
+           gl_LocalInvocationID.z * THREAD_GROUP_SIZE_X * THREAD_GROUP_SIZE_Y;*/
+    return gl_LocalInvocationID.x;
 }
 
 #define COMPACT_HALF_CHUNK()  \
@@ -898,15 +893,18 @@ void voxelize_interval(uint node, uvec3 cell, bool shorten)
 // All the other book-keeping operations are performed in the second stage. 
 void main()
 { 
-    uvec3 cell = gl_GlobalInvocationID.xyz % DIM;
-    uint node = gl_GlobalInvocationID.x / DIM;
-
+    uint node = gl_GlobalInvocationID.x / (DIM*DIM*DIM);
+    uint cell_index = gl_GlobalInvocationID.x % (DIM*DIM*DIM);
+    uvec3 cell = uvec3(
+        cell_index % DIM,
+        (cell_index / DIM) % DIM,
+        (cell_index / (DIM*DIM)) % DIM);
+        
     if (LVL == LEVEL_COUNT - 1) {
         voxelize_point(node, cell);
     }
     else {
-        bool shorten = LVL < (LEVEL_COUNT - 2);
-        //bool shorten = true;
+        bool shorten = true;
         voxelize_interval(node, cell, shorten);
     }
 } 

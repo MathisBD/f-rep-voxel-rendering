@@ -24,9 +24,7 @@ public:
     
     void PrintStats();
 private:
-    static const uint32_t THREAD_GROUP_SIZE_X    = 4;
-    static const uint32_t THREAD_GROUP_SIZE_Y    = 4;
-    static const uint32_t THREAD_GROUP_SIZE_Z    = 4;
+    static const uint32_t THREAD_GROUP_SIZE      = 64;
     static const uint32_t MAX_LEVEL_COUNT        = 8;
     static const uint32_t MAX_CONSTANT_POOL_SIZE = 256;
 
