@@ -159,7 +159,7 @@ void main()
         cell_index % DIM,
         (cell_index / DIM) % DIM,
         (cell_index / (DIM*DIM)) % DIM);
-        
+
     if (LVL == LEVEL_COUNT - 1) {
         voxelize_point(node, cell);
     }

@@ -11,9 +11,9 @@ int main()
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
     params.voxelizeRealTime = true;
-    params.printFPS = true;
+    params.printFPS = false;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 8, 4, 4 };
+    params.gridDims = { 8, 4, 4 };
     params.temporalSampleCount = 5;
     
     params.shape = MengerSponge(3);
@@ -34,5 +34,6 @@ int main()
     app.Init();
     app.Run();
     app.Cleanup();
+    printf("[+] Finished\n");
     return 0;
 }

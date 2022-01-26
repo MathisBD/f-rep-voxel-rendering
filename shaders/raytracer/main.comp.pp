@@ -93,7 +93,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 #define MAX_SLOT_COUNT 128
 #define MAX_CONST_POOL_SIZE 256
 #define MAX_LIGHT_COUNT 8
-#define LEVEL_COUNT 4
+#define LEVEL_COUNT 3
 
 // Kernel group size.
 layout (

@@ -44,13 +44,14 @@ void EngineBase::InitSDL()
 
 void EngineBase::InitVulkanCore() 
 {
+    printf("A\n");
     // Vulkan instance
     vkb::InstanceBuilder builder;
     builder.set_app_name("Vulkan Project")
            .require_api_version(1, 1, 0)
            .use_default_debug_messenger();
            
-    if (m_enableShaderDebugPrintf) {
+    /*if (m_enableShaderDebugPrintf) {
         assert(m_enableValidationLayers);
         builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
     }
@@ -58,19 +59,17 @@ void EngineBase::InitVulkanCore()
         builder.enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
                .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
                .enable_validation_layers(true);
-    }
+    }*/
+    printf("C\n");
     vkb::Instance vkbInst = builder.build().value();
     m_instance = vkbInst.instance;
     m_debugMessenger = vkbInst.debug_messenger;
 
+    printf("D\n");
     // SDL Surface
     SDL_Vulkan_CreateSurface(m_window, m_instance, &m_surface);
     
     // Choose a GPU
-    //VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures = {};
-    //floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
-    //floatFeatures.shaderBufferFloat32AtomicAdd = true;
-
     vkb::PhysicalDeviceSelector selector(vkbInst);
     vkb::PhysicalDevice vkbPhysDev = selector 
         .set_minimum_version(1, 1)

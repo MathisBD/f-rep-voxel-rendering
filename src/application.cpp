@@ -110,6 +110,8 @@ void Application::PrintInfo()
             m_device.properties.limits.maxComputeWorkGroupCount[1],
             m_device.properties.limits.maxComputeWorkGroupCount[2]);
         printf("\tmax invocation count=%u\n", m_device.properties.limits.maxComputeWorkGroupInvocations);
+        printf("\tmax shared memory size=%u\n", m_device.properties.limits.maxComputeSharedMemorySize);
+        
     }
 
     printf("[+] Grid dimensions: ");

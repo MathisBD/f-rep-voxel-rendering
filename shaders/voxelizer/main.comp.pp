@@ -88,7 +88,7 @@ const float pi = 3.141592653589793238462643383279502884197;
 // The valid levels range from 0 to LEVEL_COUNT-1 included.
 // Level 0 contains the unique root node, and LEVEL_COUNT-1 the last interior nodes,
 // whose only children are leafs (and empty nodes).
-#define LEVEL_COUNT 4
+#define LEVEL_COUNT 3
 // The maximum number of tape slots.
 #define MAX_SLOT_COUNT 128
 // The maximum number of instructions per tape.
@@ -529,7 +529,7 @@ Interval tape_eval_interval(uint tape, vec3 low, vec3 high)
 }
 
 // The thread group size must be >= to the half chunk size
-#define CHUNK_SIZE (THREAD_GROUP_SIZE / 2)
+#define CHUNK_SIZE (2)
 #define HALF_CHUNK_SIZE (CHUNK_SIZE / 2)
 
 shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
@@ -899,7 +899,7 @@ void main()
         cell_index % DIM,
         (cell_index / DIM) % DIM,
         (cell_index / (DIM*DIM)) % DIM);
-        
+
     if (LVL == LEVEL_COUNT - 1) {
         voxelize_point(node, cell);
     }

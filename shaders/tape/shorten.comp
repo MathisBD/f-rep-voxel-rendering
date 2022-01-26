@@ -1,6 +1,6 @@
 
 // The thread group size must be >= to the half chunk size
-#define CHUNK_SIZE (THREAD_GROUP_SIZE / 2)
+#define CHUNK_SIZE (2)
 #define HALF_CHUNK_SIZE (CHUNK_SIZE / 2)
 
 shared uint s_chunks[CHUNK_SIZE * THREAD_GROUP_SIZE];
