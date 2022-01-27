@@ -104,3 +104,15 @@ csg::Expr TwistedTower(int level, float angle, float scale)
     shape = TranslateY(shape, scale);
     return Union(shape, box);
 }
+
+csg::Expr OrganicBalls() 
+{
+    using namespace csg;
+    auto s1 = Sphere({10, 0, 0}, 8);
+    s1 = TranslateX(s1, 5*Sin(T()));
+    auto s2 = Sphere({-10, 0, 0}, 10);
+
+    auto f = Min(Min(X(), Y()), Sqrt(X() * Y()) - 40);
+
+    return f(s1, s2, Z(), T());
+}

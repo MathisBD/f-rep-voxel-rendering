@@ -11,13 +11,14 @@ int main()
     params.enableValidationLayers = false;
     params.enableShaderDebugPrintf = false;
     params.voxelizeRealTime = true;
-    params.printFPS = false;
+    params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 8, 4, 4 };
+    params.gridDims = { 16, 4, 4 };
     params.temporalSampleCount = 5;
     
-    params.shape = MengerSponge(3);
-    
+    //params.shape = MengerSponge(3);
+    params.shape = OrganicBalls();
+
     csg::Tape tape(params.shape);
     tape.Print();
 
