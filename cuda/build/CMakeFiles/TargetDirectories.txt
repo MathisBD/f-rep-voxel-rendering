@@ -1,0 +1,3 @@
+/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/rebuild_cache.dir
+/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/edit_cache.dir
+/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir

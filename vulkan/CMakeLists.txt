@@ -9,7 +9,7 @@ FILE(GLOB_RECURSE CPP_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "./src/*.cpp")
 add_executable(proj ${CPP_SOURCES})
 target_include_directories(proj PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
-# Warnings/Errors : there's no reason to ignore warnings in this project.
+# Warnings/Errors
 target_compile_options(proj PUBLIC -Wall -Wextra)
 target_compile_options(proj PUBLIC -Werror -Wno-unused-parameter)
 

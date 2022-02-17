@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/cuda_call.h
+cuda.h
+-
+
+/home/mathis/src/f-rep-voxel-rendering/cuda/src/vector_add.cu
+stdio.h
+-
+stdint.h
+-
+cuda_call.h
+/home/mathis/src/f-rep-voxel-rendering/cuda/src/cuda_call.h
+

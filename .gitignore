@@ -31,5 +31,6 @@
 *.out
 *.app
 
-# CMake build folder
-build
+# CMake build folders
+cuda/build
+vulkan/build
