@@ -78,7 +78,7 @@ void Raytracer::InitBuffers()
 void Raytracer::InitPipeline() 
 {
     // Load the shader
-    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/vulkan/shaders/");
     compiler.SetConstant("THREAD_GROUP_SIZE_X", (uint32_t)THREAD_GROUP_SIZE_X);
     compiler.SetConstant("THREAD_GROUP_SIZE_Y", (uint32_t)THREAD_GROUP_SIZE_Y);
     compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);

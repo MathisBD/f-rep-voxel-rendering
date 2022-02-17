@@ -131,7 +131,7 @@ void Renderer::SignalRenderSem()
 void Renderer::InitPipeline() 
 {    
     // Compile the shaders
-    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/vulkan/shaders/");
     VkShaderModule vertShader = compiler.Compile(
         "renderer/triangle.vert", vkw::ShaderCompiler::Stage::VERT);
     compiler.SetConstant("TEMPORAL_SAMPLE_COUNT", m_target->temporalSampleCount);

@@ -142,7 +142,7 @@ Voxelizer::ShaderVariant Voxelizer::CreateShaderVariant(uint32_t maxSlotCount, u
     variant.maxTapeSize = maxTapeSize;
 
     // Load the shader
-    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/shaders/");
+    vkw::ShaderCompiler compiler(m_device, "/home/mathis/src/f-rep-voxel-rendering/vulkan/shaders/");
     compiler.SetConstant("THREAD_GROUP_SIZE", (uint32_t)THREAD_GROUP_SIZE);
     compiler.SetConstant("LEVEL_COUNT", m_voxels->gridLevels);
     compiler.SetConstant("MAX_SLOT_COUNT", (uint32_t)maxSlotCount);

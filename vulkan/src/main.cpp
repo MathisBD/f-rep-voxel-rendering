@@ -13,7 +13,7 @@ int main()
     params.voxelizeRealTime = true;
     params.printFPS = true;
     params.printHardwareInfo = false;
-    params.gridDims = { 16, 4, 4 };
+    params.gridDims = { 16, 4, 4, 4, 4 };
     params.temporalSampleCount = 5;
     
     //params.shape = MengerSponge(3);

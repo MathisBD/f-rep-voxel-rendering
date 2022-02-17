@@ -46,6 +46,21 @@ void EngineBase::InitVulkanCore()
 {
     printf("A\n");
     // Vulkan instance
+    vkb::SystemInfo info = vkb::SystemInfo::get_system_info().value();
+    printf("[+] Available extensions:\n");
+    for (auto ext : info.available_extensions) {
+        printf("\t%s\n", ext.extensionName);
+    }
+    printf("\n");
+
+    printf("[+] Available layers:\n");
+    for (auto layer : info.available_layers) {
+        printf("\t%s\n", layer.layerName);
+    }
+    printf("\n");
+    
+
+
     vkb::InstanceBuilder builder;
     builder.set_app_name("Vulkan Project")
            .require_api_version(1, 1, 0)
@@ -59,9 +74,15 @@ void EngineBase::InitVulkanCore()
         builder.enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
                .add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT)
                .enable_validation_layers(true);
-    }*/
-    printf("C\n");
-    vkb::Instance vkbInst = builder.build().value();
+    }
+    printf("C\n");*/
+    auto res = builder.build();
+    if (!res.has_value()) {
+        printf("[+] Vulkan initialization error:\n\t%s\n", 
+            res.error().message().c_str());
+        exit(-1);
+    }
+    vkb::Instance vkbInst = res.value();
     m_instance = vkbInst.instance;
     m_debugMessenger = vkbInst.debug_messenger;
 
