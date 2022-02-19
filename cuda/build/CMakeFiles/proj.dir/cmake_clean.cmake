@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/proj.dir/src/matrix_sum.cu.o"
   "CMakeFiles/proj.dir/src/vector_add.cu.o"
   "proj"
   "proj.pdb"

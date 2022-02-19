@@ -6,15 +6,7 @@
 
 #IncludeRegexTransform: 
 
-../include/cuda_call.h
-cuda.h
--
-
-/home/mathis/src/f-rep-voxel-rendering/cuda/src/vector_add.cu
+/home/mathis/src/f-rep-voxel-rendering/cuda/src/matrix_sum.cu
 stdio.h
 -
-stdint.h
--
-cuda_call.h
-/home/mathis/src/f-rep-voxel-rendering/cuda/src/cuda_call.h
 

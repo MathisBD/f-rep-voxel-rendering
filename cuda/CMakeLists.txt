@@ -12,3 +12,5 @@ target_include_directories(proj PUBLIC ${CMAKE_SOURCE_DIR}/include)
 # Warnings/Errors
 target_compile_options(proj PUBLIC --Wreorder)
 target_compile_options(proj PUBLIC --Werror cross-execution-space-call)
+
+target_compile_options(proj PUBLIC -g -lineinfo)
