@@ -25,7 +25,42 @@ __global__ void row_sums(const float *A, float *sums, size_t n){
     for (size_t i = 0; i < n; i++)
       sum += A[idx * DSIZE + i];         // write a for loop that will cause the thread to iterate across a row, keeeping a running sum, and write the result to sums
     sums[idx] = sum;
-}}
+  }
+}
+
+// there are n blocks, each of size BS (may be < n)
+#define BS 1024
+__global__ void row_sums_reduce(const float* A, float* sums, size_t n)
+{
+    __shared__ float block[BS];
+    
+    // Our thread block will sum the row at blockIdx.x
+    const uint y = blockIdx.x;
+    float sum = 0;
+    for (uint xBase = 0; xBase < n; xBase += blockDim.x) {
+        // load the block
+        if (xBase + threadIdx.x < n) {
+            sum += A[y * n + xBase + threadIdx.x];
+        }
+    }
+    block[threadIdx.x] = sum;
+    __syncthreads();
+
+    // perform a parallel sum reduction
+    for (uint k = BS / 2; k >= 4; k >>= 1) {
+        if (threadIdx.x < k) {
+            block[threadIdx.x] += block[threadIdx.x + k];
+        }
+        __syncthreads();
+    }
+
+    // add the block sum to the row total
+    if (threadIdx.x == 0) {
+        sums[y] = block[0] + block[1] + block[2] + block[3];
+    }
+}
+#undef BS
+
 
 
 // matrix column-sum kernel
@@ -81,6 +116,7 @@ __global__ void column_sums_blocks(const float* A, float* sums, size_t n)
         }
     }
 }
+#undef BS
 
 
 
@@ -128,7 +164,7 @@ int main(){
         
     column_sums<<<(DSIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(d_A, d_sums, DSIZE);
     cudaCheckErrors("kernel launch failure");
-    //cuda processing sequence step 2 is complete
+    // cuda processing sequence step 2 is complete
         
     // copy vector sums from device to host:
     cudaMemcpy(h_sums, d_sums, DSIZE*sizeof(float), cudaMemcpyDeviceToHost);
@@ -155,6 +191,22 @@ int main(){
         
     if (!validate(h_sums, DSIZE)) return -1; 
     printf("column sums correct!\n");
+  }
+
+  {  
+    cudaMemset(d_sums, 0, DSIZE*sizeof(float));
+        
+    row_sums_reduce<<<DSIZE, 1024>>>(d_A, d_sums, DSIZE);
+    cudaCheckErrors("kernel launch failure");
+    //cuda processing sequence step 2 is complete
+        
+    // copy vector sums from device to host:
+    cudaMemcpy(h_sums, d_sums, DSIZE*sizeof(float), cudaMemcpyDeviceToHost);
+    //cuda processing sequence step 3 is complete
+    cudaCheckErrors("kernel execution failure or cudaMemcpy H2D failure");
+        
+    if (!validate(h_sums, DSIZE)) return -1; 
+    printf("row sums correct!\n");
   }
 
   return 0;

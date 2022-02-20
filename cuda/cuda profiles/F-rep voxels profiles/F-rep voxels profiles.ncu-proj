@@ -2,14 +2,32 @@
     "extension": "ncu-proj",
     "files": [
         {
-            "path": "../first profile.ncu-rep"
-        },
-        {
+            "is_open": true,
             "path": "../second profile.ncu-rep"
         },
         {
             "is_open": true,
             "path": "../third profile.ncu-rep"
+        },
+        {
+            "is_open": true,
+            "path": "../fourth profile.ncu-rep"
+        },
+        {
+            "is_open": true,
+            "path": "../fifth profile.ncu-rep"
+        },
+        {
+            "is_open": true,
+            "path": "../sixth profile.ncu-rep"
+        },
+        {
+            "is_open": true,
+            "path": "../seventh profile.ncu-rep"
+        },
+        {
+            "is_open": true,
+            "path": "../eighth profile.ncu-rep"
         }
     ],
     "launcher": {
@@ -43,7 +61,7 @@
         "activity/profile/launchskipcount": "0",
         "activity/profile/metrics": "",
         "activity/profile/nvtxincludeexcludeoptions": "",
-        "activity/profile/outputfile": "/home/mathis/src/f-rep-voxel-rendering/cuda/cuda profiles/first profile",
+        "activity/profile/outputfile": "/home/mathis/src/f-rep-voxel-rendering/cuda/cuda profiles/eighth profile",
         "activity/profile/rangereplayoptions": "",
         "activity/profile/replaymode": "Kernel",
         "activity/profile/samplingBufferSize": "33554432",
