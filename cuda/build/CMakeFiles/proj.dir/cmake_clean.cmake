@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/proj.dir/src/engine/engine.cpp.o"
   "CMakeFiles/proj.dir/src/main.cpp.o"
   "CMakeFiles/proj.dir/src/matrix_sum.cu.o"
   "CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o"
@@ -8,7 +9,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o"
   "CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o"
   "CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
-  "CMakeFiles/proj.dir/src/vector_add.cu.o"
   "proj"
   "proj.pdb"
 )

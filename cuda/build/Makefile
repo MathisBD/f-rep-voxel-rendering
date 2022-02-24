@@ -123,6 +123,33 @@ proj/fast:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/build
 .PHONY : proj/fast
 
+src/engine/engine.o: src/engine/engine.cpp.o
+
+.PHONY : src/engine/engine.o
+
+# target to build an object file
+src/engine/engine.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/engine/engine.cpp.o
+.PHONY : src/engine/engine.cpp.o
+
+src/engine/engine.i: src/engine/engine.cpp.i
+
+.PHONY : src/engine/engine.i
+
+# target to preprocess a source file
+src/engine/engine.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/engine/engine.cpp.i
+.PHONY : src/engine/engine.cpp.i
+
+src/engine/engine.s: src/engine/engine.cpp.s
+
+.PHONY : src/engine/engine.s
+
+# target to generate assembly for a file
+src/engine/engine.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/engine/engine.cpp.s
+.PHONY : src/engine/engine.cpp.s
+
 src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
@@ -366,33 +393,6 @@ src/third_party/imgui/imgui_widgets.cpp.s:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.s
 .PHONY : src/third_party/imgui/imgui_widgets.cpp.s
 
-src/vector_add.o: src/vector_add.cu.o
-
-.PHONY : src/vector_add.o
-
-# target to build an object file
-src/vector_add.cu.o:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/vector_add.cu.o
-.PHONY : src/vector_add.cu.o
-
-src/vector_add.i: src/vector_add.cu.i
-
-.PHONY : src/vector_add.i
-
-# target to preprocess a source file
-src/vector_add.cu.i:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/vector_add.cu.i
-.PHONY : src/vector_add.cu.i
-
-src/vector_add.s: src/vector_add.cu.s
-
-.PHONY : src/vector_add.s
-
-# target to generate assembly for a file
-src/vector_add.cu.s:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/vector_add.cu.s
-.PHONY : src/vector_add.cu.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -402,6 +402,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... proj"
+	@echo "... src/engine/engine.o"
+	@echo "... src/engine/engine.i"
+	@echo "... src/engine/engine.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
@@ -429,9 +432,6 @@ help:
 	@echo "... src/third_party/imgui/imgui_widgets.o"
 	@echo "... src/third_party/imgui/imgui_widgets.i"
 	@echo "... src/third_party/imgui/imgui_widgets.s"
-	@echo "... src/vector_add.o"
-	@echo "... src/vector_add.i"
-	@echo "... src/vector_add.s"
 .PHONY : help
 
 

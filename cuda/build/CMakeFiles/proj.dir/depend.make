@@ -3,13 +3,14 @@
 
 CMakeFiles/proj.dir/src/matrix_sum.cu.o: ../src/matrix_sum.cu
 
-CMakeFiles/proj.dir/src/vector_add.cu.o: ../include/cuda_call.h
-CMakeFiles/proj.dir/src/vector_add.cu.o: ../src/vector_add.cu
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../include/engine/engine.h
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../include/third_party/imgui/imconfig.h
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../include/third_party/imgui/imgui.h
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../include/third_party/imgui/imgui_impl_opengl3.h
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../include/third_party/imgui/imgui_impl_sdl.h
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../src/engine/engine.cpp
 
-CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imconfig.h
-CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui.h
-CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui_impl_opengl3.h
-CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui_impl_sdl.h
+CMakeFiles/proj.dir/src/main.cpp.o: ../include/engine/engine.h
 CMakeFiles/proj.dir/src/main.cpp.o: ../src/main.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o: ../include/third_party/imgui/imconfig.h

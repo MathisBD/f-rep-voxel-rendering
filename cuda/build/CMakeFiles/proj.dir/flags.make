@@ -5,13 +5,13 @@
 # compile CXX with /usr/bin/c++
 CUDA_FLAGS =   -g -lineinfo -std=c++11
 
-CUDA_DEFINES = -DGLEW_STATIC
+CUDA_DEFINES = 
 
 CUDA_INCLUDES = -I/home/mathis/src/f-rep-voxel-rendering/cuda/include -I/usr/include/SDL2 
 
 CXX_FLAGS =   -g -lineinfo
 
-CXX_DEFINES = -DGLEW_STATIC
+CXX_DEFINES = 
 
 CXX_INCLUDES = -I/home/mathis/src/f-rep-voxel-rendering/cuda/include -I/usr/include/SDL2 
 

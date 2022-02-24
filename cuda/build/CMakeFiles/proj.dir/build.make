@@ -57,9 +57,22 @@ include CMakeFiles/proj.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/proj.dir/flags.make
 
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: CMakeFiles/proj.dir/flags.make
+CMakeFiles/proj.dir/src/engine/engine.cpp.o: ../src/engine/engine.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/proj.dir/src/engine/engine.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/engine/engine.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/engine/engine.cpp
+
+CMakeFiles/proj.dir/src/engine/engine.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/proj.dir/src/engine/engine.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/mathis/src/f-rep-voxel-rendering/cuda/src/engine/engine.cpp > CMakeFiles/proj.dir/src/engine/engine.cpp.i
+
+CMakeFiles/proj.dir/src/engine/engine.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/proj.dir/src/engine/engine.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mathis/src/f-rep-voxel-rendering/cuda/src/engine/engine.cpp -o CMakeFiles/proj.dir/src/engine/engine.cpp.s
+
 CMakeFiles/proj.dir/src/main.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/main.cpp.o: ../src/main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/proj.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/proj.dir/src/main.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/main.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/main.cpp
 
 CMakeFiles/proj.dir/src/main.cpp.i: cmake_force
@@ -72,7 +85,7 @@ CMakeFiles/proj.dir/src/main.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/matrix_sum.cu.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/matrix_sum.cu.o: ../src/matrix_sum.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/proj.dir/src/matrix_sum.cu.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/proj.dir/src/matrix_sum.cu.o"
 	/usr/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/matrix_sum.cu -o CMakeFiles/proj.dir/src/matrix_sum.cu.o
 
 CMakeFiles/proj.dir/src/matrix_sum.cu.i: cmake_force
@@ -85,7 +98,7 @@ CMakeFiles/proj.dir/src/matrix_sum.cu.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o: ../src/third_party/imgui/imgui.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.i: cmake_force
@@ -98,7 +111,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o: ../src/third_party/imgui/imgui_demo.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_demo.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.i: cmake_force
@@ -111,7 +124,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o: ../src/third_party/imgui/imgui_draw.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_draw.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.i: cmake_force
@@ -124,7 +137,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../src/third_party/imgui/imgui_impl_opengl3.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_impl_opengl3.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.i: cmake_force
@@ -137,7 +150,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: ../src/third_party/imgui/imgui_impl_sdl.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_impl_sdl.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.i: cmake_force
@@ -150,7 +163,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o: ../src/third_party/imgui/imgui_tables.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_tables.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.i: cmake_force
@@ -163,7 +176,7 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.s: cmake_force
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o: CMakeFiles/proj.dir/flags.make
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o: ../src/third_party/imgui/imgui_widgets.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_widgets.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.i: cmake_force
@@ -174,21 +187,9 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_widgets.cpp -o CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.s
 
-CMakeFiles/proj.dir/src/vector_add.cu.o: CMakeFiles/proj.dir/flags.make
-CMakeFiles/proj.dir/src/vector_add.cu.o: ../src/vector_add.cu
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CUDA object CMakeFiles/proj.dir/src/vector_add.cu.o"
-	/usr/bin/nvcc  $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -x cu -c /home/mathis/src/f-rep-voxel-rendering/cuda/src/vector_add.cu -o CMakeFiles/proj.dir/src/vector_add.cu.o
-
-CMakeFiles/proj.dir/src/vector_add.cu.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/proj.dir/src/vector_add.cu.i"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE
-
-CMakeFiles/proj.dir/src/vector_add.cu.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CUDA source to assembly CMakeFiles/proj.dir/src/vector_add.cu.s"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
-
 # Object files for target proj
 proj_OBJECTS = \
+"CMakeFiles/proj.dir/src/engine/engine.cpp.o" \
 "CMakeFiles/proj.dir/src/main.cpp.o" \
 "CMakeFiles/proj.dir/src/matrix_sum.cu.o" \
 "CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o" \
@@ -197,12 +198,12 @@ proj_OBJECTS = \
 "CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o" \
 "CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o" \
 "CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o" \
-"CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o" \
-"CMakeFiles/proj.dir/src/vector_add.cu.o"
+"CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
 
 # External object files for target proj
 proj_EXTERNAL_OBJECTS =
 
+proj: CMakeFiles/proj.dir/src/engine/engine.cpp.o
 proj: CMakeFiles/proj.dir/src/main.cpp.o
 proj: CMakeFiles/proj.dir/src/matrix_sum.cu.o
 proj: CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o
@@ -212,12 +213,10 @@ proj: CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o
 proj: CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o
 proj: CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o
 proj: CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o
-proj: CMakeFiles/proj.dir/src/vector_add.cu.o
 proj: CMakeFiles/proj.dir/build.make
 proj: /usr/lib/x86_64-linux-gnu/libOpenGL.so
 proj: /usr/lib/x86_64-linux-gnu/libGLX.so
 proj: /usr/lib/x86_64-linux-gnu/libGLU.so
-proj: /usr/lib/x86_64-linux-gnu/libGLEW.so
 proj: CMakeFiles/proj.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX executable proj"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/proj.dir/link.txt --verbose=$(VERBOSE)

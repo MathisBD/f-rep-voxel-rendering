@@ -6,14 +6,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CUDA
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/matrix_sum.cu" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/matrix_sum.cu.o"
-  "/home/mathis/src/f-rep-voxel-rendering/cuda/src/vector_add.cu" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/vector_add.cu.o"
   )
 set(CMAKE_CUDA_COMPILER_ID "NVIDIA")
-
-# Preprocessor definitions for this target.
-set(CMAKE_TARGET_DEFINITIONS_CUDA
-  "GLEW_STATIC"
-  )
 
 # The include file search paths:
 set(CMAKE_CUDA_TARGET_INCLUDE_PATH
@@ -21,6 +15,7 @@ set(CMAKE_CUDA_TARGET_INCLUDE_PATH
   "/usr/include/SDL2"
   )
 set(CMAKE_DEPENDS_CHECK_CXX
+  "/home/mathis/src/f-rep-voxel-rendering/cuda/src/engine/engine.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/engine/engine.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/main.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/main.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_demo.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o"
@@ -31,11 +26,6 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_widgets.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
-
-# Preprocessor definitions for this target.
-set(CMAKE_TARGET_DEFINITIONS_CXX
-  "GLEW_STATIC"
-  )
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
