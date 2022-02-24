@@ -6,7 +6,3 @@
 
 #IncludeRegexTransform: 
 
-/home/mathis/src/f-rep-voxel-rendering/cuda/src/main.cu
-SDL2/SDL.h
--
-

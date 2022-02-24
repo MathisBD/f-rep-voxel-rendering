@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
-
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/imgui_impl_sdl.h"
+#include "third_party/imgui/imgui_impl_sdlrenderer.h"
 
 int main()
 {

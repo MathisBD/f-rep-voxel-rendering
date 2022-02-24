@@ -1,0 +1,3 @@
+[submodule "vulkan/submodules/vk-bootstrap"]
+	path = vulkan/submodules/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap

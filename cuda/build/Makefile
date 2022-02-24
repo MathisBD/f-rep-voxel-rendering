@@ -123,32 +123,32 @@ proj/fast:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/build
 .PHONY : proj/fast
 
-src/main.o: src/main.cu.o
+src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
 
 # target to build an object file
-src/main.cu.o:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.o
-.PHONY : src/main.cu.o
+src/main.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
 
-src/main.i: src/main.cu.i
+src/main.i: src/main.cpp.i
 
 .PHONY : src/main.i
 
 # target to preprocess a source file
-src/main.cu.i:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.i
-.PHONY : src/main.cu.i
+src/main.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
 
-src/main.s: src/main.cu.s
+src/main.s: src/main.cpp.s
 
 .PHONY : src/main.s
 
 # target to generate assembly for a file
-src/main.cu.s:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.s
-.PHONY : src/main.cu.s
+src/main.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
 
 src/matrix_sum.o: src/matrix_sum.cu.o
 
@@ -176,6 +176,195 @@ src/matrix_sum.s: src/matrix_sum.cu.s
 src/matrix_sum.cu.s:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/matrix_sum.cu.s
 .PHONY : src/matrix_sum.cu.s
+
+src/third_party/imgui/imgui.o: src/third_party/imgui/imgui.cpp.o
+
+.PHONY : src/third_party/imgui/imgui.o
+
+# target to build an object file
+src/third_party/imgui/imgui.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o
+.PHONY : src/third_party/imgui/imgui.cpp.o
+
+src/third_party/imgui/imgui.i: src/third_party/imgui/imgui.cpp.i
+
+.PHONY : src/third_party/imgui/imgui.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.i
+.PHONY : src/third_party/imgui/imgui.cpp.i
+
+src/third_party/imgui/imgui.s: src/third_party/imgui/imgui.cpp.s
+
+.PHONY : src/third_party/imgui/imgui.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.s
+.PHONY : src/third_party/imgui/imgui.cpp.s
+
+src/third_party/imgui/imgui_demo.o: src/third_party/imgui/imgui_demo.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_demo.o
+
+# target to build an object file
+src/third_party/imgui/imgui_demo.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o
+.PHONY : src/third_party/imgui/imgui_demo.cpp.o
+
+src/third_party/imgui/imgui_demo.i: src/third_party/imgui/imgui_demo.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_demo.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_demo.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.i
+.PHONY : src/third_party/imgui/imgui_demo.cpp.i
+
+src/third_party/imgui/imgui_demo.s: src/third_party/imgui/imgui_demo.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_demo.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_demo.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.s
+.PHONY : src/third_party/imgui/imgui_demo.cpp.s
+
+src/third_party/imgui/imgui_draw.o: src/third_party/imgui/imgui_draw.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_draw.o
+
+# target to build an object file
+src/third_party/imgui/imgui_draw.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o
+.PHONY : src/third_party/imgui/imgui_draw.cpp.o
+
+src/third_party/imgui/imgui_draw.i: src/third_party/imgui/imgui_draw.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_draw.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_draw.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.i
+.PHONY : src/third_party/imgui/imgui_draw.cpp.i
+
+src/third_party/imgui/imgui_draw.s: src/third_party/imgui/imgui_draw.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_draw.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_draw.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.s
+.PHONY : src/third_party/imgui/imgui_draw.cpp.s
+
+src/third_party/imgui/imgui_impl_sdl.o: src/third_party/imgui/imgui_impl_sdl.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_impl_sdl.o
+
+# target to build an object file
+src/third_party/imgui/imgui_impl_sdl.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o
+.PHONY : src/third_party/imgui/imgui_impl_sdl.cpp.o
+
+src/third_party/imgui/imgui_impl_sdl.i: src/third_party/imgui/imgui_impl_sdl.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_impl_sdl.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_impl_sdl.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.i
+.PHONY : src/third_party/imgui/imgui_impl_sdl.cpp.i
+
+src/third_party/imgui/imgui_impl_sdl.s: src/third_party/imgui/imgui_impl_sdl.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_impl_sdl.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_impl_sdl.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.s
+.PHONY : src/third_party/imgui/imgui_impl_sdl.cpp.s
+
+src/third_party/imgui/imgui_impl_sdlrenderer.o: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.o
+
+# target to build an object file
+src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
+
+src/third_party/imgui/imgui_impl_sdlrenderer.i: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
+
+src/third_party/imgui/imgui_impl_sdlrenderer.s: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
+.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
+
+src/third_party/imgui/imgui_tables.o: src/third_party/imgui/imgui_tables.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_tables.o
+
+# target to build an object file
+src/third_party/imgui/imgui_tables.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o
+.PHONY : src/third_party/imgui/imgui_tables.cpp.o
+
+src/third_party/imgui/imgui_tables.i: src/third_party/imgui/imgui_tables.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_tables.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_tables.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.i
+.PHONY : src/third_party/imgui/imgui_tables.cpp.i
+
+src/third_party/imgui/imgui_tables.s: src/third_party/imgui/imgui_tables.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_tables.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_tables.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.s
+.PHONY : src/third_party/imgui/imgui_tables.cpp.s
+
+src/third_party/imgui/imgui_widgets.o: src/third_party/imgui/imgui_widgets.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_widgets.o
+
+# target to build an object file
+src/third_party/imgui/imgui_widgets.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o
+.PHONY : src/third_party/imgui/imgui_widgets.cpp.o
+
+src/third_party/imgui/imgui_widgets.i: src/third_party/imgui/imgui_widgets.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_widgets.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_widgets.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.i
+.PHONY : src/third_party/imgui/imgui_widgets.cpp.i
+
+src/third_party/imgui/imgui_widgets.s: src/third_party/imgui/imgui_widgets.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_widgets.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_widgets.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.s
+.PHONY : src/third_party/imgui/imgui_widgets.cpp.s
 
 src/vector_add.o: src/vector_add.cu.o
 
@@ -219,6 +408,27 @@ help:
 	@echo "... src/matrix_sum.o"
 	@echo "... src/matrix_sum.i"
 	@echo "... src/matrix_sum.s"
+	@echo "... src/third_party/imgui/imgui.o"
+	@echo "... src/third_party/imgui/imgui.i"
+	@echo "... src/third_party/imgui/imgui.s"
+	@echo "... src/third_party/imgui/imgui_demo.o"
+	@echo "... src/third_party/imgui/imgui_demo.i"
+	@echo "... src/third_party/imgui/imgui_demo.s"
+	@echo "... src/third_party/imgui/imgui_draw.o"
+	@echo "... src/third_party/imgui/imgui_draw.i"
+	@echo "... src/third_party/imgui/imgui_draw.s"
+	@echo "... src/third_party/imgui/imgui_impl_sdl.o"
+	@echo "... src/third_party/imgui/imgui_impl_sdl.i"
+	@echo "... src/third_party/imgui/imgui_impl_sdl.s"
+	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.o"
+	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.i"
+	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.s"
+	@echo "... src/third_party/imgui/imgui_tables.o"
+	@echo "... src/third_party/imgui/imgui_tables.i"
+	@echo "... src/third_party/imgui/imgui_tables.s"
+	@echo "... src/third_party/imgui/imgui_widgets.o"
+	@echo "... src/third_party/imgui/imgui_widgets.i"
+	@echo "... src/third_party/imgui/imgui_widgets.s"
 	@echo "... src/vector_add.o"
 	@echo "... src/vector_add.i"
 	@echo "... src/vector_add.s"
