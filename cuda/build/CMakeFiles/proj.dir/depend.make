@@ -8,8 +8,8 @@ CMakeFiles/proj.dir/src/vector_add.cu.o: ../src/vector_add.cu
 
 CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imconfig.h
 CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui.h
+CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui_impl_opengl3.h
 CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui_impl_sdl.h
-CMakeFiles/proj.dir/src/main.cpp.o: ../include/third_party/imgui/imgui_impl_sdlrenderer.h
 CMakeFiles/proj.dir/src/main.cpp.o: ../src/main.cpp
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o: ../include/third_party/imgui/imconfig.h
@@ -30,60 +30,16 @@ CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o: ../include/third_par
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o: ../include/third_party/imgui/imstb_truetype.h
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o: ../src/third_party/imgui/imgui_draw.cpp
 
+CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../include/third_party/imgui/imconfig.h
+CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../include/third_party/imgui/imgui.h
+CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../include/third_party/imgui/imgui_impl_opengl3.h
+CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../include/third_party/imgui/imgui_impl_opengl3_loader.h
+CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o: ../src/third_party/imgui/imgui_impl_opengl3.cpp
+
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: ../include/third_party/imgui/imconfig.h
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: ../include/third_party/imgui/imgui.h
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: ../include/third_party/imgui/imgui_impl_sdl.h
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o: ../src/third_party/imgui/imgui_impl_sdl.cpp
-
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: ../include/third_party/imgui/imconfig.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: ../include/third_party/imgui/imgui.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: ../include/third_party/imgui/imgui_impl_sdlrenderer.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: ../src/third_party/imgui/imgui_impl_sdlrenderer.cpp
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_assert.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_atomic.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_audio.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_blendmode.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_clipboard.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_config.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_cpuinfo.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_endian.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_error.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_events.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_filesystem.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_gamecontroller.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_gesture.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_haptic.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_hints.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_joystick.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_keyboard.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_keycode.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_loadso.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_log.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_main.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_messagebox.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_mouse.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_mutex.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_pixels.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_platform.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_power.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_quit.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_rect.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_render.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_rwops.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_scancode.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_sensor.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_shape.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_stdinc.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_surface.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_system.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_thread.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_timer.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_touch.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_version.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/SDL_video.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/begin_code.h
-CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o: /usr/include/SDL2/close_code.h
 
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o: ../include/third_party/imgui/imconfig.h
 CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o: ../include/third_party/imgui/imgui.h

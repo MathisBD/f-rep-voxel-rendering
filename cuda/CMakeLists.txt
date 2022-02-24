@@ -21,3 +21,14 @@ find_package(SDL2 REQUIRED)
 target_include_directories(proj PUBLIC ${SDL2_INCLUDE_DIRS})
 target_link_libraries(proj ${SDL2_LIBRARIES})
 
+# OpenGL (we use it as a renderer for Imgui and SDL)
+set(OpenGL_GL_PREFERENCE GLVND) # use GLVND or legacy GL libraries ?
+find_package(OpenGL REQUIRED)
+target_include_directories(proj PUBLIC ${OPENGL_INCLUDE_DIRS})
+target_link_libraries(proj ${OPENGL_LIBRARIES})
+
+# GLEW 
+find_package(GLEW REQUIRED)
+target_include_directories(proj PUBLIC ${GLEW_INCLUDE_DIRS})
+target_link_libraries(proj ${GLEW_LIBRARIES})
+add_compile_definitions(GLEW_STATIC) # statically link to GLEW 

@@ -10,6 +10,11 @@ set(CMAKE_DEPENDS_CHECK_CUDA
   )
 set(CMAKE_CUDA_COMPILER_ID "NVIDIA")
 
+# Preprocessor definitions for this target.
+set(CMAKE_TARGET_DEFINITIONS_CUDA
+  "GLEW_STATIC"
+  )
+
 # The include file search paths:
 set(CMAKE_CUDA_TARGET_INCLUDE_PATH
   "../include"
@@ -20,12 +25,17 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_demo.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_demo.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_draw.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.o"
+  "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_impl_opengl3.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_impl_sdl.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.o"
-  "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_impl_sdlrenderer.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_tables.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_tables.cpp.o"
   "/home/mathis/src/f-rep-voxel-rendering/cuda/src/third_party/imgui/imgui_widgets.cpp" "/home/mathis/src/f-rep-voxel-rendering/cuda/build/CMakeFiles/proj.dir/src/third_party/imgui/imgui_widgets.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
+
+# Preprocessor definitions for this target.
+set(CMAKE_TARGET_DEFINITIONS_CXX
+  "GLEW_STATIC"
+  )
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH

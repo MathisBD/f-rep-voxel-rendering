@@ -258,6 +258,33 @@ src/third_party/imgui/imgui_draw.cpp.s:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_draw.cpp.s
 .PHONY : src/third_party/imgui/imgui_draw.cpp.s
 
+src/third_party/imgui/imgui_impl_opengl3.o: src/third_party/imgui/imgui_impl_opengl3.cpp.o
+
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.o
+
+# target to build an object file
+src/third_party/imgui/imgui_impl_opengl3.cpp.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.o
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.cpp.o
+
+src/third_party/imgui/imgui_impl_opengl3.i: src/third_party/imgui/imgui_impl_opengl3.cpp.i
+
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.i
+
+# target to preprocess a source file
+src/third_party/imgui/imgui_impl_opengl3.cpp.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.i
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.cpp.i
+
+src/third_party/imgui/imgui_impl_opengl3.s: src/third_party/imgui/imgui_impl_opengl3.cpp.s
+
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.s
+
+# target to generate assembly for a file
+src/third_party/imgui/imgui_impl_opengl3.cpp.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_opengl3.cpp.s
+.PHONY : src/third_party/imgui/imgui_impl_opengl3.cpp.s
+
 src/third_party/imgui/imgui_impl_sdl.o: src/third_party/imgui/imgui_impl_sdl.cpp.o
 
 .PHONY : src/third_party/imgui/imgui_impl_sdl.o
@@ -284,33 +311,6 @@ src/third_party/imgui/imgui_impl_sdl.s: src/third_party/imgui/imgui_impl_sdl.cpp
 src/third_party/imgui/imgui_impl_sdl.cpp.s:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdl.cpp.s
 .PHONY : src/third_party/imgui/imgui_impl_sdl.cpp.s
-
-src/third_party/imgui/imgui_impl_sdlrenderer.o: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
-
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.o
-
-# target to build an object file
-src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.o
-
-src/third_party/imgui/imgui_impl_sdlrenderer.i: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
-
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.i
-
-# target to preprocess a source file
-src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.i
-
-src/third_party/imgui/imgui_impl_sdlrenderer.s: src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
-
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.s
-
-# target to generate assembly for a file
-src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s:
-	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
-.PHONY : src/third_party/imgui/imgui_impl_sdlrenderer.cpp.s
 
 src/third_party/imgui/imgui_tables.o: src/third_party/imgui/imgui_tables.cpp.o
 
@@ -417,12 +417,12 @@ help:
 	@echo "... src/third_party/imgui/imgui_draw.o"
 	@echo "... src/third_party/imgui/imgui_draw.i"
 	@echo "... src/third_party/imgui/imgui_draw.s"
+	@echo "... src/third_party/imgui/imgui_impl_opengl3.o"
+	@echo "... src/third_party/imgui/imgui_impl_opengl3.i"
+	@echo "... src/third_party/imgui/imgui_impl_opengl3.s"
 	@echo "... src/third_party/imgui/imgui_impl_sdl.o"
 	@echo "... src/third_party/imgui/imgui_impl_sdl.i"
 	@echo "... src/third_party/imgui/imgui_impl_sdl.s"
-	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.o"
-	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.i"
-	@echo "... src/third_party/imgui/imgui_impl_sdlrenderer.s"
 	@echo "... src/third_party/imgui/imgui_tables.o"
 	@echo "... src/third_party/imgui/imgui_tables.i"
 	@echo "... src/third_party/imgui/imgui_tables.s"
