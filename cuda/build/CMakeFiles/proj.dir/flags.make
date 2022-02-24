@@ -6,5 +6,5 @@ CUDA_FLAGS =   --Wreorder --Werror cross-execution-space-call -g -lineinfo -std=
 
 CUDA_DEFINES = 
 
-CUDA_INCLUDES = -I/home/mathis/src/f-rep-voxel-rendering/cuda/include 
+CUDA_INCLUDES = -I/home/mathis/src/f-rep-voxel-rendering/cuda/include -I/usr/include/SDL2 
 

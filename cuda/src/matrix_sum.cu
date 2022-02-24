@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <assert.h>
 
+/*
 // error checking macro
 #define cudaCheckErrors(msg) \
     do { \
@@ -28,39 +30,51 @@ __global__ void row_sums(const float *A, float *sums, size_t n){
   }
 }
 
+
+__device__ inline float WarpSum(float val)
+{
+    const uint mask = 0xFFFFFFFF;
+    for (uint k = warpSize / 2; k > 0; k >>= 1) {
+        val += __shfl_down_sync(mask, val, k);
+    }
+    return val;
+}
+
+
 // there are n blocks, each of size BS (may be < n)
 #define BS 1024
 __global__ void row_sums_reduce(const float* A, float* sums, size_t n)
 {
-    __shared__ float block[BS];
-    
-    // Our thread block will sum the row at blockIdx.x
+    __shared__ float block[32];
     const uint y = blockIdx.x;
-    float sum = 0;
+    const uint lane = threadIdx.x % warpSize;
+    const uint warp = threadIdx.x / warpSize;
+    const uint warpCount = blockDim.x / warpSize;
+
+    // Our thread block will sum the row at blockIdx.x
+    float val = 0;
     for (uint xBase = 0; xBase < n; xBase += blockDim.x) {
         // load the block
         if (xBase + threadIdx.x < n) {
-            sum += A[y * n + xBase + threadIdx.x];
+            val += A[y * n + xBase + threadIdx.x];
         }
     }
-    block[threadIdx.x] = sum;
+
+    val = WarpSum(val);
+    if (lane == 0) {
+        block[warp] = val;
+    }
     __syncthreads();
 
-    // perform a parallel sum reduction
-    for (uint k = BS / 2; k >= 4; k >>= 1) {
-        if (threadIdx.x < k) {
-            block[threadIdx.x] += block[threadIdx.x + k];
-        }
-        __syncthreads();
-    }
-
-    // add the block sum to the row total
-    if (threadIdx.x == 0) {
-        sums[y] = block[0] + block[1] + block[2] + block[3];
+    if (warp == 0) {
+        val = lane < warpCount ? block[lane] : 0;
+        val = WarpSum(val);
+        if (lane == 0) {
+            sums[y] = val;
+        }  
     }
 }
 #undef BS
-
 
 
 // matrix column-sum kernel
@@ -75,45 +89,36 @@ __global__ void column_sums(const float *A, float *sums, size_t ds){
 }}
 
 // blocks of size (BS, BS)
-// grid of size (GS, 1)
-// we can have BS* GS < n
+// grid of size (GS, 1) with BS*GS >= n
 #define BS 32
 __global__ void column_sums_blocks(const float* A, float* sums, size_t n)
 {
-    __shared__ float block[BS][BS];
+    __shared__ float block[BS][BS+1];
+    const uint tx = threadIdx.x;
+    const uint ty = threadIdx.y;
+    const uint xBlock = blockDim.x * blockIdx.x;
+    assert(xBlock < n);
+    assert(warpSize == BS);
 
-    for (uint xBlock = blockDim.x * blockIdx.x; xBlock < n; xBlock += gridDim.x * blockDim.x) {
-        float sum = 0;
-        for (uint yBlock = blockDim.y * blockIdx.y; yBlock < n; yBlock += blockDim.y) {
-            // load the block
-            {
-                uint x = xBlock + threadIdx.x;
-                uint y = yBlock + threadIdx.y;
-                if (x < n && y < n) {
-                    block[threadIdx.y][threadIdx.x] = A[x + n * y];
-                }
-            }
-            __syncthreads();
-
-            /*// sum the columns of the block
-            for (uint k = 1; k < BS; k *= 2) {
-                if (2*k*threadIdx.y < BS) {
-                    block[2*k*threadIdx.y][threadIdx.x] += block[2*k*threadIdx.y + k][threadIdx.x];
-                }
-                __syncthreads();
-            }*/
-
-            // accumulate in local variable
-            if (threadIdx.y == 0) {
-                for (uint ofs = 0; ofs < blockDim.y && yBlock + ofs < n; ofs++) {
-                    sum += block[ofs][threadIdx.x];
-                }
-            }
-            __syncthreads();
+    // Accumulate the values of the block
+    float val = 0;
+    for (uint yBlock = blockDim.y * blockIdx.y; yBlock < n; yBlock += blockDim.y) {
+        if (xBlock + tx < n && yBlock + ty < n) {
+            val += A[(xBlock + tx) + n * (yBlock + ty)];
         }
-        if (threadIdx.y == 0) {
-            sums[xBlock + threadIdx.x] = sum;
-        }
+    }
+    // transpose the values of the block
+    block[ty][tx] = val;
+    __syncthreads();
+    val = block[tx][ty];
+
+    // each warp sums its values
+    const uint mask = 0xFFFFFFFF;
+    for (uint k = warpSize / 2; k > 0; k >>= 1) {
+        val += __shfl_down_sync(mask, val, k);
+    }
+    if (tx == 0) {
+        sums[xBlock + ty] = val;
     }
 }
 #undef BS
@@ -178,7 +183,7 @@ int main(){
   {     
     cudaMemset(d_sums, 0, DSIZE*sizeof(float));
         
-    dim3 block_num(512, 1);
+    dim3 block_num((DSIZE + 32 - 1) / 32, 1);
     dim3 block_size(32, 32);
     column_sums_blocks<<<block_num, block_size>>>(d_A, d_sums, DSIZE);
     cudaCheckErrors("kernel launch failure");
@@ -210,5 +215,5 @@ int main(){
   }
 
   return 0;
-}
+}*/
   

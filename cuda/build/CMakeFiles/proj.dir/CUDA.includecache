@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/mathis/src/f-rep-voxel-rendering/cuda/src/matrix_sum.cu
-stdio.h
+/home/mathis/src/f-rep-voxel-rendering/cuda/src/main.cu
+SDL2/SDL.h
 -
 

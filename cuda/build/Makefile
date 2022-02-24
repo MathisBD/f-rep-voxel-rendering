@@ -123,6 +123,33 @@ proj/fast:
 	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/build
 .PHONY : proj/fast
 
+src/main.o: src/main.cu.o
+
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cu.o:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.o
+.PHONY : src/main.cu.o
+
+src/main.i: src/main.cu.i
+
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cu.i:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.i
+.PHONY : src/main.cu.i
+
+src/main.s: src/main.cu.s
+
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cu.s:
+	$(MAKE) -f CMakeFiles/proj.dir/build.make CMakeFiles/proj.dir/src/main.cu.s
+.PHONY : src/main.cu.s
+
 src/matrix_sum.o: src/matrix_sum.cu.o
 
 .PHONY : src/matrix_sum.o
@@ -186,6 +213,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... proj"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
 	@echo "... src/matrix_sum.o"
 	@echo "... src/matrix_sum.i"
 	@echo "... src/matrix_sum.s"

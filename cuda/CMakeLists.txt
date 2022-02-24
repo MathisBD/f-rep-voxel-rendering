@@ -13,4 +13,11 @@ target_include_directories(proj PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_compile_options(proj PUBLIC --Wreorder)
 target_compile_options(proj PUBLIC --Werror cross-execution-space-call)
 
+# Enable CUDA profiling data
 target_compile_options(proj PUBLIC -g -lineinfo)
+
+# SDL2
+find_package(SDL2 REQUIRED)
+target_include_directories(proj PUBLIC ${SDL2_INCLUDE_DIRS})
+target_link_libraries(proj ${SDL2_LIBRARIES})
+

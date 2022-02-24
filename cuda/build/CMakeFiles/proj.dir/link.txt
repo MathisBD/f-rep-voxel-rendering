@@ -1,1 +1,1 @@
-/usr/lib/nvidia-cuda-toolkit/bin/g++  CMakeFiles/proj.dir/src/matrix_sum.cu.o CMakeFiles/proj.dir/src/vector_add.cu.o -o proj  -L"/usr/lib/x86_64-linux-gnu/stubs" -L"/usr/lib/x86_64-linux-gnu" -lcudadevrt -lcudart_static -lrt -lpthread -ldl
+/usr/lib/nvidia-cuda-toolkit/bin/g++  CMakeFiles/proj.dir/src/main.cu.o CMakeFiles/proj.dir/src/matrix_sum.cu.o CMakeFiles/proj.dir/src/vector_add.cu.o -o proj  -lSDL2  -L"/usr/lib/x86_64-linux-gnu/stubs" -L"/usr/lib/x86_64-linux-gnu" -lcudadevrt -lcudart_static -lrt -lpthread -ldl
